@@ -226,10 +226,15 @@ def png_bytes(image: Image.Image) -> bytes:
 def main() -> None:
     IMG.mkdir(parents=True, exist_ok=True)
     DOCS.mkdir(parents=True, exist_ok=True)
-    (IMG / "logo-mark.svg").write_text(mark_svg(FULL), encoding="utf-8")
-    (IMG / "logo-mark-small.svg").write_text(mark_svg(COMPACT), encoding="utf-8")
-    (IMG / "favicon.svg").write_text(mark_svg(COMPACT), encoding="utf-8")
-    (IMG / "logo-wordmark.svg").write_text(wordmark_svg(), encoding="utf-8")
+    for name, svg in (
+        ("logo-mark.svg", mark_svg(FULL)),
+        ("logo-mark-small.svg", mark_svg(COMPACT)),
+        ("favicon.svg", mark_svg(COMPACT)),
+        ("logo-wordmark.svg", wordmark_svg()),
+    ):
+        (IMG / name).write_text(
+            svg, encoding="utf-8", newline="\n"
+        )  # LF everywhere, so the files are the same on every OS
     for size in (512, 256):
         (IMG / f"logo-mark-{size}.png").write_bytes(png_bytes(render_mark(FULL, size)))
     (IMG / "apple-touch-icon.png").write_bytes(png_bytes(render_mark(COMPACT, 180, background="#ffffff", padding=0.1)))
