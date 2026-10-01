@@ -16,6 +16,7 @@ from sigma.presentation.web.blueprints import (
     regression_api,
     results_api,
     users_api,
+    workspace_api,
 )
 
 ALL_BLUEPRINTS = (
@@ -32,6 +33,7 @@ ALL_BLUEPRINTS = (
     markets_api.bp,
     results_api.bp,
     console_api.bp,
+    workspace_api.bp,
 )
 
 

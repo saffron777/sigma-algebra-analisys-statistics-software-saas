@@ -61,3 +61,29 @@ def test_login_and_setup_pages_render(app, anonymous):
     login = anonymous.raw.get("/login?next=/regresion")
     assert login.status_code == 200 and 'data-next="/regresion"' in login.get_data(as_text=True)
     assert anonymous.raw.get("/setup").status_code == 302  # setup is only available before the first account
+
+
+WORKSPACE_PAGES = [
+    "datos",
+    "descriptiva",
+    "distribuciones",
+    "hipotesis",
+    "regresion",
+    "anova",
+    "mercados",
+    "resultados",
+]
+
+
+@pytest.mark.parametrize("key", WORKSPACE_PAGES)
+def test_workspace_modules_offer_clear_and_the_sync_conflict_bar(api, key):
+    path = PAGES[key][0]
+    html = api.raw.get(path).get_data(as_text=True)
+    assert "clearWorkspace()" in html and "Limpiar" in html  # «Limpiar» empties the module's workspace
+    assert 'x-show="wsConflict"' in html and "Cargar la versión nueva" in html  # another window changed it
+
+
+def test_home_can_clear_every_module_and_the_console_page_shows_the_notebook_conflict_bar(api):
+    assert "Limpiar todos los módulos" in api.raw.get("/").get_data(as_text=True)
+    console = api.raw.get("/consola").get_data(as_text=True)
+    assert "Sobrescribir con la mía" in console and "Otra ventana modificó este notebook" in console

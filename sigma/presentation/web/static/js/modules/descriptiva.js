@@ -9,7 +9,7 @@ const emptyForm = () => ({
 
 document.addEventListener("alpine:init", () => {
   Alpine.data("descriptivaPage", () => ({
-    ...analysisPage(),
+    ...analysisPage("descriptiva", ["form"]),
     fittable: [],
     form: emptyForm(),
 
@@ -18,7 +18,11 @@ document.addEventListener("alpine:init", () => {
         this.fittable = (await api("/api/descriptive/options")).fittable;
       } catch { /* optional list */ }
       this.onDatasetChange(() => { this.form = emptyForm(); });
-      await this.loadSavedFromUrl();
+      await this.startWorkspace();
+    },
+
+    resetWorkspace() {
+      this.form = emptyForm();
     },
 
     get canRun() {

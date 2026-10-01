@@ -68,6 +68,7 @@ from sigma.application.use_cases.survey import (
     RunCrosstab,
     RunLikert,
 )
+from sigma.application.use_cases.workspace import ClearWorkspace, GetSyncState, GetWorkspace, SaveWorkspace
 from sigma.config import PROJECT_ROOT, Config
 from sigma.domain.users import User
 from sigma.infrastructure.importers.registry import DefaultImporterRegistry
@@ -78,6 +79,10 @@ from sigma.infrastructure.persistence.sqlite.database import Database
 from sigma.infrastructure.persistence.sqlite.dataset_repository import SqliteDatasetRepository
 from sigma.infrastructure.persistence.sqlite.result_repository import SqliteResultRepository
 from sigma.infrastructure.persistence.sqlite.user_repository import SqliteUserRepository
+from sigma.infrastructure.persistence.sqlite.workspace_repository import (
+    SqliteSyncRepository,
+    SqliteWorkspaceRepository,
+)
 from sigma.infrastructure.persistence.user_data import SqliteLegacyDataAdopter, UserDataPurger
 from sigma.infrastructure.security.login_throttle import InMemoryLoginThrottle
 from sigma.infrastructure.security.password_hasher import WerkzeugPasswordHasher
@@ -129,6 +134,11 @@ class UserServices:
     export_notebook: ExportNotebook
     execute_code: ExecuteCode
     control_kernel: ControlKernel
+    # workspace and live synchronisation
+    get_workspace: GetWorkspace
+    save_workspace: SaveWorkspace
+    clear_workspace: ClearWorkspace
+    get_sync_state: GetSyncState
     # account
     change_own_password: ChangeOwnPassword
     update_profile: UpdateProfile
@@ -172,6 +182,8 @@ class Container:
         results = SqliteResultRepository(self.database, user.id)
         notebooks = FileNotebookStore(self.config.notebooks_dir / owner)
         staging = OwnedImportStaging(self._staging, owner)
+        workspace = SqliteWorkspaceRepository(self.database, user.id)
+        sync = SqliteSyncRepository(self.database, user.id)
         return UserServices(
             user=user,
             inspect_source=InspectSource(self.importers),
@@ -210,6 +222,10 @@ class Container:
             export_notebook=ExportNotebook(notebooks),
             execute_code=ExecuteCode(notebooks, self.kernels, self.config.cell_timeout_seconds, owner),
             control_kernel=ControlKernel(notebooks, self.kernels, owner),
+            get_workspace=GetWorkspace(workspace),
+            save_workspace=SaveWorkspace(workspace),
+            clear_workspace=ClearWorkspace(workspace),
+            get_sync_state=GetSyncState(workspace, sync, notebooks),
             change_own_password=ChangeOwnPassword(self.users, self._hasher),
             update_profile=UpdateProfile(self.users),
         )

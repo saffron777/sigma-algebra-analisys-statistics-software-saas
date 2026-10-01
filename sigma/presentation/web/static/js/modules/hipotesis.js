@@ -8,7 +8,7 @@ const TAIL_LABELS = { "two-sided": "Bilateral (≠)", left: "Cola izquierda (<)"
 
 document.addEventListener("alpine:init", () => {
   Alpine.data("hipotesisPage", () => ({
-    ...analysisPage(),
+    ...analysisPage("hipotesis", ["testId", "mode", "roles", "params", "summary", "tail", "alpha"]),
     tailLabels: TAIL_LABELS,
     tests: [],
     testId: "t_one_sample",
@@ -23,7 +23,26 @@ document.addEventListener("alpine:init", () => {
       this.tests = (await api("/api/hypothesis/catalog")).tests;
       this.selectTest(this.testId);
       this.onDatasetChange(() => { this.roles = {}; });
-      await this.loadSavedFromUrl();
+      await this.startWorkspace();
+    },
+
+    resetWorkspace() {
+      this.selectTest("t_one_sample");
+      this.mode = "data";
+      this.tail = "two-sided";
+      this.alpha = 0.05;
+    },
+
+    /** A stored form: choose the test first (it sets that test's defaults), then overlay what the user had typed. */
+    applyWorkspace(state) {
+      if (!this.tests.some((t) => t.id === state.testId)) return;
+      this.selectTest(state.testId);
+      this.mode = this.hasSummary ? (state.mode ?? "data") : "data";
+      this.roles = { ...(state.roles ?? {}) };
+      this.params = { ...this.params, ...(state.params ?? {}) };
+      this.summary = { ...this.summary, ...(state.summary ?? {}) };
+      this.tail = state.tail ?? "two-sided";
+      this.alpha = state.alpha ?? 0.05;
     },
 
     get spec() { return this.tests.find((t) => t.id === this.testId); },

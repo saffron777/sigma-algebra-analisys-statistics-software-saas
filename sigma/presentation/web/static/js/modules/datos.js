@@ -1,6 +1,7 @@
 // Data page: import from CSV / Excel / text / SQL Server / JSON API, review, save, and manage datasets.
 
 import { api } from "../api.js";
+import { workspace } from "../workspace.js";
 
 const KIND_LABELS = { numeric: "numérica", categorical: "categórica", boolean: "lógica", datetime: "fecha", text: "texto" };
 const SOURCE_LABELS = { csv: "CSV", excel: "Excel", text: "Texto", sqlserver: "SQL Server", json_api: "API JSON", sample: "Muestra" };
@@ -16,8 +17,12 @@ const defaultOptions = () => ({
   json_api: { url: "", method: "GET", headers: "", params: "", body: "", records_path: "", timeout: 30 },
 });
 
+// what must never be stored in the workspace: passwords and anything that may carry a token
+const SECRET_FIELDS = { sqlserver: ["password"], json_api: ["headers", "body", "params"] };
+
 document.addEventListener("alpine:init", () => {
   Alpine.data("datosPage", () => ({
+    ...workspace("datos", ["source", "saveName"], { dataset: false }),
     kindLabels: KIND_LABELS,
     sourceLabels: SOURCE_LABELS,
     sources: [
@@ -35,6 +40,39 @@ document.addEventListener("alpine:init", () => {
     kinds: {},
 
     viewer: { dataset: null, columns: [], rows: [], offset: 0, total: 0, kinds: {}, busy: false },
+
+    async init() {
+      await this.startWorkspace();
+    },
+
+    // ------------------------------------------------------------------ workspace (the form; secrets are never kept)
+    workspaceState() {
+      const opts = JSON.parse(JSON.stringify(this.opts));
+      const empty = defaultOptions();
+      for (const [source, names] of Object.entries(SECRET_FIELDS)) for (const name of names) opts[source][name] = empty[source][name];
+      opts.json_api.url = String(opts.json_api.url ?? "").split(/[?#]/)[0]; // a token often travels in the query string
+      return { source: this.source, opts, saveName: this.saveName, viewerId: this.viewer.dataset?.id ?? null, viewerOffset: this.viewer.offset };
+    },
+    async applyWorkspace(state) {
+      this.source = state.source in this.sourceLabels ? state.source : "csv";
+      const defaults = defaultOptions();
+      this.opts = Object.fromEntries(Object.keys(defaults).map((key) => [key, { ...defaults[key], ...(state.opts?.[key] ?? {}) }]));
+      this.saveName = state.saveName ?? "";
+      const dataset = Alpine.store("datasets").list.find((d) => d.id === state.viewerId);
+      if (dataset) await this.view(dataset, state.viewerOffset ?? 0, false);
+    },
+    resetWorkspace() {
+      this.source = "csv";
+      this.opts = defaultOptions();
+      this.file = null;
+      this.sheets = [];
+      this.preview = null;
+      this.saveName = "";
+      this.kinds = {};
+      this.error = "";
+      this.viewer.dataset = null;
+      if (this.$refs.file) this.$refs.file.value = "";
+    },
 
     // ------------------------------------------------------------------ import flow
     get isFileSource() { return FILE_SOURCES.has(this.source); },
@@ -162,7 +200,7 @@ document.addEventListener("alpine:init", () => {
       return iso ? new Date(iso).toLocaleString("es", { dateStyle: "medium", timeStyle: "short" }) : "";
     },
 
-    async view(dataset, offset = 0) {
+    async view(dataset, offset = 0, scroll = true) {
       const viewer = this.viewer;
       viewer.busy = true;
       try {
@@ -170,7 +208,7 @@ document.addEventListener("alpine:init", () => {
         Object.assign(viewer, { dataset: page.dataset, columns: page.columns, rows: page.rows, offset, total: page.total });
         if (offset === 0) viewer.kinds = {};
         await this.$nextTick();
-        this.$refs.viewerCard?.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (scroll) this.$refs.viewerCard?.scrollIntoView({ behavior: "smooth", block: "start" });
       } catch (error) {
         Alpine.store("toast").show(error.message, "error");
       } finally {

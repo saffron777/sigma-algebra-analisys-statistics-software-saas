@@ -2,6 +2,7 @@
 
 import { api, downloadUrl } from "../api.js";
 import { renderReport } from "../report.js";
+import { workspace } from "../workspace.js";
 
 const MODULE_PAGES = {
   descriptive: "/descriptiva", distributions: "/distribuciones", hypothesis: "/hipotesis",
@@ -11,6 +12,7 @@ const PAGE_SIZE = 20;
 
 document.addEventListener("alpine:init", () => {
   Alpine.data("resultadosPage", () => ({
+    ...workspace("resultados", ["filters"], { dataset: false }),
     items: [],
     total: 0,
     modules: {},
@@ -22,9 +24,27 @@ document.addEventListener("alpine:init", () => {
     _timer: null,
 
     async init() {
-      await this.load(true);
+      await this.startWorkspace(); // restores the filters and the open result, and loads the list
       const open = new URLSearchParams(location.search).get("open");
       if (open) await this.open(open);
+      // saved from another window (or deleted there): the list follows
+      Alpine.store("sync").on("results", () => this.load(true));
+    },
+
+    // ------------------------------------------------------------------ workspace
+    workspaceState() {
+      return { filters: { ...this.filters }, openId: this.detail?.id ?? null };
+    },
+    async applyWorkspace(state) {
+      this.filters = { module: state.filters?.module ?? "", search: state.filters?.search ?? "" };
+      await this.load(true);
+      if (state.openId) await this.open(state.openId, false);
+    },
+    async resetWorkspace() {
+      this.filters = { module: "", search: "" };
+      this.detail = null;
+      this.editing = null;
+      await this.load(true);
     },
 
     async load(reset = true) {
@@ -56,16 +76,17 @@ document.addEventListener("alpine:init", () => {
     pageFor(item) { return `${MODULE_PAGES[item.module] ?? "/"}?load=${item.id}`; },
     formatDate(iso) { return new Date(iso).toLocaleString("es", { dateStyle: "medium", timeStyle: "short" }); },
 
-    async open(id) {
+    async open(id, scroll = true) {
       this.error = "";
       try {
         const { result } = await api(`/api/results/${encodeURIComponent(id)}`);
         this.detail = result;
         await this.$nextTick();
         renderReport(this.$refs.out, result.report, result.figures);
-        this.$refs.detailCard?.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (scroll) this.$refs.detailCard?.scrollIntoView({ behavior: "smooth", block: "start" });
       } catch (error) {
         this.error = error.message;
+        this.detail = null; // a stored «open result» may have been deleted since
       }
     },
 

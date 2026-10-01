@@ -86,6 +86,18 @@ Variables de entorno (opcionales, también en un archivo `.env`, ver `.env.examp
 - Para usarlo en red: `SIGMA_HOST=0.0.0.0`, `SIGMA_ALLOWED_HOSTS` y **HTTPS mediante un proxy inverso** (por HTTP las
   contraseñas viajan en claro).
 
+## Espacio de trabajo y varias ventanas
+
+- Cada módulo **conserva lo que hizo** (formulario, dataset elegido y resultado con sus gráficos) al cambiar de módulo,
+  recargar la página o volver otro día, hasta que pulse **Limpiar** (o **Limpiar todos los módulos**, en Inicio).
+  Se guarda en el servidor (SQLite), por cuenta; las contraseñas, cabeceras y parámetros de las APIs nunca se guardan.
+- Si abre Sigma en **varias ventanas o navegadores con la misma cuenta**, se mantienen en sintonía: un análisis, un
+  dataset importado, un resultado guardado o un notebook modificado en una ventana aparece en las demás en unos
+  segundos (sondeo de `/api/sync` mientras la pestaña está visible; también cuenta lo que guarde la consola con
+  `sigma.save`). Si otra ventana cambia un módulo mientras usted tiene ediciones sin guardar, Sigma pregunta:
+  *Cargar la versión nueva* o *Mantener la mía*. En la consola, guardar un notebook que otra ventana modificó
+  responde con un conflicto (`409`): *Cargar la versión nueva* o *Sobrescribir con la mía*.
+
 ## Datos de ejemplo
 
 `sample_data/` incluye `ventas.csv`, `marco_muestral.csv`, `encuesta.csv` y `analisis_demo.ipynb`
@@ -158,7 +170,7 @@ tests/              unit/ (dominio, infraestructura) e integration/ (API, págin
 ## Desarrollo
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest              # 313 pruebas (la consola arranca kernels reales: ~1 min)
+.\.venv\Scripts\python.exe -m pytest              # 346 pruebas (la consola arranca kernels reales: ~1 min)
 .\.venv\Scripts\python.exe -m ruff check .        # lint
 .\.venv\Scripts\python.exe -m ruff format .       # formato
 npm run watch:css                                 # recompila Tailwind al editar plantillas/JS

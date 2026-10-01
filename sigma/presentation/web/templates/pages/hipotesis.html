@@ -1,9 +1,10 @@
 {% extends "base.html" %}
-{% from "partials/macros.html" import dataset_picker, result_area, run_button, dynamic_field %}
+{% from "partials/macros.html" import dataset_picker, result_area, run_button, dynamic_field, workspace_bar %}
 {% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/hipotesis.js') }}"></script>{% endblock %}
 
 {% block content %}
 <div x-data="hipotesisPage" class="space-y-5">
+  {{ workspace_bar() }}
   <div x-show="!usingSummary">{{ dataset_picker("Los datos de la prueba se toman de las columnas del dataset elegido.") }}</div>
 
   <form class="card" @submit.prevent="submit()">

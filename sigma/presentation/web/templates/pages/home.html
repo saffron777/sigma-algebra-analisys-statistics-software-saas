@@ -22,6 +22,8 @@
     <div class="mt-5 flex flex-wrap gap-2">
       <a class="btn bg-white text-brand-700 hover:bg-brand-50" href="{{ url_for('pages.page_datos') }}">{{ icon("upload", "size-4") }} Importar datos</a>
       <a class="btn border border-white/40 text-white hover:bg-white/10" href="{{ url_for('pages.page_resultados') }}">Ver resultados guardados</a>
+      <button type="button" class="btn border border-white/40 text-white hover:bg-white/10" @click="clearAll()" :disabled="cleaning"
+              title="Vacía los formularios y resultados de todos los módulos (los resultados guardados se conservan)">Limpiar todos los módulos</button>
     </div>
   </section>
 

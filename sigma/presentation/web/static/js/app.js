@@ -3,6 +3,7 @@
 
 import { api } from "./api.js";
 import { rethemeAll } from "./plot.js";
+import { defineSyncStore } from "./sync.js";
 
 const ACTIVE_DATASET_KEY = "sigma-active-dataset";
 const THEME_KEY = "sigma-theme";
@@ -36,6 +37,9 @@ document.addEventListener("alpine:init", () => {
     },
   }));
 
+  // ------------------------------------------------------------------ live sync between windows of the same account
+  defineSyncStore();
+
   // ------------------------------------------------------------------ toasts
   Alpine.store("toast", {
     items: [],
@@ -47,13 +51,22 @@ document.addEventListener("alpine:init", () => {
   });
 
   // ------------------------------------------------------------------ datasets
+  // kept outside the store: Alpine wraps store values in proxies, which breaks a Promise's `then`
+  let datasetsLoaded = Promise.resolve();
+
   Alpine.store("datasets", {
     list: [],
     loaded: false,
     activeId: storage.get(ACTIVE_DATASET_KEY) ?? "",
 
-    async init() {
-      await this.refresh();
+    init() {
+      datasetsLoaded = this.refresh();
+      // another window of the same account added, renamed or deleted a dataset (or the console saved one)
+      Alpine.store("sync").on("datasets", () => this.refresh());
+    },
+    /** Resolves once the first list of datasets has arrived (pages restoring a workspace need the columns). */
+    whenLoaded() {
+      return datasetsLoaded;
     },
     async refresh() {
       try {
@@ -83,6 +96,8 @@ document.addEventListener("alpine:init", () => {
       return kinds.length ? this.columns.filter((column) => kinds.includes(column.kind)) : this.columns;
     },
   });
+
+  Alpine.store("sync").start();
 
   // ------------------------------------------------------------------ "save result" dialog
   Alpine.store("save", {

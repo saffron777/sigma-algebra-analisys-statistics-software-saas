@@ -11,6 +11,7 @@ from werkzeug.exceptions import HTTPException
 from sigma.domain.errors import (
     AuthenticationError,
     ComputationError,
+    ConflictError,
     DatasetNotFoundError,
     ImportFailedError,
     InvalidInputError,
@@ -38,6 +39,7 @@ _STATUS = {
     AuthenticationError: 401,
     SetupRequiredError: 401,
     PermissionDeniedError: 403,
+    ConflictError: 409,
     RateLimitedError: 429,
 }
 _HTTP_MESSAGES = {

@@ -6,7 +6,7 @@ const emptyForm = () => ({ response: "", predictors: [], categorical: [], interc
 
 document.addEventListener("alpine:init", () => {
   Alpine.data("regresionPage", () => ({
-    ...analysisPage(),
+    ...analysisPage("regresion", ["form", "rows"]),
     form: emptyForm(),
     rows: [], // new observations to predict: [{predictor: value}]
 
@@ -19,7 +19,12 @@ document.addEventListener("alpine:init", () => {
         this.form.categorical = this.form.categorical.filter((c) => names.includes(c));
         this.rows = this.rows.map((row) => Object.fromEntries(names.map((n) => [n, row[n] ?? ""])));
       });
-      await this.loadSavedFromUrl();
+      await this.startWorkspace();
+    },
+
+    resetWorkspace() {
+      this.form = emptyForm();
+      this.rows = [];
     },
 
     get kind() {

@@ -9,7 +9,7 @@ const isDark = () => document.documentElement.classList.contains("dark");
 
 function themed(layout) {
   const colors = palette(isDark());
-  const result = structuredClone(layout ?? {});
+  const result = plain(layout ?? {});
   result.autosize = true;
   result.font = { ...(result.font ?? {}), color: colors.text };
   if (result.title && typeof result.title === "object") {
@@ -23,6 +23,15 @@ function themed(layout) {
   return result;
 }
 
+/** A deep copy that also works on Alpine's reactive proxies (``structuredClone`` throws on those). */
+function plain(value) {
+  try {
+    return structuredClone(value);
+  } catch {
+    return JSON.parse(JSON.stringify(value));
+  }
+}
+
 const CONFIG = {
   responsive: true,
   displaylogo: false,
@@ -34,7 +43,7 @@ const CONFIG = {
 export function renderFigure(element, figure) {
   element.dataset.plot = "1";
   element._figure = figure;
-  Plotly.react(element, structuredClone(figure.data ?? []), themed(figure.layout), CONFIG);
+  Plotly.react(element, plain(figure.data ?? []), themed(figure.layout), CONFIG);
   requestAnimationFrame(() => {
     // the element may have been hidden or removed (e.g. another result replaced this one) by the next frame
     if (element.isConnected && element.offsetParent !== null) Plotly.Plots.resize(element).catch(() => {});

@@ -56,9 +56,14 @@ class SaveNotebook:
         self._store = store
 
     def execute(
-        self, notebook_id: str, cells: list[dict[str, Any]], metadata: dict[str, Any] | None, name: str | None
+        self,
+        notebook_id: str,
+        cells: list[dict[str, Any]],
+        metadata: dict[str, Any] | None,
+        name: str | None,
+        base_revision: str | None = None,
     ) -> NotebookDocument:
-        return self._store.save(notebook_id, cells, metadata, clean_notebook_name(name, "") or None)
+        return self._store.save(notebook_id, cells, metadata, clean_notebook_name(name, "") or None, base_revision)
 
 
 class RenameNotebook:

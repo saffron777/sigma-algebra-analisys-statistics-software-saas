@@ -1,9 +1,10 @@
 {% extends "base.html" %}
-{% from "partials/macros.html" import dataset_picker, column_select, column_checklist, result_area, run_button %}
+{% from "partials/macros.html" import dataset_picker, column_select, column_checklist, result_area, run_button, workspace_bar %}
 {% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/descriptiva.js') }}"></script>{% endblock %}
 
 {% block content %}
 <div x-data="descriptivaPage" class="space-y-5">
+  {{ workspace_bar() }}
   {{ dataset_picker() }}
 
   <form class="card" @submit.prevent="submit()">

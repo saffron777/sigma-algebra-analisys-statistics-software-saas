@@ -1,9 +1,10 @@
 {% extends "base.html" %}
-{% from "partials/macros.html" import result_area, run_button %}
+{% from "partials/macros.html" import result_area, run_button, workspace_bar %}
 {% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/distribuciones.js') }}"></script>{% endblock %}
 
 {% block content %}
 <div x-data="distribucionesPage" class="grid gap-5 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
+  {{ workspace_bar('lg:col-span-2') }}
 
   <form class="card lg:sticky lg:top-20" @submit.prevent="submit()" @input.debounce.450ms="schedule()" aria-label="Parámetros de la distribución">
     <div class="card-header"><h2 class="card-title">Distribución</h2><span class="badge badge-gray" x-text="spec?.kind === 'discrete' ? 'discreta' : 'continua'"></span></div>

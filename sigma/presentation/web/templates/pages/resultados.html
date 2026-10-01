@@ -1,9 +1,10 @@
 {% extends "base.html" %}
-{% from "partials/macros.html" import icon %}
+{% from "partials/macros.html" import icon, clear_button, workspace_bar %}
 {% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/resultados.js') }}"></script>{% endblock %}
 
 {% block content %}
 <div x-data="resultadosPage" class="space-y-5">
+  {{ workspace_bar() }}
   <section class="card">
     <div class="card-body grid gap-3 sm:grid-cols-[14rem_1fr]">
       <div><label class="label" for="filter-module">Módulo</label>
@@ -13,6 +14,7 @@
         </select></div>
       <div><label class="label" for="filter-search">Buscar en título, notas o dataset</label>
         <input id="filter-search" class="input" type="search" placeholder="Ej.: regresión ventas" x-model="filters.search" @input="debouncedSearch()"></div>
+      <div class="flex justify-end sm:col-span-2">{{ clear_button() }}</div>
     </div>
   </section>
 

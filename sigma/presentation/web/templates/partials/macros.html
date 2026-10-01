@@ -131,6 +131,26 @@
 <button type="button" class="btn btn-primary" @click="{{ click }}" :disabled="loading">
   {{ icon("play", "size-4") }} <span x-text="loading ? 'Calculando…' : '{{ label }}'"></span>
 </button>
+{{ clear_button() }}
+{% endmacro %}
+
+{# «Limpiar»: empties this module's form and result (the workspace is otherwise kept until the user does this). #}
+{% macro clear_button(busy="loading") %}
+<button type="button" class="btn btn-ghost" @click="clearWorkspace()" :disabled="{{ busy }}"
+        title="Vacía el formulario y el resultado de este módulo">
+  {{ icon("refresh", "size-4") }} Limpiar
+</button>
+{% endmacro %}
+
+{# Shown when another window of the same account changed this module while there are unsaved edits here. #}
+{% macro workspace_bar(class="") %}
+<div x-show="wsConflict" x-cloak class="{{ class }} alert alert-warning flex flex-wrap items-center justify-between gap-3" role="status">
+  <p><span class="font-medium">Otra ventana actualizó este módulo.</span> Tiene cambios sin guardar aquí.</p>
+  <div class="flex gap-2">
+    <button type="button" class="btn btn-secondary btn-sm" @click="wsAcceptRemote()">Cargar la versión nueva</button>
+    <button type="button" class="btn btn-secondary btn-sm" @click="wsKeepMine()">Mantener la mía</button>
+  </div>
+</div>
 {% endmacro %}
 
 

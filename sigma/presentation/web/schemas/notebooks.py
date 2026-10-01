@@ -21,6 +21,7 @@ class SaveNotebookRequest(RequestModel):
     cells: list[dict[str, Any]]
     metadata: dict[str, Any] | None = None
     name: str | None = None
+    base_revision: str | None = None  # the revision the editor loaded; a mismatch answers 409
 
 
 class ExecuteRequest(RequestModel):

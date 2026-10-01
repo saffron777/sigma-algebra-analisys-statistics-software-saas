@@ -20,6 +20,7 @@ class NotebookSummary:
     n_cells: int
     created_at: str
     updated_at: str
+    revision: str = ""
 
 
 @dataclass
@@ -30,6 +31,7 @@ class NotebookDocument:
     updated_at: str
     cells: list[dict[str, Any]] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
+    revision: str = ""  # changes whenever the file is written; lets a second window detect a conflicting save
 
 
 @dataclass

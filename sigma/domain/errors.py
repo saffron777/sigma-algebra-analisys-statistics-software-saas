@@ -78,3 +78,9 @@ class SetupRequiredError(SigmaError):
     """No account exists yet: the first administrator must be created."""
 
     code = "setup_required"
+
+
+class ConflictError(SigmaError):
+    """The resource changed since the client last saw it (optimistic concurrency)."""
+
+    code = "conflict"

@@ -1,11 +1,21 @@
-// Behaviour shared by every analysis page: run an endpoint, render the report, save it, reopen a saved one.
-// Usage inside an Alpine component:  Alpine.data("x", () => ({ ...analysisPage(), form: {...}, ... }))
+// Behaviour shared by every analysis page: run an endpoint, render the report, save it, reopen a saved one, and keep
+// the form + result in the module's workspace (see workspace.js).
+// Usage inside an Alpine component:
+//   Alpine.data("x", () => ({ ...analysisPage("regresion", ["form", "rows"]), form: {...}, ... }))
+// and call `await this.startWorkspace()` at the end of `init()`.
 
 import { api } from "./api.js";
 import { renderReport } from "./report.js";
+import { workspace } from "./workspace.js";
 
-export function analysisPage() {
+/**
+ * @param {string} module   workspace key of the page
+ * @param {string[]} fields component properties that make up the form
+ * @param {{dataset?: boolean}} [options]
+ */
+export function analysisPage(module, fields = [], options = {}) {
   return {
+    ...workspace(module, fields, options),
     loading: false,
     error: "",
     payload: null,
@@ -19,10 +29,12 @@ export function analysisPage() {
       try {
         const data = await api(url, { method: "POST", json: body });
         await this.showPayload(data);
+        this.wsPayloadChanged?.(); // the result now belongs to the workspace
         return data;
       } catch (error) {
         this.payload = null;
         this.error = error.message;
+        this.wsPayloadChanged?.();
         return null;
       } finally {
         this.loading = false;
@@ -44,9 +56,11 @@ export function analysisPage() {
     /** Call `callback` whenever the active dataset changes (selections made for another dataset are stale). */
     onDatasetChange(callback) {
       this.$watch("$store.datasets.activeId", () => {
+        if (this.wsRestoring) return; // a restored workspace brings its own dataset and form
         this.payload = null;
         this.error = "";
         callback();
+        this.wsPayloadChanged?.();
       });
     },
 

@@ -11,6 +11,7 @@ from sigma.domain.datasets import Dataset, DatasetInfo
 from sigma.domain.notebooks import ExecutionResult, KernelStatus, NotebookDocument, NotebookSummary
 from sigma.domain.saved_results import SavedResult, SavedResultSummary
 from sigma.domain.users import User
+from sigma.domain.workspace import UNSET, WorkspaceEntry
 
 
 @dataclass(frozen=True)
@@ -84,12 +85,39 @@ class NotebookStore(Protocol):
     def get(self, notebook_id: str) -> NotebookDocument: ...
 
     def save(
-        self, notebook_id: str, cells: list[dict[str, Any]], metadata: dict[str, Any] | None, name: str | None
-    ) -> NotebookDocument: ...
+        self,
+        notebook_id: str,
+        cells: list[dict[str, Any]],
+        metadata: dict[str, Any] | None,
+        name: str | None,
+        base_revision: str | None = None,
+    ) -> NotebookDocument:
+        """Write the notebook; with ``base_revision`` the save fails with ``ConflictError`` if the file changed."""
+        ...
 
     def delete(self, notebook_id: str) -> None: ...
 
     def export_bytes(self, notebook_id: str) -> bytes: ...
+
+    def signature(self) -> str:
+        """A short token that changes whenever any notebook is created, edited or deleted."""
+        ...
+
+
+class WorkspaceRepository(Protocol):
+    def get(self, module: str) -> WorkspaceEntry: ...
+
+    def save(self, module: str, state: Any = UNSET, payload: Any = UNSET) -> WorkspaceEntry: ...
+
+    def clear(self, module: str) -> int: ...
+
+    def clear_all(self) -> dict[str, int]: ...
+
+    def revisions(self) -> dict[str, int]: ...
+
+
+class SyncRepository(Protocol):
+    def revisions(self) -> dict[str, int]: ...
 
 
 class CodeExecutor(Protocol):

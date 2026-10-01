@@ -15,6 +15,16 @@
 {% block content %}
 <div x-data="consolaPage" class="space-y-4" @keydown.ctrl.s.window.prevent="save()">
 
+  <div x-show="conflict" x-cloak class="alert alert-warning flex flex-wrap items-center justify-between gap-3" role="status">
+    <p x-show="conflict?.kind === 'changed'"><span class="font-medium">Otra ventana modificó este notebook.</span> Guardar aquí reemplazaría esos cambios.</p>
+    <p x-show="conflict?.kind === 'deleted'"><span class="font-medium">Este notebook se eliminó desde otra ventana.</span></p>
+    <div class="flex gap-2">
+      <button type="button" class="btn btn-secondary btn-sm" x-show="conflict?.kind === 'changed'" @click="reloadCurrent()">Cargar la versión nueva</button>
+      <button type="button" class="btn btn-secondary btn-sm" x-show="conflict?.kind === 'changed'" @click="overwrite()">Sobrescribir con la mía</button>
+      <button type="button" class="btn btn-secondary btn-sm" x-show="conflict?.kind === 'deleted'" @click="conflict = null; current = null; dirty = false">Cerrar</button>
+    </div>
+  </div>
+
   {# ---------------------------------------------------------------- notebook bar #}
   <section class="card" aria-label="Notebooks">
     <div class="card-body space-y-3">

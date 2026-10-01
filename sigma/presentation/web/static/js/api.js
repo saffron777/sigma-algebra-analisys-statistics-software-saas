@@ -14,9 +14,10 @@ const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.conte
 
 /**
  * @param {string} url
- * @param {{method?: string, json?: unknown, form?: FormData, signal?: AbortSignal}} [options]
+ * @param {{method?: string, json?: unknown, form?: FormData, signal?: AbortSignal, keepalive?: boolean}} [options]
+ * ``keepalive`` lets a request outlive the page (used when a tab is closed); browsers cap such bodies at 64 KB.
  */
-export async function api(url, { method = "GET", json, form, signal } = {}) {
+export async function api(url, { method = "GET", json, form, signal, keepalive = false } = {}) {
   const headers = { Accept: "application/json", "X-CSRF-Token": csrfToken() };
   let body;
   if (json !== undefined) {
@@ -28,7 +29,7 @@ export async function api(url, { method = "GET", json, form, signal } = {}) {
 
   let response;
   try {
-    response = await fetch(url, { method, headers, body, signal, credentials: "same-origin" });
+    response = await fetch(url, { method, headers, body, signal, keepalive, credentials: "same-origin" });
   } catch (error) {
     if (error.name === "AbortError") throw error;
     throw new ApiError("No se pudo conectar con el servidor de Sigma. ¿Sigue en ejecución?");

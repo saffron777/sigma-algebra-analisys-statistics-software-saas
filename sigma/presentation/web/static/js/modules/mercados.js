@@ -29,23 +29,54 @@ const defaults = () => ({
 });
 
 document.addEventListener("alpine:init", () => {
-  Alpine.data("mercadosPage", () => ({
-    ...analysisPage(),
+  Alpine.data("mercadosPage", () => {
+    const base = analysisPage("mercados", ["tab", "f", "suggestedN"]);
+    return {
+    ...base,
     tabs: TABS,
     ciMethods: CI_METHODS,
     tab: "size",
     f: defaults(),
     suggestedN: null,
+    results: {}, // the last result of each tab, so switching tabs does not lose any of them
 
     async init() {
-      this.onDatasetChange(() => { const keep = this.f.size; this.f = { ...defaults(), size: keep }; });
-      await this.loadSavedFromUrl();
+      this.onDatasetChange(() => {
+        const keep = this.f.size;
+        this.f = { ...defaults(), size: keep };
+        this.results = this.results.size ? { size: this.results.size } : {}; // the others belonged to the old dataset
+        if (this.tab === "size" && this.results.size) this.showPayload(this.results.size);
+      });
+      await this.startWorkspace();
     },
 
-    selectTab(key) {
+    async showPayload(data) {
+      this.results[this.tab] = data;
+      await base.showPayload.call(this, data);
+    },
+
+    async selectTab(key) {
       this.tab = key;
-      this.payload = null;
       this.error = "";
+      const kept = this.results[key] ?? null;
+      if (kept) await base.showPayload.call(this, kept);
+      else this.payload = null;
+    },
+
+    // ------------------------------------------------------------------ workspace
+    workspacePayload() {
+      return Object.keys(this.results).length ? { results: this.results } : null;
+    },
+    async restorePayload(stored) {
+      this.results = stored.results ?? {};
+      const current = this.results[this.tab];
+      if (current) await base.showPayload.call(this, current);
+    },
+    resetWorkspace() {
+      this.f = defaults();
+      this.tab = "size";
+      this.results = {};
+      this.suggestedN = null;
     },
 
     get hasDataset() { return !!Alpine.store("datasets").activeId; },
@@ -95,6 +126,7 @@ document.addEventListener("alpine:init", () => {
     async submit() {
       if (!this.canRun) { this.error = this.needsDataset && !this.hasDataset ? "Elija un dataset." : "Complete los campos obligatorios."; return; }
       const store = Alpine.store("datasets");
+      delete this.results[this.tab]; // a failed run must not leave the previous result behind
       let data = null;
       if (this.tab === "size") {
         data = await this.runAnalysis("/api/markets/sample-size", this.sizeBody());
@@ -149,5 +181,6 @@ document.addEventListener("alpine:init", () => {
         this.f.likert.items = existing(p.items ?? []);
       }
     },
-  }));
+  };
+  });
 });

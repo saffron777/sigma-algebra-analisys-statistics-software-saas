@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/macros.html" import icon %}
+{% from "partials/macros.html" import icon, clear_button, workspace_bar %}
 {% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/datos.js') }}"></script>{% endblock %}
 
 {% macro kind_select(model) %}
@@ -15,12 +15,16 @@
 
 {% block content %}
 <div x-data="datosPage" class="space-y-5">
+  {{ workspace_bar() }}
 
   {# ---------------------------------------------------------------- import #}
   <section class="card" aria-labelledby="import-title">
     <div class="card-header">
       <h2 id="import-title" class="card-title">Importar datos</h2>
-      <span class="text-xs text-slate-500">Excel · CSV · texto · SQL Server · API JSON</span>
+      <div class="flex items-center gap-3">
+        <span class="hidden text-xs text-slate-500 sm:inline">Excel · CSV · texto · SQL Server · API JSON</span>
+        {{ clear_button("busy") }}
+      </div>
     </div>
     <div class="card-body space-y-5">
       <div class="tab-bar" role="tablist">

@@ -33,6 +33,7 @@ document.addEventListener("alpine:init", () => {
     savedAt: "",
     runningAll: false,
     helpOpen: false,
+    conflict: null, // another window changed (or deleted) the open notebook: {kind: "changed" | "deleted"}
     saveTimer: null,
     pollTimer: null,
 
@@ -46,6 +47,32 @@ document.addEventListener("alpine:init", () => {
       const target = this.notebooks.find((n) => n.id === remembered) ?? this.notebooks[0];
       if (target) await this.open(target.id);
       this.pollTimer = setInterval(() => this.pollKernel(), STATUS_POLL_MS);
+      // another window created, edited or deleted a notebook of this account
+      Alpine.store("sync").on("notebooks", () => this.notebooksChanged());
+    },
+
+    async notebooksChanged() {
+      await this.refreshList();
+      if (!this.current || this.saving || this.busy) return;
+      const listed = this.notebooks.find((n) => n.id === this.current.id);
+      if (!listed) { this.conflict = { kind: "deleted" }; return; }
+      if (listed.revision === this.current.revision) return; // our own save
+      if (this.dirty || this.anyRunning) this.conflict = { kind: "changed" };
+      else await this.reloadCurrent(); // nothing unsaved here: simply follow the other window
+    },
+
+    /** Re-read the open notebook from the server, discarding what is on screen. */
+    async reloadCurrent() {
+      const id = this.current.id;
+      this.dirty = false;
+      this.conflict = null;
+      await this.open(id);
+    },
+
+    /** «Sobrescribir con la mía»: save without the revision check. */
+    async overwrite() {
+      this.conflict = null;
+      await this.save(true);
     },
 
     async refreshList() {
@@ -61,7 +88,11 @@ document.addEventListener("alpine:init", () => {
       this.error = "";
       try {
         const { notebook } = await api(`/api/notebooks/${id}`);
-        this.current = { id: notebook.id, name: notebook.name, metadata: notebook.metadata, cells: prepareCells(notebook.cells) };
+        this.current = {
+          id: notebook.id, name: notebook.name, revision: notebook.revision, metadata: notebook.metadata,
+          cells: prepareCells(notebook.cells),
+        };
+        this.conflict = null;
         this.dirty = false;
         this.savedAt = "";
         write(LAST_NOTEBOOK_KEY, id);
@@ -103,6 +134,7 @@ document.addEventListener("alpine:init", () => {
       await this.guard(async () => {
         const { notebook } = await api(`/api/notebooks/${this.current.id}`, { method: "PATCH", json: { name } });
         this.current.name = notebook.name;
+        this.current.revision = notebook.revision;
         await this.refreshList();
       });
     },
@@ -136,18 +168,25 @@ document.addEventListener("alpine:init", () => {
       this.saveTimer = setTimeout(() => this.save(), AUTOSAVE_MS);
     },
 
-    async save() {
+    async save(force = false) {
       if (!this.current || !this.dirty || this.saving) return;
+      if (this.conflict && !force) return; // saving would silently overwrite the other window's version
       clearTimeout(this.saveTimer);
       this.saving = true;
       try {
-        await api(`/api/notebooks/${this.current.id}`, {
-          method: "PUT", json: { cells: forSaving(this.current.cells), metadata: this.current.metadata },
+        const { notebook } = await api(`/api/notebooks/${this.current.id}`, {
+          method: "PUT",
+          json: {
+            cells: forSaving(this.current.cells), metadata: this.current.metadata,
+            base_revision: force ? null : this.current.revision,
+          },
         });
+        this.current.revision = notebook.revision;
         this.dirty = false;
         this.savedAt = new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
       } catch (error) {
-        this.error = `No se pudo guardar el notebook: ${error.message}`;
+        if (error.status === 409) this.conflict = { kind: "changed" };
+        else this.error = `No se pudo guardar el notebook: ${error.message}`;
       } finally {
         this.saving = false;
       }

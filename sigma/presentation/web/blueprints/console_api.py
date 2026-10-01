@@ -49,15 +49,15 @@ def get_notebook(notebook_id: str):
 @bp.put("/<notebook_id>")
 def save_notebook(notebook_id: str):
     body = parse_body(SaveNotebookRequest)
-    document = container().save_notebook.execute(notebook_id, body.cells, body.metadata, body.name)
-    return jsonify({"notebook": {"id": document.id, "name": document.name, "updated_at": document.updated_at}})
+    document = container().save_notebook.execute(notebook_id, body.cells, body.metadata, body.name, body.base_revision)
+    return jsonify({"notebook": _stamp(document)})
 
 
 @bp.patch("/<notebook_id>")
 def rename_notebook(notebook_id: str):
     body = parse_body(RenameNotebookRequest)
     document = container().rename_notebook.execute(notebook_id, body.name)
-    return jsonify({"notebook": {"id": document.id, "name": document.name, "updated_at": document.updated_at}})
+    return jsonify({"notebook": _stamp(document)})
 
 
 @bp.delete("/<notebook_id>")
@@ -104,3 +104,8 @@ def kernel_interrupt(notebook_id: str):
 def kernel_restart(notebook_id: str):
     container().control_kernel.restart(notebook_id)
     return jsonify({"restarted": True})
+
+
+def _stamp(document) -> dict:
+    """What the editor needs after a save: the new revision to send with the next one."""
+    return {"id": document.id, "name": document.name, "updated_at": document.updated_at, "revision": document.revision}

@@ -14,7 +14,7 @@ const toNumber = (value) => (value === "" || value === null || value === undefin
 
 document.addEventListener("alpine:init", () => {
   Alpine.data("distribucionesPage", () => ({
-    ...analysisPage(),
+    ...analysisPage("distribuciones", ["key", "params", "mode", "inputs", "tail", "alpha"], { dataset: false }),
     modes: MODES,
     catalog: [],
     key: "normal",
@@ -29,7 +29,18 @@ document.addEventListener("alpine:init", () => {
       const { distributions } = await api("/api/distributions");
       this.catalog = distributions;
       this.selectDistribution("normal");
-      if (!(await this.loadSavedFromUrl())) await this.submit();
+      await this.startWorkspace();
+      if (!this.payload && !this.error) await this.submit(); // a first visit shows the default curve
+    },
+
+    /** Back to the defaults, with the default curve shown again (as on a first visit). */
+    async resetWorkspace() {
+      this.selectDistribution("normal");
+      this.mode = "point";
+      this.inputs = { x: 0, a: -1, b: 1, q: 0.95, statistic: 1.96 };
+      this.tail = "two-sided";
+      this.alpha = 0.05;
+      await this.submit();
     },
 
     get spec() {

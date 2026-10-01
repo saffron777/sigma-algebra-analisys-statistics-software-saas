@@ -102,4 +102,16 @@ CREATE TABLE sync_state (
 {_bump_trigger("saved_results", "results")}
 """
 
-MIGRATIONS: tuple[str, ...] = (V1_BASE, V2_ACCOUNTS)
+V3_WORKSPACE = """
+CREATE TABLE workspace (
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    module     TEXT NOT NULL,
+    state      TEXT,
+    payload    TEXT,
+    revision   INTEGER NOT NULL DEFAULT 1,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, module)
+);
+"""
+
+MIGRATIONS: tuple[str, ...] = (V1_BASE, V2_ACCOUNTS, V3_WORKSPACE)

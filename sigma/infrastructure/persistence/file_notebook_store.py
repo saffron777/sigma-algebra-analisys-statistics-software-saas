@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import threading
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path, PurePath
@@ -12,11 +14,12 @@ from typing import Any
 import nbformat
 from nbformat import ValidationError
 
-from sigma.domain.errors import ImportFailedError, InvalidInputError, NotebookNotFoundError
+from sigma.domain.errors import ConflictError, ImportFailedError, InvalidInputError, NotebookNotFoundError
 from sigma.domain.notebooks import NOTEBOOK_ID_PATTERN, NotebookDocument, NotebookSummary
 
 NBFORMAT_MINOR = 5  # minor version that introduced cell ids
 MAX_CELLS = 2000
+_WRITE_LOCK = threading.Lock()  # a revision check and the write that follows it must not interleave
 _CELL_KEYS = {
     "code": ("id", "cell_type", "source", "metadata", "outputs", "execution_count"),
     "markdown": ("id", "cell_type", "source", "metadata"),
@@ -30,6 +33,11 @@ def _now() -> str:
 
 def _new_cell_id() -> str:
     return uuid.uuid4().hex[:8]
+
+
+def _revision(path: Path) -> str:
+    stat = path.stat()
+    return f"{stat.st_mtime_ns}-{stat.st_size}"
 
 
 class FileNotebookStore:
@@ -56,6 +64,7 @@ class FileNotebookStore:
                     len(notebook.get("cells", [])),
                     meta.get("created_at") or updated,
                     updated,
+                    _revision(path),
                 )
             )
         return sorted(summaries, key=lambda s: s.updated_at, reverse=True)
@@ -73,6 +82,17 @@ class FileNotebookStore:
         if not path.is_file():
             raise NotebookNotFoundError("El notebook no existe.")
         return path.read_bytes()
+
+    def signature(self) -> str:
+        """Changes when any notebook is added, removed or rewritten (cheap: only file stats are read)."""
+        parts = []
+        for path in sorted(self._dir.glob("*.ipynb")):
+            if NOTEBOOK_ID_PATTERN.match(path.stem):
+                try:
+                    parts.append(f"{path.stem}:{_revision(path)}")
+                except OSError:
+                    continue  # deleted while scanning
+        return hashlib.sha1("|".join(parts).encode(), usedforsecurity=False).hexdigest()[:16]
 
     # ------------------------------------------------------------------ writes
     def create(self, name: str, cells: list[dict[str, Any]] | None = None) -> NotebookDocument:
@@ -109,9 +129,30 @@ class FileNotebookStore:
         return self.get(notebook_id)
 
     def save(
-        self, notebook_id: str, cells: list[dict[str, Any]], metadata: dict[str, Any] | None, name: str | None
+        self,
+        notebook_id: str,
+        cells: list[dict[str, Any]],
+        metadata: dict[str, Any] | None,
+        name: str | None,
+        base_revision: str | None = None,
+    ) -> NotebookDocument:
+        with _WRITE_LOCK:
+            return self._save(notebook_id, cells, metadata, name, base_revision)
+
+    def _save(
+        self,
+        notebook_id: str,
+        cells: list[dict[str, Any]],
+        metadata: dict[str, Any] | None,
+        name: str | None,
+        base_revision: str | None,
     ) -> NotebookDocument:
         current = self.get(notebook_id)
+        if base_revision and base_revision != current.revision:
+            raise ConflictError(
+                "El notebook se modificó desde otra ventana después de que lo abriera.",
+                {"revision": current.revision, "updated_at": current.updated_at},
+            )
         if len(cells) > MAX_CELLS:
             raise InvalidInputError(f"Un notebook admite como máximo {MAX_CELLS} celdas.")
         notebook = nbformat.v4.new_notebook()
@@ -199,4 +240,5 @@ class FileNotebookStore:
             updated_at=updated,
             cells=json.loads(json.dumps(list(notebook.cells))),
             metadata=json.loads(json.dumps(meta)),
+            revision=_revision(path),
         )

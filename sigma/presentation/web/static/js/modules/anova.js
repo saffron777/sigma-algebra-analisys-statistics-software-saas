@@ -8,12 +8,16 @@ const emptyForm = () => ({
 
 document.addEventListener("alpine:init", () => {
   Alpine.data("anovaPage", () => ({
-    ...analysisPage(),
+    ...analysisPage("anova", ["form"]),
     form: emptyForm(),
 
     async init() {
       this.onDatasetChange(() => { this.form = emptyForm(); });
-      await this.loadSavedFromUrl();
+      await this.startWorkspace();
+    },
+
+    resetWorkspace() {
+      this.form = emptyForm();
     },
 
     get factors() { return [this.form.factor1, this.form.factor2].filter(Boolean); },
