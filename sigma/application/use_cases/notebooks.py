@@ -70,14 +70,20 @@ class RenameNotebook:
         return self._store.save(notebook_id, document.cells, document.metadata, clean_notebook_name(name))
 
 
+def kernel_key(owner: str, notebook_id: str) -> str:
+    """Kernels are keyed by owner *and* notebook, so two users can never share one."""
+    return f"{owner}:{notebook_id}"
+
+
 class DeleteNotebook:
-    def __init__(self, store: NotebookStore, executor: CodeExecutor) -> None:
+    def __init__(self, store: NotebookStore, executor: CodeExecutor, owner: str) -> None:
         self._store = store
         self._executor = executor
+        self._owner = owner
 
     def execute(self, notebook_id: str) -> None:
         self._store.delete(notebook_id)
-        self._executor.shutdown(notebook_id)
+        self._executor.shutdown(kernel_key(self._owner, notebook_id))
 
 
 class ExportNotebook:
@@ -92,10 +98,11 @@ class ExportNotebook:
 class ExecuteCode:
     """Runs one cell in the notebook's own kernel (state persists between cells)."""
 
-    def __init__(self, store: NotebookStore, executor: CodeExecutor, default_timeout_seconds: int) -> None:
+    def __init__(self, store: NotebookStore, executor: CodeExecutor, default_timeout_seconds: int, owner: str) -> None:
         self._store = store
         self._executor = executor
         self._default_timeout = default_timeout_seconds
+        self._owner = owner
 
     def execute(self, notebook_id: str, code: str, timeout_seconds: float | None = None) -> ExecutionResult:
         self._store.get(notebook_id)  # fails with NotebookNotFoundError for unknown ids
@@ -104,29 +111,31 @@ class ExecuteCode:
         timeout = float(timeout_seconds or self._default_timeout)
         if not 1 <= timeout <= MAX_TIMEOUT_SECONDS:
             raise InvalidInputError(f"El tiempo máximo debe estar entre 1 y {MAX_TIMEOUT_SECONDS} segundos.")
-        return self._executor.execute(notebook_id, code, timeout)
+        return self._executor.execute(kernel_key(self._owner, notebook_id), code, timeout, self._owner)
 
 
 class ControlKernel:
     """Interrupt, restart or inspect a notebook's kernel."""
 
-    def __init__(self, store: NotebookStore, executor: CodeExecutor) -> None:
+    def __init__(self, store: NotebookStore, executor: CodeExecutor, owner: str) -> None:
         self._store = store
         self._executor = executor
+        self._owner = owner
+
+    def _key(self, notebook_id: str) -> str:
+        self._store.get(notebook_id)  # unknown (or somebody else's) notebooks fail here
+        return kernel_key(self._owner, notebook_id)
 
     def start(self, notebook_id: str) -> KernelStatus:
-        self._store.get(notebook_id)
-        self._executor.start(notebook_id)
-        return self._executor.status(notebook_id)
+        key = self._key(notebook_id)
+        self._executor.start(key, self._owner)
+        return self._executor.status(key)
 
     def interrupt(self, notebook_id: str) -> None:
-        self._store.get(notebook_id)
-        self._executor.interrupt(notebook_id)
+        self._executor.interrupt(self._key(notebook_id))
 
     def restart(self, notebook_id: str) -> None:
-        self._store.get(notebook_id)
-        self._executor.restart(notebook_id)
+        self._executor.restart(self._key(notebook_id), self._owner)
 
     def status(self, notebook_id: str) -> KernelStatus:
-        self._store.get(notebook_id)
-        return self._executor.status(notebook_id)
+        return self._executor.status(self._key(notebook_id))

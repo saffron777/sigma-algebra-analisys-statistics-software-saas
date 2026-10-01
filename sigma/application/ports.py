@@ -10,6 +10,7 @@ import pandas as pd
 from sigma.domain.datasets import Dataset, DatasetInfo
 from sigma.domain.notebooks import ExecutionResult, KernelStatus, NotebookDocument, NotebookSummary
 from sigma.domain.saved_results import SavedResult, SavedResultSummary
+from sigma.domain.users import User
 
 
 @dataclass(frozen=True)
@@ -94,17 +95,86 @@ class NotebookStore(Protocol):
 class CodeExecutor(Protocol):
     """Runs code in a persistent, isolated interpreter (one per session id)."""
 
-    def start(self, session_id: str) -> None: ...
+    def start(self, session_id: str, owner: str = "") -> None: ...
 
-    def execute(self, session_id: str, code: str, timeout_seconds: float) -> ExecutionResult: ...
+    def execute(self, session_id: str, code: str, timeout_seconds: float, owner: str = "") -> ExecutionResult: ...
 
     def interrupt(self, session_id: str) -> None: ...
 
-    def restart(self, session_id: str) -> None: ...
+    def restart(self, session_id: str, owner: str = "") -> None: ...
 
     def shutdown(self, session_id: str) -> None: ...
 
+    def shutdown_owner(self, owner: str) -> None: ...
+
     def status(self, session_id: str) -> KernelStatus: ...
+
+
+class UserRepository(Protocol):
+    def count(self) -> int: ...
+
+    def count_active_admins(self, excluding: int | None = None) -> int: ...
+
+    def add(
+        self,
+        username: str,
+        display_name: str,
+        password_hash: str,
+        role: str,
+        can_use_console: bool,
+        can_use_ai: bool,
+    ) -> User: ...
+
+    def get(self, user_id: int) -> User: ...
+
+    def find_with_hash(self, username: str) -> tuple[User, str] | None: ...
+
+    def list(self) -> list[User]: ...
+
+    def update(
+        self,
+        user_id: int,
+        *,
+        display_name: str | None = None,
+        role: str | None = None,
+        is_active: bool | None = None,
+        can_use_console: bool | None = None,
+        can_use_ai: bool | None = None,
+    ) -> User: ...
+
+    def set_password(self, user_id: int, password_hash: str) -> User: ...
+
+    def touch_login(self, user_id: int) -> None: ...
+
+    def delete(self, user_id: int) -> None: ...
+
+
+class PasswordHasher(Protocol):
+    dummy_hash: str
+
+    def hash(self, password: str) -> str: ...
+
+    def verify(self, password_hash: str, password: str) -> bool: ...
+
+
+class LoginThrottle(Protocol):
+    def check(self, username: str, ip: str) -> None: ...
+
+    def record_failure(self, username: str, ip: str) -> None: ...
+
+    def reset(self, username: str, ip: str) -> None: ...
+
+
+class LegacyDataAdopter(Protocol):
+    """Hands data created before accounts existed (no owner) to the first administrator."""
+
+    def adopt(self, user_id: int) -> dict[str, int]: ...
+
+
+class UserDataPurger(Protocol):
+    """Removes everything a user owns (datasets and their tables, notebooks, running kernels...)."""
+
+    def purge(self, user_id: int) -> None: ...
 
 
 class ResultRepository(Protocol):

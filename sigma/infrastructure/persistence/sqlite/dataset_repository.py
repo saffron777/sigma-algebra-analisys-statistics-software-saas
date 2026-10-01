@@ -1,4 +1,8 @@
-"""SQLite-backed dataset store: metadata in ``datasets``, rows in one ``ds_<uuid>`` table each."""
+"""SQLite-backed dataset store, scoped to one user.
+
+Metadata lives in ``datasets`` (every query filters by ``user_id``, so another user's id behaves exactly like
+a missing one); the rows live in one ``ds_<uuid>`` table per dataset.
+"""
 
 from __future__ import annotations
 
@@ -21,8 +25,9 @@ _WRITE_CHUNK = 20_000
 
 
 class SqliteDatasetRepository:
-    def __init__(self, database: Database) -> None:
+    def __init__(self, database: Database, user_id: int) -> None:
         self._db = database
+        self._user = int(user_id)
 
     # ------------------------------------------------------------------ writes
     def add(self, name: str, frame: pd.DataFrame, source_type: str, source_meta: dict[str, Any]) -> DatasetInfo:
@@ -33,10 +38,11 @@ class SqliteDatasetRepository:
             self._write_table(conn, dataset_id, frame)
             try:
                 conn.execute(
-                    "INSERT INTO datasets (id, name, source_type, source_meta, n_rows, n_cols, dtypes,"
-                    " columns_info, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO datasets (id, user_id, name, source_type, source_meta, n_rows, n_cols, dtypes,"
+                    " columns_info, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (
                         dataset_id,
+                        self._user,
                         name,
                         source_type,
                         json.dumps(source_meta, ensure_ascii=False, default=str),
@@ -57,8 +63,8 @@ class SqliteDatasetRepository:
             conn.execute(f'DROP TABLE IF EXISTS "{self._table(dataset_id)}"')
             self._write_table(conn, dataset_id, frame)
             conn.execute(
-                "UPDATE datasets SET n_rows = ?, n_cols = ?, dtypes = ?, columns_info = ? WHERE id = ?",
-                (len(frame), frame.shape[1], *self._frame_metadata(frame), dataset_id),
+                "UPDATE datasets SET n_rows = ?, n_cols = ?, dtypes = ?, columns_info = ? WHERE id = ? AND user_id = ?",
+                (len(frame), frame.shape[1], *self._frame_metadata(frame), dataset_id, self._user),
             )
         return self.get_info(dataset_id)
 
@@ -67,28 +73,45 @@ class SqliteDatasetRepository:
         self.get_info(dataset_id)
         with self._db.connection() as conn:
             self._ensure_name_free(conn, name, except_id=dataset_id)
-            conn.execute("UPDATE datasets SET name = ? WHERE id = ?", (name, dataset_id))
-            conn.execute("UPDATE saved_results SET dataset_name = ? WHERE dataset_id = ?", (name, dataset_id))
+            conn.execute("UPDATE datasets SET name = ? WHERE id = ? AND user_id = ?", (name, dataset_id, self._user))
+            conn.execute(
+                "UPDATE saved_results SET dataset_name = ? WHERE dataset_id = ? AND user_id = ?",
+                (name, dataset_id, self._user),
+            )
         return self.get_info(dataset_id)
 
     def delete(self, dataset_id: str) -> None:
         self.get_info(dataset_id)
         with self._db.connection() as conn:
             conn.execute(f'DROP TABLE IF EXISTS "{self._table(dataset_id)}"')
-            conn.execute("DELETE FROM datasets WHERE id = ?", (dataset_id,))
+            conn.execute("DELETE FROM datasets WHERE id = ? AND user_id = ?", (dataset_id, self._user))
+
+    def purge(self) -> int:
+        """Delete every dataset (and its data table) of this user; returns how many were removed."""
+        removed = 0
+        with self._db.connection() as conn:
+            for row in conn.execute("SELECT id FROM datasets WHERE user_id = ?", (self._user,)).fetchall():
+                conn.execute(f'DROP TABLE IF EXISTS "{self._table(row["id"])}"')
+                removed += 1
+            conn.execute("DELETE FROM datasets WHERE user_id = ?", (self._user,))
+        return removed
 
     # ------------------------------------------------------------------ reads
     def get_info(self, dataset_id: str) -> DatasetInfo:
         self._table(dataset_id)  # validates the id format
         with self._db.connection() as conn:
-            row = conn.execute("SELECT * FROM datasets WHERE id = ?", (dataset_id,)).fetchone()
+            row = conn.execute(
+                "SELECT * FROM datasets WHERE id = ? AND user_id = ?", (dataset_id, self._user)
+            ).fetchone()
         if row is None:
             raise DatasetNotFoundError("El dataset no existe (puede haber sido eliminado).")
         return self._to_info(row)
 
     def list(self) -> list[DatasetInfo]:
         with self._db.connection() as conn:
-            rows = conn.execute("SELECT * FROM datasets ORDER BY created_at DESC, name").fetchall()
+            rows = conn.execute(
+                "SELECT * FROM datasets WHERE user_id = ? ORDER BY created_at DESC, name", (self._user,)
+            ).fetchall()
         return [self._to_info(row) for row in rows]
 
     def get(self, dataset_id: str) -> Dataset:
@@ -97,7 +120,9 @@ class SqliteDatasetRepository:
 
     def get_by_name(self, name: str) -> Dataset:
         with self._db.connection() as conn:
-            row = conn.execute("SELECT id FROM datasets WHERE name = ? COLLATE NOCASE", (name.strip(),)).fetchone()
+            row = conn.execute(
+                "SELECT id FROM datasets WHERE name = ? COLLATE NOCASE AND user_id = ?", (name.strip(), self._user)
+            ).fetchone()
         if row is None:
             raise DatasetNotFoundError(f"No existe un dataset llamado «{name}».")
         return self.get(row["id"])
@@ -120,9 +145,10 @@ class SqliteDatasetRepository:
             raise InvalidInputError("El nombre del dataset no puede estar vacío.")
         return name
 
-    @staticmethod
-    def _ensure_name_free(conn: sqlite3.Connection, name: str, except_id: str | None = None) -> None:
-        row = conn.execute("SELECT id FROM datasets WHERE name = ? COLLATE NOCASE", (name,)).fetchone()
+    def _ensure_name_free(self, conn: sqlite3.Connection, name: str, except_id: str | None = None) -> None:
+        row = conn.execute(
+            "SELECT id FROM datasets WHERE name = ? COLLATE NOCASE AND user_id = ?", (name, self._user)
+        ).fetchone()
         if row is not None and row["id"] != except_id:
             raise InvalidInputError(f"Ya existe un dataset llamado «{name}». Elija otro nombre.")
 

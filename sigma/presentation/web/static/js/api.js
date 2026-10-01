@@ -41,6 +41,10 @@ export async function api(url, { method = "GET", json, form, signal } = {}) {
   } catch {
     /* non-JSON body */
   }
+  if (response.status === 401 && !url.startsWith("/api/auth/")) {
+    // the session expired (or the account was disabled): go back to the login page and return here afterwards
+    location.assign(`/login?next=${encodeURIComponent(location.pathname + location.search)}`);
+  }
   if (!response.ok) {
     const info = data?.error;
     throw new ApiError(info?.message ?? `Error ${response.status} del servidor.`, {

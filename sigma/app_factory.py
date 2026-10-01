@@ -7,6 +7,7 @@ from flask import Flask
 from sigma import __version__
 from sigma.bootstrap import build_container
 from sigma.config import Config
+from sigma.presentation.web.auth import init_auth
 from sigma.presentation.web.blueprints import register_blueprints
 from sigma.presentation.web.blueprints.pages import PAGES
 from sigma.presentation.web.errors import register_error_handlers
@@ -27,8 +28,10 @@ def create_app(config: Config | None = None) -> Flask:
     app.json.compact = True  # type: ignore[attr-defined]
     app.config["TEMPLATES_AUTO_RELOAD"] = config.debug
 
-    init_security(app, config)
-    app.extensions["sigma"] = build_container(config)
+    container = build_container(config)
+    app.extensions["sigma"] = container
+    init_security(app, config)  # Host/Origin/CSRF run first…
+    init_auth(app, container)  # …then the session check
     register_blueprints(app)
     register_error_handlers(app)
 

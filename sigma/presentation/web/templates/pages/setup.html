@@ -1,0 +1,36 @@
+{% extends "auth_base.html" %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/setup.js') }}"></script>{% endblock %}
+
+{% block content %}
+<form class="card" x-data="setupPage" @submit.prevent="submit()" novalidate>
+  <div class="card-header"><h2 class="card-title">Bienvenido: cree la cuenta de administrador</h2></div>
+  <div class="card-body space-y-4">
+    <p class="text-sm text-slate-600 dark:text-slate-300">
+      Es la primera vez que se usa Sigma. El administrador crea y gestiona las demás cuentas. Los datos que ya
+      existían en esta instalación pasarán a esta cuenta.
+    </p>
+    <div>
+      <label class="label" for="username">Usuario</label>
+      <input id="username" class="input" type="text" autocomplete="username" autofocus required x-model="username">
+      <p class="hint">3 a 40 caracteres: letras, números, punto, guion o guion bajo.</p>
+    </div>
+    <div>
+      <label class="label" for="display">Nombre para mostrar (opcional)</label>
+      <input id="display" class="input" type="text" maxlength="80" x-model="displayName">
+    </div>
+    <div>
+      <label class="label" for="password">Contraseña</label>
+      <input id="password" class="input" type="password" autocomplete="new-password" required x-model="password">
+      <p class="hint">Mínimo 10 caracteres, sin el nombre de usuario ni contraseñas comunes.</p>
+    </div>
+    <div>
+      <label class="label" for="confirm">Repita la contraseña</label>
+      <input id="confirm" class="input" type="password" autocomplete="new-password" required x-model="confirm">
+    </div>
+    <p class="alert alert-danger" role="alert" x-show="error" x-cloak x-text="error"></p>
+    <button type="submit" class="btn btn-primary w-full" :disabled="busy">
+      <span x-text="busy ? 'Creando…' : 'Crear administrador y entrar'"></span>
+    </button>
+  </div>
+</form>
+{% endblock %}

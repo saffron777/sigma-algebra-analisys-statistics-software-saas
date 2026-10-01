@@ -9,14 +9,19 @@ from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException
 
 from sigma.domain.errors import (
+    AuthenticationError,
     ComputationError,
     DatasetNotFoundError,
     ImportFailedError,
     InvalidInputError,
     KernelError,
     NotebookNotFoundError,
+    PermissionDeniedError,
+    RateLimitedError,
     ResultNotFoundError,
+    SetupRequiredError,
     SigmaError,
+    UserNotFoundError,
 )
 
 log = logging.getLogger(__name__)
@@ -28,7 +33,12 @@ _STATUS = {
     DatasetNotFoundError: 404,
     ResultNotFoundError: 404,
     NotebookNotFoundError: 404,
+    UserNotFoundError: 404,
     KernelError: 503,
+    AuthenticationError: 401,
+    SetupRequiredError: 401,
+    PermissionDeniedError: 403,
+    RateLimitedError: 429,
 }
 _HTTP_MESSAGES = {
     400: "Solicitud inválida.",
@@ -84,7 +94,12 @@ def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(SigmaError)
     def handle_sigma_error(error: SigmaError):
         status = next((code for cls, code in _STATUS.items() if isinstance(error, cls)), 400)
-        return jsonify(_error_body(error.code, error.message, error.details)), status
+        if not _wants_json():
+            return render_template("pages/error.html", status=status, message=error.message), status
+        response = jsonify(_error_body(error.code, error.message, error.details))
+        if isinstance(error, RateLimitedError) and isinstance(error.details, dict):
+            response.headers["Retry-After"] = str(error.details.get("retry_after", 60))
+        return response, status
 
     @app.errorhandler(ValidationError)
     def handle_validation_error(error: ValidationError):

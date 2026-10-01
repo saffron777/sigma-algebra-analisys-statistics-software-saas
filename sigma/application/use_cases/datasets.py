@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import PurePath
+from pathlib import Path, PurePath
 
 import pandas as pd
 
@@ -35,6 +35,11 @@ def clean_dataset_name(name: str | None, fallback: str = "dataset") -> str:
     return cleaned or fallback
 
 
+def prepare_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    """The normalisation every imported table goes through before it is shown or stored."""
+    return infer_dates(normalize_columns(stringify_complex_cells(frame)))
+
+
 @dataclass
 class ImportPreview:
     token: str
@@ -55,7 +60,7 @@ class PreviewImport:
 
     def execute(self, request: ImportRequest) -> ImportPreview:
         frame, detected = self._importers.get(request.source_type).read(request)
-        frame = infer_dates(normalize_columns(stringify_complex_cells(frame)))
+        frame = prepare_frame(frame)
         if frame.empty and frame.shape[1] == 0:
             raise InvalidInputError("La fuente de datos no devolvió columnas.")
         suggested = clean_dataset_name(
@@ -73,6 +78,30 @@ class PreviewImport:
         return ImportPreview(
             token, suggested, len(frame), frame.shape[1], describe_columns(frame), frame.head(PREVIEW_ROWS), detected
         )
+
+
+class LoadSampleData:
+    """Imports the demo CSV files (``sample_data/``) into the user's datasets, skipping names already in use."""
+
+    def __init__(self, importers: ImporterRegistry, datasets: DatasetRepository, sample_dir: Path) -> None:
+        self._importers = importers
+        self._datasets = datasets
+        self._sample_dir = Path(sample_dir)
+
+    def execute(self) -> dict[str, list[str]]:
+        existing = {d.name.lower() for d in self._datasets.list()}
+        created: list[str] = []
+        skipped: list[str] = []
+        reader = self._importers.get("csv")
+        for path in sorted(self._sample_dir.glob("*.csv")):
+            if path.stem.lower() in existing:
+                skipped.append(path.stem)
+                continue
+            frame, detected = reader.read(ImportRequest("csv", {}, path.name, path.read_bytes()))
+            meta = {"source_type": "csv", "file_name": path.name, **detected}
+            self._datasets.add(path.stem, prepare_frame(frame), "csv", meta)
+            created.append(path.stem)
+        return {"created": created, "skipped": skipped}
 
 
 class InspectSource:

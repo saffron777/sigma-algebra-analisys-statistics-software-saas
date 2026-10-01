@@ -24,10 +24,10 @@ class SigmaHelper:
     @property
     def _repo(self) -> SqliteDatasetRepository:
         if self._repository is None:
-            path = os.environ.get("SIGMA_DB_PATH")
-            if not path:
-                raise RuntimeError("SIGMA_DB_PATH no está definido: este kernel no está conectado a Sigma.")
-            self._repository = SqliteDatasetRepository(Database(path))
+            path, user = os.environ.get("SIGMA_DB_PATH"), os.environ.get("SIGMA_USER_ID")
+            if not path or not user:
+                raise RuntimeError("Este kernel no está conectado a una cuenta de Sigma.")
+            self._repository = SqliteDatasetRepository(Database(path), int(user))
         return self._repository
 
     def datasets(self) -> pd.DataFrame:

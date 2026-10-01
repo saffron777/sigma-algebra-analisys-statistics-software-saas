@@ -17,7 +17,9 @@ from sigma.application.use_cases.results import (
 from sigma.domain.errors import DatasetNotFoundError, InvalidInputError, ResultNotFoundError
 from sigma.infrastructure.persistence.sqlite.database import Database
 from sigma.infrastructure.persistence.sqlite.dataset_repository import SqliteDatasetRepository
+from sigma.infrastructure.persistence.sqlite.migrations import MIGRATIONS
 from sigma.infrastructure.persistence.sqlite.result_repository import SqliteResultRepository
+from tests.support import add_user
 
 
 @pytest.fixture
@@ -26,13 +28,18 @@ def db(tmp_path):
 
 
 @pytest.fixture
-def datasets(db):
-    return SqliteDatasetRepository(db)
+def user_id(db):
+    return add_user(db)
 
 
 @pytest.fixture
-def results(db):
-    return SqliteResultRepository(db)
+def datasets(db, user_id):
+    return SqliteDatasetRepository(db, user_id)
+
+
+@pytest.fixture
+def results(db, user_id):
+    return SqliteResultRepository(db, user_id)
 
 
 def mixed_frame() -> pd.DataFrame:
@@ -53,7 +60,7 @@ def mixed_frame() -> pd.DataFrame:
 
 def test_schema_version_and_wal(db):
     with db.connection() as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == len(MIGRATIONS)
         assert conn.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
         assert conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
 
@@ -85,9 +92,11 @@ def test_info_lists_column_kinds(datasets):
 
 def test_data_survives_a_new_connection(tmp_path):
     path = tmp_path / "persist.db"
-    first = SqliteDatasetRepository(Database(path))
+    database = Database(path)
+    owner = add_user(database)
+    first = SqliteDatasetRepository(database, owner)
     created = first.add("persistente", pd.DataFrame({"a": [1, 2, 3]}), "csv", {})
-    second = SqliteDatasetRepository(Database(path))  # simulates restarting the app
+    second = SqliteDatasetRepository(Database(path), owner)  # simulates restarting the app
     assert second.get_by_name("PERSISTENTE").data["a"].tolist() == [1, 2, 3]
     assert [d.id for d in second.list()] == [created.id]
 

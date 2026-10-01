@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any, TypeVar
 
-from flask import current_app, jsonify, request
+from flask import current_app, g, jsonify, request
 
-from sigma.bootstrap import Container
+from sigma.bootstrap import Container, UserServices
 from sigma.presentation.web.reports.blocks import ReportBuilder
 from sigma.presentation.web.schemas.base import RequestModel
 from sigma.presentation.web.serializers import to_jsonable
@@ -14,7 +14,13 @@ from sigma.presentation.web.serializers import to_jsonable
 M = TypeVar("M", bound=RequestModel)
 
 
-def container() -> Container:
+def container() -> UserServices:
+    """The use cases of the signed-in user (set by the authentication guard); they only see that user's data."""
+    return g.services
+
+
+def shared() -> Container:
+    """The application-wide container (account administration, kernels)."""
     return current_app.extensions["sigma"]
 
 

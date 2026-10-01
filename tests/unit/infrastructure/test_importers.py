@@ -21,10 +21,16 @@ from sigma.infrastructure.importers.sqlserver_importer import SqlServerImporter,
 from sigma.infrastructure.importers.staging import InMemoryImportStaging
 from sigma.infrastructure.persistence.sqlite.database import Database
 from sigma.infrastructure.persistence.sqlite.dataset_repository import SqliteDatasetRepository
+from tests.support import add_user
 
 
 def req(source, content=None, name=None, **options):
     return ImportRequest(source, options, name, content)
+
+
+def make_repository(path):
+    database = Database(path)
+    return SqliteDatasetRepository(database, add_user(database))
 
 
 # ------------------------------------------------------------------------- CSV / text
@@ -296,7 +302,7 @@ def test_parse_pairs():
 def test_preview_then_commit_flow(tmp_path):
     staging = InMemoryImportStaging()
     registry = DefaultImporterRegistry()
-    repository = SqliteDatasetRepository(Database(tmp_path / "s.db"))
+    repository = make_repository(tmp_path / "s.db")
     content = b"Nombre,Edad,Nombre\nAna,30,x\nLuis,41,y\n"
     preview = PreviewImport(registry, staging).execute(req("csv", content, "clientes.csv"))
     assert preview.suggested_name == "clientes" and preview.n_rows == 2
@@ -336,7 +342,7 @@ def test_complex_json_cells_become_text(api_server, tmp_path):
         req("json_api", url=f"{api_server}/items", records_path="data.items")
     )
     assert preview.rows["tags"].map(lambda v: isinstance(v, str)).all()
-    repository = SqliteDatasetRepository(Database(tmp_path / "j.db"))
+    repository = make_repository(tmp_path / "j.db")
     staging = InMemoryImportStaging()
     token = (
         PreviewImport(registry, staging)
@@ -347,7 +353,7 @@ def test_complex_json_cells_become_text(api_server, tmp_path):
 
 
 def test_numpy_scalars_in_object_columns_are_storable(tmp_path):
-    repository = SqliteDatasetRepository(Database(tmp_path / "n.db"))
+    repository = make_repository(tmp_path / "n.db")
     frame = pd.DataFrame({"mix": pd.Series([np.int64(1), "dos", np.float64(3.5), None], dtype=object)})
     info = repository.add("mix", frame, "csv", {})
     assert repository.get(info.id).data["mix"].tolist()[1] == "dos"

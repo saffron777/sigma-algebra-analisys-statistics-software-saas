@@ -7,6 +7,7 @@ import re
 from flask import Blueprint, Response, jsonify, request
 
 from sigma.domain.errors import InvalidInputError
+from sigma.presentation.web.auth import require_console
 from sigma.presentation.web.blueprints._helpers import container, parse_body
 from sigma.presentation.web.schemas.notebooks import (
     CreateNotebookRequest,
@@ -17,6 +18,7 @@ from sigma.presentation.web.schemas.notebooks import (
 from sigma.presentation.web.serializers import to_jsonable
 
 bp = Blueprint("console_api", __name__, url_prefix="/api/notebooks")
+bp.before_request(require_console)  # running code is a privilege the administrator grants per account
 
 
 @bp.get("")

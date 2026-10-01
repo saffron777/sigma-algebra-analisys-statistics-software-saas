@@ -38,6 +38,13 @@ def list_datasets():
     return jsonify({"datasets": to_jsonable(container().list_datasets.execute())})
 
 
+@bp.post("/samples")
+def load_samples():
+    """Imports the bundled demo CSV files into the signed-in user's datasets."""
+    outcome = container().load_sample_data.execute()
+    return jsonify({**outcome, "datasets": to_jsonable(container().list_datasets.execute())}), 201
+
+
 @bp.post("/import/inspect")
 def inspect_source():
     return jsonify(to_jsonable(container().inspect_source.execute(_import_request())))

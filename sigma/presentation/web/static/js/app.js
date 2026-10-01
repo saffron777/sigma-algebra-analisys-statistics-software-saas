@@ -27,6 +27,13 @@ document.addEventListener("alpine:init", () => {
       storage.set(THEME_KEY, this.dark ? "dark" : "light");
       rethemeAll();
     },
+    async logout() {
+      try {
+        await api("/api/auth/logout", { method: "POST" });
+      } finally {
+        location.assign("/login");
+      }
+    },
   }));
 
   // ------------------------------------------------------------------ toasts

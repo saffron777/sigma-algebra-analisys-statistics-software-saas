@@ -1,0 +1,22 @@
+{% extends "auth_base.html" %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/login.js') }}"></script>{% endblock %}
+
+{% block content %}
+<form class="card" x-data="loginPage" data-next="{{ next_url }}" @submit.prevent="submit()" novalidate>
+  <div class="card-header"><h2 class="card-title">Iniciar sesión</h2></div>
+  <div class="card-body space-y-4">
+    <div>
+      <label class="label" for="username">Usuario</label>
+      <input id="username" class="input" type="text" autocomplete="username" autofocus required x-model="username">
+    </div>
+    <div>
+      <label class="label" for="password">Contraseña</label>
+      <input id="password" class="input" type="password" autocomplete="current-password" required x-model="password">
+    </div>
+    <p class="alert alert-danger" role="alert" x-show="error" x-cloak x-text="error"></p>
+    <button type="submit" class="btn btn-primary w-full" :disabled="busy || !username || !password">
+      <span x-text="busy ? 'Verificando…' : 'Entrar'"></span>
+    </button>
+  </div>
+</form>
+{% endblock %}

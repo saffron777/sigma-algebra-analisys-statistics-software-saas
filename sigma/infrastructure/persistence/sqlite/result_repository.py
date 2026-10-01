@@ -1,4 +1,4 @@
-"""SQLite-backed store for saved analysis results."""
+"""SQLite-backed store for saved analysis results, scoped to one user."""
 
 from __future__ import annotations
 
@@ -18,17 +18,19 @@ def _escape_like(text: str) -> str:
 
 
 class SqliteResultRepository:
-    def __init__(self, database: Database) -> None:
+    def __init__(self, database: Database, user_id: int) -> None:
         self._db = database
+        self._user = int(user_id)
 
     def add(self, result: SavedResult) -> SavedResult:
         with self._db.connection() as conn:
             conn.execute(
-                "INSERT INTO saved_results (id, module, analysis_type, title, notes, dataset_id, dataset_name,"
+                "INSERT INTO saved_results (id, user_id, module, analysis_type, title, notes, dataset_id, dataset_name,"
                 " params, result, report, figures, created_at, updated_at)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     result.id,
+                    self._user,
                     result.module,
                     result.analysis_type,
                     result.title,
@@ -47,7 +49,9 @@ class SqliteResultRepository:
 
     def get(self, result_id: str) -> SavedResult:
         with self._db.connection() as conn:
-            row = conn.execute("SELECT * FROM saved_results WHERE id = ?", (result_id,)).fetchone()
+            row = conn.execute(
+                "SELECT * FROM saved_results WHERE id = ? AND user_id = ?", (result_id, self._user)
+            ).fetchone()
         if row is None:
             raise ResultNotFoundError("El resultado guardado no existe.")
         return SavedResult(
@@ -69,8 +73,8 @@ class SqliteResultRepository:
     def list(
         self, module: str | None, search: str | None, limit: int, offset: int
     ) -> tuple[list[SavedResultSummary], int]:
-        clauses: list[str] = []
-        params: list[object] = []
+        clauses: list[str] = ["user_id = ?"]
+        params: list[object] = [self._user]
         if module:
             clauses.append("module = ?")
             params.append(module)
@@ -78,7 +82,7 @@ class SqliteResultRepository:
             pattern = f"%{_escape_like(search)}%"
             clauses.append("(title LIKE ? ESCAPE '\\' OR notes LIKE ? ESCAPE '\\' OR dataset_name LIKE ? ESCAPE '\\')")
             params.extend([pattern] * 3)
-        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        where = f" WHERE {' AND '.join(clauses)}"
         with self._db.connection() as conn:
             total = conn.execute(f"SELECT COUNT(*) FROM saved_results{where}", params).fetchone()[0]
             rows = conn.execute(
@@ -91,19 +95,23 @@ class SqliteResultRepository:
         self.get(result_id)
         with self._db.connection() as conn:
             if title is not None:
-                conn.execute("UPDATE saved_results SET title = ? WHERE id = ?", (title, result_id))
+                conn.execute(
+                    "UPDATE saved_results SET title = ? WHERE id = ? AND user_id = ?", (title, result_id, self._user)
+                )
             if notes is not None:
-                conn.execute("UPDATE saved_results SET notes = ? WHERE id = ?", (notes, result_id))
+                conn.execute(
+                    "UPDATE saved_results SET notes = ? WHERE id = ? AND user_id = ?", (notes, result_id, self._user)
+                )
             conn.execute(
-                "UPDATE saved_results SET updated_at = ? WHERE id = ?",
-                (datetime.now(UTC).isoformat(timespec="seconds"), result_id),
+                "UPDATE saved_results SET updated_at = ? WHERE id = ? AND user_id = ?",
+                (datetime.now(UTC).isoformat(timespec="seconds"), result_id, self._user),
             )
         return self.get(result_id)
 
     def delete(self, result_id: str) -> None:
         self.get(result_id)
         with self._db.connection() as conn:
-            conn.execute("DELETE FROM saved_results WHERE id = ?", (result_id,))
+            conn.execute("DELETE FROM saved_results WHERE id = ? AND user_id = ?", (result_id, self._user))
 
 
 def _dump(value: object) -> str:

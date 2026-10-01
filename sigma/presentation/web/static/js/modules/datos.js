@@ -135,6 +135,22 @@ document.addEventListener("alpine:init", () => {
       this.error = "";
     },
 
+    async loadSamples() {
+      this.busy = true;
+      try {
+        const { created, skipped } = await api("/api/datasets/samples", { method: "POST" });
+        await Alpine.store("datasets").refresh();
+        const message = created.length
+          ? `Se cargaron ${created.length} dataset(s) de ejemplo.`
+          : `Los datos de ejemplo ya estaban cargados (${skipped.length}).`;
+        Alpine.store("toast").show(message, "success");
+      } catch (error) {
+        Alpine.store("toast").show(error.message, "error");
+      } finally {
+        this.busy = false;
+      }
+    },
+
     // ------------------------------------------------------------------ dataset management
     sourceLabel(type) { return SOURCE_LABELS[type] ?? type; },
     kindLabel(kind) { return KIND_LABELS[kind] ?? kind; },

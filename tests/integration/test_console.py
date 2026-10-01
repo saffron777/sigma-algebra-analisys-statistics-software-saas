@@ -14,21 +14,28 @@ from sigma.infrastructure.kernel.jupyter_executor import JupyterKernelPool
 from sigma.infrastructure.persistence.file_notebook_store import FileNotebookStore
 from sigma.infrastructure.persistence.sqlite.database import Database
 from sigma.infrastructure.persistence.sqlite.dataset_repository import SqliteDatasetRepository
+from tests.support import add_user
 
 
 @pytest.fixture(scope="module")
 def env(tmp_path_factory):
     root = tmp_path_factory.mktemp("console")
     db_path = root / "sigma.db"
-    repo = SqliteDatasetRepository(Database(db_path))
+    database = Database(db_path)
+    owner_id = add_user(database)
+    assert str(owner_id) == OWNER
+    repo = SqliteDatasetRepository(database, owner_id)
     repo.add("ventas", pd.DataFrame({"x": [1, 2, 3], "y": [2.0, 4.0, 6.5]}), "csv", {})
     pool = JupyterKernelPool(PROJECT_ROOT, db_path, root / "work", idle_minutes=30)
     yield pool, repo
     pool.shutdown_all()
 
 
+OWNER = "1"  # the first account created in a fresh database
+
+
 def run(pool, code, timeout=60, session="s1"):
-    return pool.execute(session, code, timeout)
+    return pool.execute(session, code, timeout, OWNER)
 
 
 def test_state_persists_between_cells_and_counts_executions(env):
@@ -115,7 +122,7 @@ def test_restart_clears_state_and_sessions_are_isolated(env):
     pool, _ = env
     run(pool, "a = 1", session="one")
     run(pool, "a = 2", session="two")
-    pool.restart("one")
+    pool.restart("one", OWNER)
     assert run(pool, "'a' in globals()", session="one").outputs[0]["data"]["text/plain"] == "False"
     assert run(pool, "a", session="two").outputs[0]["data"]["text/plain"] == "2"
     assert pool.status("two").running and not pool.status("never-started").running

@@ -1,7 +1,8 @@
 # Σ Sigma
 
 Plataforma web de análisis estadístico, hecha con **Flask** y **Tailwind CSS**, con arquitectura limpia.
-Se ejecuta en su propio equipo: los datos, los resultados y el código que ejecuta nunca salen de él.
+Funciona con **cuentas de usuario**: cada persona ve únicamente sus propios datasets, resultados y notebooks.
+Todo se ejecuta y se guarda en su propio servidor; nada sale de él.
 
 | Módulo | Qué hace |
 |---|---|
@@ -30,7 +31,7 @@ rechazo y el valor p sombreados.
 ```
 
 El script crea `.venv`, instala las dependencias, compila Tailwind, copia las librerías del navegador
-(Plotly, Alpine, marked, DOMPurify) a `static/vendor` —así funciona sin internet— y carga los datos de ejemplo.
+(Plotly, Alpine, marked, DOMPurify) a `static/vendor` —así funciona sin internet— y genera los archivos de ejemplo.
 
 Manual, paso a paso:
 
@@ -40,7 +41,6 @@ python -m venv .venv
 npm install
 npm run build
 .\.venv\Scripts\python.exe scripts\make_sample_data.py
-.\.venv\Scripts\python.exe scripts\load_sample_data.py
 ```
 
 ## Ejecución
@@ -49,7 +49,8 @@ npm run build
 .\scripts\run.ps1            # o:  .\.venv\Scripts\python.exe run.py
 ```
 
-Abra <http://127.0.0.1:5000>. Para un servidor más robusto:
+Abra <http://127.0.0.1:5000>. La primera vez Sigma pide **crear la cuenta de administrador** (`/setup`); si ya había
+datos de la versión de un solo usuario, esa cuenta los hereda. Para un servidor más robusto:
 
 ```powershell
 .\.venv\Scripts\waitress-serve.exe --listen=127.0.0.1:5000 wsgi:app
@@ -60,17 +61,36 @@ Variables de entorno (opcionales, también en un archivo `.env`, ver `.env.examp
 | Variable | Valor por defecto | Descripción |
 |---|---|---|
 | `SIGMA_HOST` / `SIGMA_PORT` | `127.0.0.1` / `5000` | Dirección de escucha. |
-| `SIGMA_DB_PATH` | `instance/sigma.db` | Base SQLite (datasets + resultados). |
+| `SIGMA_DB_PATH` | `instance/sigma.db` | Base SQLite (cuentas, datasets, resultados). |
 | `SIGMA_NOTEBOOKS_DIR` | `instance/notebooks` | Carpeta de los `.ipynb`. |
 | `SIGMA_MAX_UPLOAD_MB` | `100` | Tamaño máximo de los archivos subidos. |
 | `SIGMA_CELL_TIMEOUT_SECONDS` | `60` | Tiempo máximo por celda de la consola. |
 | `SIGMA_KERNEL_IDLE_MINUTES` | `30` | Los kernels inactivos se cierran pasado este tiempo. |
+| `SIGMA_SESSION_HOURS` | `12` | Duración de una sesión abierta. |
+| `SIGMA_SECURE_COOKIES` | — | `1` si Sigma se sirve por HTTPS (la cookie de sesión solo viaja cifrada). |
+| `SIGMA_ALLOWED_HOSTS` | — | Nombres extra con los que se accede (uso en red). |
+| `SIGMA_MAX_KERNELS_PER_USER` / `SIGMA_MAX_KERNELS_TOTAL` | `3` / `8` | Límite de kernels simultáneos. |
 | `SIGMA_DEBUG` | — | `1` activa la recarga automática (solo desarrollo). |
+
+## Cuentas de usuario
+
+- Roles: **administrador** (gestiona cuentas desde *Usuarios*) y **usuario**. Todo lo demás es **privado por cuenta**:
+  un recurso ajeno responde siempre «no encontrado».
+- Contraseñas: mínimo 10 caracteres, sin el nombre de usuario ni contraseñas triviales; se guardan con *scrypt*.
+  Tras 5 intentos fallidos el acceso se bloquea unos minutos. Cambiar o restablecer la contraseña, o desactivar la
+  cuenta, cierra sus demás sesiones. Siempre queda al menos un administrador activo.
+- La **Consola Python** requiere un permiso explícito del administrador (desactivado por defecto): un kernel
+  ejecuta código con los permisos del sistema operativo, así que **no hay aislamiento real entre usuarios con consola**.
+  `sigma.load()` / `sigma.save()` solo alcanzan los datos de la cuenta que ejecuta el kernel.
+- Sin navegador: `.\.venv\Scripts\python.exe scripts\create_user.py` crea cuentas o restablece contraseñas.
+- Para usarlo en red: `SIGMA_HOST=0.0.0.0`, `SIGMA_ALLOWED_HOSTS` y **HTTPS mediante un proxy inverso** (por HTTP las
+  contraseñas viajan en claro).
 
 ## Datos de ejemplo
 
 `sample_data/` incluye `ventas.csv`, `marco_muestral.csv`, `encuesta.csv` y `analisis_demo.ipynb`
-(`python scripts/make_sample_data.py` los regenera; `python scripts/load_sample_data.py` carga los CSV en Sigma).
+(`python scripts/make_sample_data.py` los regenera). En **Datos → Cargar datos de ejemplo** se cargan los CSV en su
+cuenta (o `python scripts/load_sample_data.py --user <nombre>`).
 Para probar la consola, importe `analisis_demo.ipynb` desde **Consola Python → Importar .ipynb**.
 
 ## Fuentes de datos
@@ -88,8 +108,9 @@ Para probar la consola, importe `analisis_demo.ipynb` desde **Consola Python →
 
 ## Persistencia y respaldo
 
-Todo se guarda en `instance/sigma.db` (SQLite en modo WAL): los **datasets importados** (cada uno en su tabla, con
-sus tipos) y los **resultados guardados**. Los notebooks se guardan como archivos `.ipynb` en `instance/notebooks/`.
+Todo se guarda en `instance/sigma.db` (SQLite en modo WAL): las **cuentas**, los **datasets importados** (cada uno en
+su tabla, con sus tipos) y los **resultados guardados**. Los notebooks se guardan como archivos `.ipynb` en
+`instance/notebooks/<id de usuario>/`.
 **Respaldo:** copie la carpeta `instance/` (con la aplicación detenida, o copie `sigma.db`, `sigma.db-wal` y
 `sigma.db-shm` juntos).
 
@@ -108,9 +129,12 @@ sigma.save(df, "ventas_limpias")  # guarda un DataFrame como dataset de Sigma
 
 ## Seguridad
 
-Sigma está pensado para **uso local de un solo usuario** y la consola ejecuta código arbitrario por diseño, así que:
+La consola ejecuta código arbitrario por diseño (solo para cuentas autorizadas), así que:
 
-- Escucha solo en `127.0.0.1`. **No lo exponga a la red ni a internet sin añadir autenticación.**
+- Escucha solo en `127.0.0.1` por defecto. Para exponerlo en red use HTTPS (proxy inverso) y revise quién tiene
+  permiso de consola.
+- Toda ruta (salvo `/login`, `/setup`, `/health` y los estáticos) exige sesión; el inicio de sesión renueva la sesión y
+  el token CSRF, y las respuestas no se guardan en caché.
 - Rechaza peticiones con cabecera `Host` u `Origin` ajenas (DNS-rebinding / otras páginas web) y exige un token CSRF
   en toda petición que modifica datos.
 - Política de seguridad de contenido (CSP) restrictiva; no se carga ningún recurso externo.
@@ -134,7 +158,7 @@ tests/              unit/ (dominio, infraestructura) e integration/ (API, págin
 ## Desarrollo
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest              # 237 pruebas (la consola arranca kernels reales: ~1 min)
+.\.venv\Scripts\python.exe -m pytest              # 313 pruebas (la consola arranca kernels reales: ~1 min)
 .\.venv\Scripts\python.exe -m ruff check .        # lint
 .\.venv\Scripts\python.exe -m ruff format .       # formato
 npm run watch:css                                 # recompila Tailwind al editar plantillas/JS
@@ -143,7 +167,8 @@ $env:SIGMA_DEBUG = "1"; .\.venv\Scripts\python.exe run.py   # recarga automátic
 
 ## Limitaciones conocidas
 
-- Un solo usuario, sin autenticación. Sin ANOVA de medidas repetidas ni post-estratificación (raking).
+- Sin recuperación de contraseña por correo (la restablece el administrador), sin 2FA/SSO y sin compartir recursos
+  entre cuentas. Sin ANOVA de medidas repetidas ni post-estratificación (raking).
 - La salida de la consola se entrega al terminar la celda (sin transmisión en vivo).
 - En Windows, una llamada bloqueante como `time.sleep(120)` no se puede interrumpir: tras el tiempo máximo el kernel se
   reinicia (se pierden las variables en memoria).

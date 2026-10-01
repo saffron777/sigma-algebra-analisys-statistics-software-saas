@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import icon %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/usuarios.js') }}"></script>{% endblock %}
+
+{% block content %}
+<div x-data="usuariosPage" class="space-y-5">
+  <div class="alert alert-warning">
+    <p class="font-medium">Sobre el permiso «Consola de Python»</p>
+    <p class="mt-0.5">
+      El código se ejecuta con los permisos del sistema operativo del servidor y <strong>no queda aislado</strong> entre usuarios:
+      quien lo tenga podría leer archivos del servidor y datos de otras cuentas. Concédalo solo a personas de confianza.
+    </p>
+  </div>
+
+  <section class="card">
+    <div class="card-header">
+      <h2 class="card-title">Cuentas</h2>
+      <button type="button" class="btn btn-primary btn-sm" @click="openCreate()">{{ icon("plus", "size-4") }} Nuevo usuario</button>
+    </div>
+    <div class="table-wrap rounded-none border-0">
+      <table class="tbl">
+        <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Consola</th><th>IA</th><th>Último acceso</th><th class="text-right">Acciones</th></tr></thead>
+        <tbody>
+          <template x-for="u in users" :key="u.id">
+            <tr>
+              <td><div class="font-medium" x-text="u.username"></div><div class="text-xs text-slate-500" x-text="u.display_name"></div></td>
+              <td>
+                <select class="input !w-auto !py-1 text-xs" :value="u.role" :disabled="u.id === me" @change="update(u, {role: $event.target.value})">
+                  <option value="user">Usuario</option><option value="admin">Administrador</option>
+                </select>
+              </td>
+              <td><span class="badge" :class="u.is_active ? 'badge-brand' : 'badge-gray'" x-text="u.is_active ? 'Activo' : 'Desactivado'"></span></td>
+              <td><input type="checkbox" class="check" :checked="u.can_use_console" @change="update(u, {can_use_console: $event.target.checked})" :aria-label="`Consola de ${u.username}`"></td>
+              <td><input type="checkbox" class="check" :checked="u.can_use_ai" @change="update(u, {can_use_ai: $event.target.checked})" :aria-label="`IA de ${u.username}`"></td>
+              <td class="text-slate-500" x-text="formatDate(u.last_login_at)"></td>
+              <td class="text-right">
+                <div class="flex justify-end gap-1">
+                  <button type="button" class="btn btn-ghost btn-sm" @click="resetPassword(u)">Contraseña</button>
+                  <button type="button" class="btn btn-ghost btn-sm" @click="update(u, {is_active: !u.is_active})" :disabled="u.id === me" x-text="u.is_active ? 'Desactivar' : 'Activar'"></button>
+                  <button type="button" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400" @click="remove(u)" :disabled="u.id === me" :aria-label="`Eliminar ${u.username}`">{{ icon("trash", "size-4") }}</button>
+                </div>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {# ---------------------------------------------------------------- create dialog #}
+  <div x-show="creating" x-cloak class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Nuevo usuario" @keydown.escape.window="creating = false">
+    <div class="absolute inset-0 bg-slate-900/60" @click="creating = false"></div>
+    <template x-if="creating">
+      <form class="card relative w-full max-w-lg shadow-xl" @submit.prevent="create()">
+        <div class="card-header"><h2 class="card-title">Nuevo usuario</h2></div>
+        <div class="card-body space-y-4">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div><label class="label" for="n-user">Usuario</label><input id="n-user" class="input" required autocomplete="off" x-model="form.username"></div>
+            <div><label class="label" for="n-name">Nombre (opcional)</label><input id="n-name" class="input" maxlength="80" x-model="form.display_name"></div>
+          </div>
+          <div><label class="label" for="n-pass">Contraseña inicial</label><input id="n-pass" class="input" type="password" required autocomplete="new-password" x-model="form.password">
+            <p class="hint">Mínimo 10 caracteres. La persona podrá cambiarla desde «Mi cuenta».</p></div>
+          <div class="grid gap-3 sm:grid-cols-3">
+            <div><label class="label">Rol</label><select class="input" x-model="form.role"><option value="user">Usuario</option><option value="admin">Administrador</option></select></div>
+            <label class="check-row self-end"><input type="checkbox" class="check" x-model="form.can_use_console"> Consola de Python</label>
+            <label class="check-row self-end"><input type="checkbox" class="check" x-model="form.can_use_ai"> IA</label>
+          </div>
+          <p class="alert alert-danger" role="alert" x-show="error" x-text="error"></p>
+        </div>
+        <div class="flex justify-end gap-2 border-t border-slate-200 px-5 py-3 dark:border-slate-800">
+          <button type="button" class="btn btn-ghost" @click="creating = false">Cancelar</button>
+          <button type="submit" class="btn btn-primary" :disabled="busy">Crear usuario</button>
+        </div>
+      </form>
+    </template>
+  </div>
+</div>
+{% endblock %}

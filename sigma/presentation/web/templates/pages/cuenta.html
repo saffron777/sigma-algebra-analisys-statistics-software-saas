@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/cuenta.js') }}"></script>{% endblock %}
+
+{% block content %}
+<div x-data="cuentaPage" class="mx-auto max-w-3xl space-y-5">
+  <section class="card">
+    <div class="card-header"><h2 class="card-title">Perfil</h2></div>
+    <div class="card-body space-y-4">
+      <dl class="grid gap-3 text-sm sm:grid-cols-2">
+        <div><dt class="label">Usuario</dt><dd class="font-medium text-slate-900 dark:text-slate-100">{{ current_user.username }}</dd></div>
+        <div><dt class="label">Rol</dt><dd><span class="badge badge-brand">{{ 'Administrador' if current_user.is_admin else 'Usuario' }}</span></dd></div>
+        <div><dt class="label">Consola de Python</dt><dd>{{ 'Permitida' if current_user.can_use_console else 'No permitida' }}</dd></div>
+        <div><dt class="label">Interpretación con IA</dt><dd>{{ 'Permitida' if current_user.can_use_ai else 'No permitida' }}</dd></div>
+      </dl>
+      <form class="flex flex-col gap-3 sm:flex-row sm:items-end" @submit.prevent="saveProfile()">
+        <div class="flex-1"><label class="label" for="display">Nombre para mostrar</label>
+          <input id="display" class="input" type="text" maxlength="80" required x-model="displayName"></div>
+        <button type="submit" class="btn btn-primary" :disabled="busyProfile">Guardar nombre</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2 class="card-title">Cambiar contraseña</h2></div>
+    <form class="card-body space-y-4" @submit.prevent="changePassword()">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div><label class="label" for="current">Contraseña actual</label>
+          <input id="current" class="input" type="password" autocomplete="current-password" required x-model="current"></div>
+        <div><label class="label" for="new">Nueva contraseña</label>
+          <input id="new" class="input" type="password" autocomplete="new-password" required x-model="next"></div>
+        <div><label class="label" for="repeat">Repita la nueva</label>
+          <input id="repeat" class="input" type="password" autocomplete="new-password" required x-model="repeat"></div>
+      </div>
+      <p class="hint">Al cambiarla, se cierran las demás sesiones abiertas de esta cuenta.</p>
+      <p class="alert alert-danger" role="alert" x-show="error" x-cloak x-text="error"></p>
+      <button type="submit" class="btn btn-primary" :disabled="busyPassword">Cambiar contraseña</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

@@ -50,3 +50,31 @@ class KernelError(SigmaError):
     """The code execution kernel failed or is unavailable."""
 
     code = "kernel_error"
+
+
+class AuthenticationError(SigmaError):
+    """Missing, expired or wrong credentials (the message never says which one)."""
+
+    code = "unauthenticated"
+
+
+class PermissionDeniedError(SigmaError):
+    """The signed-in user is not allowed to do this."""
+
+    code = "forbidden"
+
+
+class RateLimitedError(SigmaError):
+    """Too many attempts or requests; ``details`` carries ``retry_after`` seconds."""
+
+    code = "rate_limited"
+
+
+class UserNotFoundError(SigmaError):
+    code = "user_not_found"
+
+
+class SetupRequiredError(SigmaError):
+    """No account exists yet: the first administrator must be created."""
+
+    code = "setup_required"

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hmac
 import secrets
+from datetime import timedelta
 from urllib.parse import urlsplit
 
 from flask import Flask, abort, request, session
@@ -55,7 +56,9 @@ def init_security(app: Flask, config: Config) -> None:
         MAX_CONTENT_LENGTH=config.max_upload_bytes,
         SESSION_COOKIE_SAMESITE="Strict",
         SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SECURE=config.secure_cookies,
         SESSION_COOKIE_NAME="sigma_session",
+        PERMANENT_SESSION_LIFETIME=timedelta(hours=config.session_hours),  # sliding: renewed on every request
     )
     app.jinja_env.globals["csrf_token"] = csrf_token
 
@@ -78,6 +81,6 @@ def init_security(app: Flask, config: Config) -> None:
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "no-referrer")
-        if request.path.startswith("/api/"):
-            response.headers["Cache-Control"] = "no-store"
+        if not request.path.startswith("/static/"):
+            response.headers["Cache-Control"] = "no-store"  # nothing private may be served from a browser cache
         return response

@@ -33,7 +33,7 @@
         <div>
           <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ group.title }}</p>
           <ul class="space-y-0.5">
-            {% for item in group["items"] %}
+            {% for item in group["items"] if item.key != "consola" or (current_user and current_user.can_use_console) %}
             <li>
               <a href="{{ item.href }}" {% if active == item.key %}aria-current="page"{% endif %}
                  class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition
@@ -46,7 +46,21 @@
         </div>
         {% endfor %}
       </nav>
-      <div class="border-t border-slate-200 px-5 py-3 text-xs text-slate-400 dark:border-slate-800">Sigma v{{ sigma_version }} · uso local</div>
+      {% if current_user %}
+      <div class="space-y-1 border-t border-slate-200 p-3 dark:border-slate-800">
+        <div class="flex items-center gap-3 px-2 py-1.5">
+          <span class="grid size-8 shrink-0 place-items-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700 dark:bg-brand-900/50 dark:text-brand-200">{{ current_user.display_name[:1] | upper }}</span>
+          <span class="min-w-0"><span class="block truncate text-sm font-medium text-slate-900 dark:text-slate-100">{{ current_user.display_name }}</span>
+            <span class="block truncate text-xs text-slate-500">{{ 'Administrador' if current_user.is_admin else 'Usuario' }} · {{ current_user.username }}</span></span>
+        </div>
+        <a href="{{ url_for('pages.page_cuenta') }}" class="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">{{ icon("cuenta", "size-4") }} Mi cuenta</a>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('pages.page_usuarios') }}" class="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">{{ icon("usuarios", "size-4") }} Usuarios</a>
+        {% endif %}
+        <button type="button" class="flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" @click="logout()">{{ icon("logout", "size-4") }} Cerrar sesión</button>
+      </div>
+      {% endif %}
+      <div class="border-t border-slate-200 px-5 py-2 text-xs text-slate-400 dark:border-slate-800">Sigma v{{ sigma_version }}</div>
     </aside>
 
     {# ---------- main column ---------- #}

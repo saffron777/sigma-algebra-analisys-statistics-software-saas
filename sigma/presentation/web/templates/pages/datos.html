@@ -197,10 +197,13 @@
   <section class="card" aria-labelledby="saved-title">
     <div class="card-header">
       <h2 id="saved-title" class="card-title">Datasets guardados</h2>
-      <span class="text-xs text-slate-500" x-text="`${$store.datasets.list.length} dataset(s) en la base SQLite local`"></span>
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-slate-500" x-text="`${$store.datasets.list.length} dataset(s)`"></span>
+        <button type="button" class="btn btn-secondary btn-sm" @click="loadSamples()" :disabled="busy">Cargar datos de ejemplo</button>
+      </div>
     </div>
     <div class="card-body">
-      <p class="text-sm text-slate-500" x-show="$store.datasets.loaded && !$store.datasets.list.length" x-cloak>Todavía no hay datasets. Importe uno arriba, o pruebe con los archivos de la carpeta <code class="font-mono">sample_data</code>.</p>
+      <p class="text-sm text-slate-500" x-show="$store.datasets.loaded && !$store.datasets.list.length" x-cloak>Todavía no hay datasets. Importe uno arriba o pulse <strong>Cargar datos de ejemplo</strong> para probar Sigma.</p>
       <div class="table-wrap" x-show="$store.datasets.list.length" x-cloak>
         <table class="tbl">
           <thead><tr><th>Nombre</th><th>Origen</th><th class="text-right">Filas</th><th class="text-right">Columnas</th><th>Creado</th><th class="text-right">Acciones</th></tr></thead>

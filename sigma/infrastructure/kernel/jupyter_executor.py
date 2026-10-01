@@ -37,6 +37,7 @@ CULL_INTERVAL_SECONDS = 60
 class _Session:
     manager: KernelManager
     client: BlockingKernelClient
+    owner: str = ""
     lock: threading.Lock = field(default_factory=threading.Lock)
     last_used: float = field(default_factory=time.monotonic)
     busy: bool = False
@@ -44,11 +45,23 @@ class _Session:
 
 
 class JupyterKernelPool:
-    def __init__(self, project_root: Path, db_path: Path, work_dir: Path, idle_minutes: float = 30) -> None:
+    """Kernels keyed by session id; ``owner`` (the user id) scopes limits, the working folder and ``sigma.load``."""
+
+    def __init__(
+        self,
+        project_root: Path,
+        db_path: Path,
+        work_dir: Path,
+        idle_minutes: float = 30,
+        max_per_owner: int = 3,
+        max_total: int = 8,
+    ) -> None:
         self._project_root = Path(project_root)
         self._db_path = Path(db_path)
         self._work_dir = Path(work_dir)
         self._idle_seconds = idle_minutes * 60
+        self._max_per_owner = max_per_owner
+        self._max_total = max_total
         self._sessions: dict[str, _Session] = {}
         self._pool_lock = threading.Lock()
         self._culler: threading.Thread | None = None
@@ -56,11 +69,11 @@ class JupyterKernelPool:
         atexit.register(self.shutdown_all)
 
     # ------------------------------------------------------------------ public API
-    def start(self, session_id: str) -> None:
-        self._ensure(session_id)
+    def start(self, session_id: str, owner: str = "") -> None:
+        self._ensure(session_id, owner)
 
-    def execute(self, session_id: str, code: str, timeout_seconds: float) -> ExecutionResult:
-        session = self._ensure(session_id)
+    def execute(self, session_id: str, code: str, timeout_seconds: float, owner: str = "") -> ExecutionResult:
+        session = self._ensure(session_id, owner)
         with session.lock:  # one cell at a time per notebook
             session.busy = True
             session.last_used = time.monotonic()
@@ -81,14 +94,22 @@ class JupyterKernelPool:
         if session and session.manager.is_alive():
             session.manager.interrupt_kernel()
 
-    def restart(self, session_id: str) -> None:
+    def restart(self, session_id: str, owner: str = "") -> None:
         self.shutdown(session_id)
-        self._ensure(session_id)
+        self._ensure(session_id, owner)
 
     def shutdown(self, session_id: str) -> None:
         with self._pool_lock:
             session = self._sessions.pop(session_id, None)
         if session:
+            self._stop(session)
+
+    def shutdown_owner(self, owner: str) -> None:
+        """Stop every kernel that belongs to ``owner`` (used when the account is deleted)."""
+        with self._pool_lock:
+            ids = [sid for sid, s in self._sessions.items() if s.owner == owner]
+            sessions = [self._sessions.pop(sid) for sid in ids]
+        for session in sessions:
             self._stop(session)
 
     def shutdown_all(self) -> None:
@@ -105,35 +126,57 @@ class JupyterKernelPool:
         return KernelStatus(running=True, busy=session.busy, execution_count=session.execution_count)
 
     # ------------------------------------------------------------------ kernel lifecycle
-    def _ensure(self, session_id: str) -> _Session:
+    def _ensure(self, session_id: str, owner: str = "") -> _Session:
         with self._pool_lock:
             session = self._sessions.get(session_id)
             if session and session.manager.is_alive():
                 return session
             if session:
                 self._stop(session)
-            session = self._launch()
+                del self._sessions[session_id]
+            self._make_room(owner)
+            session = self._launch(owner)
             self._sessions[session_id] = session
             self._start_culler()
             return session
 
-    def _launch(self) -> _Session:
-        self._work_dir.mkdir(parents=True, exist_ok=True)
+    def _make_room(self, owner: str) -> None:
+        """Enforce the kernel limits (pool lock held): evict the owner's oldest idle kernel, or refuse."""
+        mine = [(sid, s) for sid, s in self._sessions.items() if s.owner == owner]
+        if len(mine) >= self._max_per_owner:
+            idle = [(sid, s) for sid, s in mine if not s.busy]
+            if not idle:
+                raise KernelError(
+                    f"Ya tiene {self._max_per_owner} kernels ejecutando código. Espere a que termine alguno."
+                )
+            sid, oldest = min(idle, key=lambda item: item[1].last_used)
+            del self._sessions[sid]
+            self._stop(oldest)  # its notebook gets a fresh kernel the next time it runs a cell
+        if len(self._sessions) >= self._max_total:
+            raise KernelError(
+                "El servidor alcanzó el máximo de kernels simultáneos. Inténtelo de nuevo en unos minutos."
+            )
+
+    def _launch(self, owner: str = "") -> _Session:
+        work_dir = self._work_dir / owner if owner else self._work_dir
+        work_dir.mkdir(parents=True, exist_ok=True)
         env = {
             **os.environ,
             "PYTHONPATH": os.pathsep.join(p for p in (str(self._project_root), os.environ.get("PYTHONPATH", "")) if p),
             "SIGMA_DB_PATH": str(self._db_path),
+            "SIGMA_USER_ID": owner,
             "PYTHONIOENCODING": "utf-8",
             "MPLBACKEND": "module://matplotlib_inline.backend_inline",
         }
+        env.pop("ANTHROPIC_API_KEY", None)  # code run in a kernel must never be able to read the server's AI key
         manager = KernelManager(kernel_name="python3")
         try:
-            manager.start_kernel(env=env, cwd=str(self._work_dir))
+            manager.start_kernel(env=env, cwd=str(work_dir))
         except Exception as error:  # noqa: BLE001 - jupyter_client raises many types when the kernel cannot spawn
             raise KernelError(f"No se pudo iniciar el kernel de Python: {error}") from error
         client = manager.client()
         client.start_channels()
-        session = _Session(manager, client)
+        session = _Session(manager, client, owner)
         try:
             client.wait_for_ready(timeout=STARTUP_TIMEOUT_SECONDS)
             self._bootstrap(session)

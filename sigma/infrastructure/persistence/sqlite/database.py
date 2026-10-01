@@ -1,4 +1,4 @@
-"""SQLite connection factory and schema migrations (versioned with ``PRAGMA user_version``)."""
+"""SQLite connection factory; the schema itself is versioned in ``migrations.py``."""
 
 from __future__ import annotations
 
@@ -7,39 +7,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-_MIGRATIONS: tuple[str, ...] = (
-    # v1: datasets metadata + saved analysis results (dataset rows live in per-dataset ds_<id> tables)
-    """
-    CREATE TABLE datasets (
-        id           TEXT PRIMARY KEY,
-        name         TEXT NOT NULL UNIQUE COLLATE NOCASE,
-        source_type  TEXT NOT NULL,
-        source_meta  TEXT NOT NULL DEFAULT '{}',
-        n_rows       INTEGER NOT NULL,
-        n_cols       INTEGER NOT NULL,
-        dtypes       TEXT NOT NULL,
-        columns_info TEXT NOT NULL,
-        created_at   TEXT NOT NULL
-    );
-    CREATE TABLE saved_results (
-        id            TEXT PRIMARY KEY,
-        module        TEXT NOT NULL,
-        analysis_type TEXT NOT NULL,
-        title         TEXT NOT NULL,
-        notes         TEXT NOT NULL DEFAULT '',
-        dataset_id    TEXT REFERENCES datasets(id) ON DELETE SET NULL,
-        dataset_name  TEXT,
-        params        TEXT NOT NULL,
-        result        TEXT NOT NULL,
-        report        TEXT NOT NULL,
-        figures       TEXT NOT NULL,
-        created_at    TEXT NOT NULL,
-        updated_at    TEXT NOT NULL
-    );
-    CREATE INDEX idx_saved_results_module  ON saved_results(module);
-    CREATE INDEX idx_saved_results_created ON saved_results(created_at DESC);
-    """,
-)
+from sigma.infrastructure.persistence.sqlite.migrations import MIGRATIONS
 
 
 class Database:
@@ -66,10 +34,25 @@ class Database:
             conn.close()
 
     def _migrate(self) -> None:
-        with self.connection() as conn:
+        """Apply pending migrations, each one atomically and with foreign keys off (needed to rebuild tables)."""
+        conn = sqlite3.connect(self.path, timeout=self._timeout)
+        try:
             conn.execute("PRAGMA journal_mode = WAL")
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-            for target, script in enumerate(_MIGRATIONS, start=1):
-                if target > version:
-                    conn.executescript(script)
-                    conn.execute(f"PRAGMA user_version = {target}")
+            if version >= len(MIGRATIONS):
+                return
+            conn.execute("PRAGMA foreign_keys = OFF")
+            for target, script in enumerate(MIGRATIONS, start=1):
+                if target <= version:
+                    continue
+                try:
+                    conn.executescript(f"BEGIN;\n{script}\nPRAGMA user_version = {target};\nCOMMIT;")
+                except sqlite3.Error:
+                    if conn.in_transaction:
+                        conn.execute("ROLLBACK")
+                    raise
+            violations = conn.execute("PRAGMA foreign_key_check").fetchall()
+            if violations:
+                raise sqlite3.IntegrityError(f"La migración dejó {len(violations)} referencias huérfanas.")
+        finally:
+            conn.close()

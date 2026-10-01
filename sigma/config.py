@@ -41,9 +41,14 @@ class Config:
     instance_dir: Path = PROJECT_ROOT / "instance"
     db_path: Path = PROJECT_ROOT / "instance" / "sigma.db"
     notebooks_dir: Path = PROJECT_ROOT / "instance" / "notebooks"
+    sample_dir: Path = PROJECT_ROOT / "sample_data"
     max_upload_bytes: int = 100 * 1024 * 1024
     cell_timeout_seconds: int = 60
     kernel_idle_minutes: int = 30
+    max_kernels_per_user: int = 3
+    max_kernels_total: int = 8
+    session_hours: float = 12.0
+    secure_cookies: bool = False
     allowed_hosts: tuple[str, ...] = ("127.0.0.1", "localhost", "[::1]", "::1")
     testing: bool = False
     debug: bool = False
@@ -61,6 +66,10 @@ class Config:
             "max_upload_bytes": int(os.environ.get("SIGMA_MAX_UPLOAD_MB", "100")) * 1024 * 1024,
             "cell_timeout_seconds": int(os.environ.get("SIGMA_CELL_TIMEOUT_SECONDS", "60")),
             "kernel_idle_minutes": int(os.environ.get("SIGMA_KERNEL_IDLE_MINUTES", "30")),
+            "max_kernels_per_user": int(os.environ.get("SIGMA_MAX_KERNELS_PER_USER", "3")),
+            "max_kernels_total": int(os.environ.get("SIGMA_MAX_KERNELS_TOTAL", "8")),
+            "session_hours": float(os.environ.get("SIGMA_SESSION_HOURS", "12")),
+            "secure_cookies": os.environ.get("SIGMA_SECURE_COOKIES", "").lower() in {"1", "true", "yes"},
             "debug": os.environ.get("SIGMA_DEBUG", "").lower() in {"1", "true", "yes"},
         }
         extra_hosts = tuple(h.strip() for h in os.environ.get("SIGMA_ALLOWED_HOSTS", "").split(",") if h.strip())

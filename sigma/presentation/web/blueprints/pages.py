@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from flask import Blueprint, jsonify, render_template
 
 from sigma import __version__
+from sigma.presentation.web.auth import require_admin, require_console
 
 bp = Blueprint("pages", __name__)
 
@@ -19,11 +22,20 @@ PAGES = {
     "mercados": ("/mercados", "Análisis de mercados", "pages/mercados.html"),
     "consola": ("/consola", "Consola Python", "pages/consola.html"),
     "resultados": ("/resultados", "Resultados guardados", "pages/resultados.html"),
+    "cuenta": ("/cuenta", "Mi cuenta", "pages/cuenta.html"),
+    "usuarios": ("/usuarios", "Usuarios", "pages/usuarios.html"),
 }
+
+# pages that need more than a valid session (the guard raises a PermissionDeniedError → 403 page)
+GUARDS: dict[str, Callable[[], None]] = {"consola": require_console, "usuarios": require_admin}
 
 
 def _register(key: str, path: str, title: str, template: str) -> None:
+    guard = GUARDS.get(key)
+
     def view():
+        if guard:
+            guard()
         return render_template(template, active=key, page_title=title)
 
     view.__name__ = f"page_{key}"
