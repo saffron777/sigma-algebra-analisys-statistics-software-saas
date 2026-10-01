@@ -10,11 +10,13 @@ from sigma.presentation.web.blueprints import (
     datasets_api,
     descriptive_api,
     distributions_api,
+    export_api,
     hypothesis_api,
     markets_api,
     pages,
     regression_api,
     results_api,
+    templates_api,
     users_api,
     workspace_api,
 )
@@ -34,6 +36,8 @@ ALL_BLUEPRINTS = (
     results_api.bp,
     console_api.bp,
     workspace_api.bp,
+    export_api.bp,
+    templates_api.bp,
 )
 
 

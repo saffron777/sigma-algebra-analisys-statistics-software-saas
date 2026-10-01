@@ -8,7 +8,9 @@ from typing import Any, Protocol
 import pandas as pd
 
 from sigma.domain.datasets import ColumnInfo, Dataset, DatasetInfo
+from sigma.domain.documents import ReportDocument
 from sigma.domain.notebooks import ExecutionResult, KernelStatus, NotebookDocument, NotebookSummary
+from sigma.domain.report_templates import ReportTemplate, TemplateFields
 from sigma.domain.saved_results import SavedResult, SavedResultSummary
 from sigma.domain.users import User
 from sigma.domain.workspace import UNSET, WorkspaceEntry
@@ -264,3 +266,39 @@ class ResultRepository(Protocol):
     def update(self, result_id: str, title: str | None, notes: str | None) -> SavedResult: ...
 
     def delete(self, result_id: str) -> None: ...
+
+
+class TemplateRepository(Protocol):
+    def add(self, fields: TemplateFields, make_default: bool = False) -> ReportTemplate: ...
+
+    def update(self, template_id: str, fields: TemplateFields) -> ReportTemplate: ...
+
+    def get(self, template_id: str) -> ReportTemplate: ...
+
+    def get_default(self) -> ReportTemplate | None: ...
+
+    def list(self) -> list[ReportTemplate]: ...
+
+    def delete(self, template_id: str) -> None: ...
+
+    def set_default(self, template_id: str, default: bool) -> ReportTemplate: ...
+
+    def get_logo(self, template_id: str) -> bytes | None: ...
+
+    def set_logo(self, template_id: str, logo: bytes | None) -> ReportTemplate: ...
+
+
+class ImageProcessor(Protocol):
+    def normalize_logo(self, data: bytes) -> bytes: ...
+
+    def validate_chart(self, data: bytes) -> bytes: ...
+
+
+class DocumentExporter(Protocol):
+    """Renders a ``ReportDocument`` in one file format."""
+
+    format: str
+    content_type: str
+    extension: str
+
+    def export(self, document: ReportDocument) -> bytes: ...

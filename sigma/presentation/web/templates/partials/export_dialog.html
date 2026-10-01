@@ -1,0 +1,75 @@
+{# Global "export report" dialog, driven by Alpine.store('export') #}
+{% from "partials/macros.html" import icon %}
+<div x-data x-show="$store.export.open" x-cloak class="fixed inset-0 z-50 grid place-items-center p-4 print:hidden" role="dialog" aria-modal="true" aria-labelledby="export-title"
+     @keydown.escape.window="$store.export.close()">
+  <div class="absolute inset-0 bg-slate-900/60" @click="$store.export.close()"></div>
+  <form class="card relative max-h-[92vh] w-full max-w-xl overflow-y-auto shadow-xl" @submit.prevent="$store.export.submit()">
+    <div class="card-header"><h2 id="export-title" class="card-title" x-text="$store.export.heading"></h2></div>
+    <div class="card-body space-y-4">
+      <fieldset>
+        <legend class="label">Formato</legend>
+        <div class="grid grid-cols-3 gap-2">
+          <template x-for="f in $store.export.formats" :key="f.key">
+            <label class="cursor-pointer rounded-lg border px-3 py-2 text-center text-sm transition"
+                   :class="$store.export.format === f.key ? 'border-brand-500 bg-brand-50 text-brand-800 dark:border-brand-400 dark:bg-brand-950/50 dark:text-brand-100' : 'border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'">
+              <input type="radio" class="sr-only" name="export-format" :value="f.key" x-model="$store.export.format">
+              <span class="block font-semibold" x-text="f.label"></span>
+              <span class="block text-xs text-slate-500 dark:text-slate-400" x-text="f.hint"></span>
+            </label>
+          </template>
+        </div>
+      </fieldset>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="sm:col-span-2"><label class="label" for="export-doc-title">Título del informe</label>
+          <input id="export-doc-title" class="input" type="text" maxlength="200" x-model="$store.export.title"></div>
+        <div><label class="label" for="export-subtitle">Subtítulo (opcional)</label>
+          <input id="export-subtitle" class="input" type="text" maxlength="300" x-model="$store.export.subtitle"></div>
+        <div><label class="label" for="export-author">Autor</label>
+          <input id="export-author" class="input" type="text" maxlength="120" placeholder="Su nombre" x-model="$store.export.author"></div>
+        <div class="sm:col-span-2"><label class="label" for="export-template">Plantilla</label>
+          <select id="export-template" class="input" x-model="$store.export.templateId">
+            <option value="" x-text="$store.export.defaultTemplateName ? `Predeterminada (${$store.export.defaultTemplateName})` : 'Sin plantilla (aspecto de Sigma)'"></option>
+            <template x-for="t in $store.export.templates" :key="t.id"><option :value="t.id" x-text="t.name"></option></template>
+          </select>
+          <p class="hint">Logotipo, colores y pie de página. <a class="font-medium text-brand-600 underline dark:text-brand-300" href="{{ url_for('pages.page_plantillas') }}">Gestionar plantillas</a></p></div>
+      </div>
+
+      <details class="rounded-lg border border-slate-200 dark:border-slate-800">
+        <summary class="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300">Opciones de la página</summary>
+        <div class="grid gap-3 border-t border-slate-200 p-4 sm:grid-cols-2 dark:border-slate-800">
+          <div><label class="label" for="export-cover">Portada</label>
+            <select id="export-cover" class="input" x-model="$store.export.cover"><option value="">Según la plantilla</option><option value="1">Sí</option><option value="0">No</option></select></div>
+          <div><label class="label" for="export-toc">Índice</label>
+            <select id="export-toc" class="input" x-model="$store.export.toc"><option value="">Según la plantilla</option><option value="1">Sí</option><option value="0">No</option></select></div>
+          <div><label class="label" for="export-size">Tamaño de página</label>
+            <select id="export-size" class="input" x-model="$store.export.pageSize"><option value="">Según la plantilla</option><option value="A4">A4</option><option value="Letter">Carta</option><option value="Legal">Legal</option></select></div>
+          <div><label class="label" for="export-orientation">Orientación</label>
+            <select id="export-orientation" class="input" x-model="$store.export.orientation"><option value="">Según la plantilla</option><option value="portrait">Vertical</option><option value="landscape">Horizontal</option></select></div>
+        </div>
+      </details>
+
+      <fieldset x-show="$store.export.kind === 'notebook'" x-cloak>
+        <legend class="label">Contenido del notebook</legend>
+        <div class="grid gap-1 sm:grid-cols-2">
+          <label class="check-row"><input type="checkbox" class="check" x-model="$store.export.content.text"> Celdas de texto</label>
+          <label class="check-row"><input type="checkbox" class="check" x-model="$store.export.content.code"> Código</label>
+          <label class="check-row"><input type="checkbox" class="check" x-model="$store.export.content.outputs"> Salidas y gráficos</label>
+          <label class="check-row"><input type="checkbox" class="check" x-model="$store.export.content.numbers"> Numerar las celdas</label>
+        </div>
+      </fieldset>
+
+      <p class="text-xs text-slate-500 dark:text-slate-400" x-show="$store.export.format === 'xlsx' && $store.export.kind === 'dataset'" x-cloak>
+        El archivo de Excel incluye todas las filas del dataset en una hoja aparte.
+      </p>
+      <p class="alert alert-danger" role="alert" x-show="$store.export.error" x-cloak x-text="$store.export.error"></p>
+      <p class="text-sm text-slate-600 dark:text-slate-300" x-show="$store.export.busy" x-cloak role="status" x-text="$store.export.progress || 'Procesando…'"></p>
+    </div>
+    <div class="flex justify-end gap-2 border-t border-slate-200 px-5 py-3 dark:border-slate-800">
+      <button type="button" class="btn btn-ghost" @click="$store.export.close()" :disabled="$store.export.busy">Cancelar</button>
+      <button type="submit" class="btn btn-primary" :disabled="$store.export.busy || !$store.export.title.trim()">
+        {{ icon("download", "size-4") }} <span x-text="$store.export.busy ? 'Exportando…' : 'Exportar'"></span>
+      </button>
+    </div>
+  </form>
+</div>

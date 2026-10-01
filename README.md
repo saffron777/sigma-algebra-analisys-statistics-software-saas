@@ -99,6 +99,27 @@ Variables de entorno (opcionales, también en un archivo `.env`, ver `.env.examp
   *Cargar la versión nueva* o *Mantener la mía*. En la consola, guardar un notebook que otra ventana modificó
   responde con un conflicto (`409`): *Cargar la versión nueva* o *Sobrescribir con la mía*.
 
+## Informes: exportar e imprimir
+
+- **Exportar** (PDF, Word o Excel) desde todos los módulos con el botón del resultado: título, autor (se recuerda),
+  plantilla, portada, índice, tamaño y orientación de página. Los gráficos se dibujan en el navegador sobre fondo blanco
+  y viajan al servidor como PNG; el servidor compone el archivo (reportlab, python-docx, openpyxl). El PDF lleva
+  marcadores, cabecera y pie y «Página n de N»; Word, un campo de índice (se actualiza al abrirlo); Excel, una hoja por
+  tabla (números como números), «Informe» y «Gráficos».
+- **Informe combinado**: en *Resultados guardados* marque varios resultados y pulse *Exportar informe*: un único
+  documento con portada, índice y una sección por resultado (con sus notas, dataset y fecha).
+- **Datos**: *Ficha* exporta el resumen del dataset (columnas, estadísticos, frecuencias, primeras filas); en Excel
+  incluye además **todas las filas**. **Consola**: *Exportar informe* convierte el notebook (texto, código, salidas,
+  tablas y gráficos) y permite elegir qué incluir.
+- **Plantillas** (menú *Plantillas de informe*, privadas por cuenta): organización, logotipo PNG/JPG (≤ 2 MB, se
+  reescala y se guarda como PNG; no se admite SVG), colores, texto de pie y de portada, tamaño y orientación, portada e
+  índice. Una puede ser la predeterminada.
+- **Imprimir**: cada resultado, la vista de datos y *Resultados guardados* tienen su botón *Imprimir* (gráficos en blanco
+  y sin barra lateral ni controles). El notebook tiene un diálogo propio: tamaño y orientación de página, márgenes, qué
+  incluir, salto de página antes de los encabezados `#` / `##` o de las celdas marcadas con el botón ⤒, no partir las
+  celdas cortas, cabecera con el título y pie con «Página X de Y» (los números de página requieren Chrome/Edge 131+; el
+  PDF exportado los incluye en cualquier navegador).
+
 ## Importaciones pendientes
 
 El archivo que sube en **Datos** (y, una vez generada, su vista previa) se **conserva en el servidor**: puede cambiar de
@@ -180,7 +201,7 @@ tests/              unit/ (dominio, infraestructura) e integration/ (API, págin
 ## Desarrollo
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest              # 377 pruebas (la consola arranca kernels reales: ~1 min)
+.\.venv\Scripts\python.exe -m pytest              # 449 pruebas (la consola arranca kernels reales: ~1 min)
 .\.venv\Scripts\python.exe -m ruff check .        # lint
 .\.venv\Scripts\python.exe -m ruff format .       # formato
 npm run watch:css                                 # recompila Tailwind al editar plantillas/JS

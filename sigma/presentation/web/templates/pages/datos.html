@@ -233,6 +233,7 @@
                 <td class="text-slate-500" x-text="formatDate(d.created_at)"></td>
                 <td class="text-right"><div class="flex justify-end gap-1">
                   <button type="button" class="btn btn-ghost btn-sm" @click="view(d)">Ver</button>
+                  <button type="button" class="btn btn-ghost btn-sm" @click="exportFicha(d)" title="Ficha del dataset en PDF, Word o Excel">Ficha</button>
                   <button type="button" class="btn btn-ghost btn-sm" @click="rename(d)">Renombrar</button>
                   <button type="button" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400" @click="remove(d)" :aria-label="`Eliminar ${d.name}`">{{ icon("trash", "size-4") }}</button>
                 </div></td>
@@ -252,6 +253,8 @@
         <span x-text="`filas ${viewer.offset + 1}–${Math.min(viewer.offset + 50, viewer.total)} de ${viewer.total.toLocaleString('es')}`"></span>
         <button type="button" class="btn btn-secondary btn-sm" @click="page(-1)" :disabled="viewer.offset === 0 || viewer.busy">Anterior</button>
         <button type="button" class="btn btn-secondary btn-sm" @click="page(1)" :disabled="viewer.offset + 50 >= viewer.total || viewer.busy">Siguiente</button>
+        <button type="button" class="btn btn-secondary btn-sm print:hidden" @click="exportFicha()">{{ icon("download", "size-4") }} Exportar ficha</button>
+        <button type="button" class="btn btn-secondary btn-sm print:hidden" @click="printViewer()">{{ icon("print", "size-4") }} Imprimir</button>
         <button type="button" class="btn btn-ghost btn-sm" @click="closeViewer()" aria-label="Cerrar">{{ icon("close", "size-4") }}</button>
       </div>
     </div>

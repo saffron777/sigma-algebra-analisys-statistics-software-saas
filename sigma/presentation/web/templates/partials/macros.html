@@ -12,6 +12,8 @@
   "mercados": "M12 3v9h9a9 9 0 1 1-9-9zM15 3.5A9 9 0 0 1 20.5 9H15z",
   "consola": "M4 5h16v14H4zM8 10l3 2-3 2M13 15h4",
   "resultados": "M5 4h14v17l-7-4-7 4z",
+  "plantillas": "M4 4h16v16H4zM4 9h16M9 9v11",
+  "print": "M7 8V3h10v5M7 17H4v-6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6h-3M7 14h10v7H7z",
   "cuenta": "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 3.6-7 8-7s8 3 8 7",
   "usuarios": "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.3 3-6 7-6s7 2.7 7 6M16 4.3a3.5 3.5 0 0 1 0 6.4M18 14c2.4.6 4 2.5 4 5",
   "logout": "M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10",
@@ -116,8 +118,10 @@
       <h2 class="text-lg font-semibold leading-snug text-slate-900 dark:text-slate-50" x-text="payload?.report.title"></h2>
       <p class="text-sm text-slate-500 dark:text-slate-400" x-text="payload?.report.subtitle"></p>
     </div>
-    <div class="flex gap-2">
+    <div class="flex flex-wrap gap-2 print:hidden">
       <button type="button" class="btn btn-secondary btn-sm" @click="openSave()">{{ icon("save", "size-4") }} Guardar resultado</button>
+      <button type="button" class="btn btn-secondary btn-sm" @click="openExport()" title="Descargar como PDF, Word o Excel">{{ icon("download", "size-4") }} Exportar</button>
+      <button type="button" class="btn btn-secondary btn-sm" @click="printResult()" title="Imprimir este resultado">{{ icon("print", "size-4") }} Imprimir</button>
       <a class="btn btn-ghost btn-sm" href="{{ url_for('pages.page_resultados') }}" x-show="savedId" x-cloak>Ver guardados</a>
     </div>
   </div>

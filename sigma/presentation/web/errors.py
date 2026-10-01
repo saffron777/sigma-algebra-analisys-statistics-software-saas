@@ -22,6 +22,7 @@ from sigma.domain.errors import (
     ResultNotFoundError,
     SetupRequiredError,
     SigmaError,
+    TemplateNotFoundError,
     UserNotFoundError,
 )
 
@@ -34,6 +35,7 @@ _STATUS = {
     DatasetNotFoundError: 404,
     ResultNotFoundError: 404,
     NotebookNotFoundError: 404,
+    TemplateNotFoundError: 404,
     UserNotFoundError: 404,
     KernelError: 503,
     AuthenticationError: 401,

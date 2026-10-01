@@ -1,6 +1,7 @@
 // Data page: import from CSV / Excel / text / SQL Server / JSON API, review, save, and manage datasets.
 
 import { api } from "../api.js";
+import { printPage } from "../export.js";
 import { workspace } from "../workspace.js";
 
 const KIND_LABELS = { numeric: "numérica", categorical: "categórica", boolean: "lógica", datetime: "fecha", text: "texto" };
@@ -299,6 +300,15 @@ document.addEventListener("alpine:init", () => {
     },
 
     closeViewer() { this.viewer.dataset = null; },
+
+    printViewer() { printPage(); },
+
+    /** «Exportar ficha»: summary, columns, statistics and first rows (Excel also gets every row). */
+    exportFicha(dataset = this.viewer.dataset) {
+      Alpine.store("export").show({
+        title: `Dataset ${dataset.name}`, heading: "Exportar la ficha del dataset", dataset: dataset.id,
+      });
+    },
 
     async applyTypes() {
       const kinds = Object.fromEntries(Object.entries(this.viewer.kinds).filter(([, kind]) => kind));

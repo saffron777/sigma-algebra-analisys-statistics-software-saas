@@ -50,11 +50,78 @@ export function renderFigure(element, figure) {
   });
 }
 
-/** Re-apply the theme to every figure on the page (called when the theme toggles). */
+/** Re-apply the theme to every figure on the page (called when the theme toggles); resolves once all are drawn. */
 export function rethemeAll() {
+  const drawing = [];
   document.querySelectorAll("[data-plot]").forEach((element) => {
-    if (element._figure) renderFigure(element, element._figure);
+    if (element._figure) drawing.push(Plotly.react(element, plain(element._figure.data ?? []), themed(element._figure.layout), CONFIG));
   });
+  return Promise.all(drawing).catch(() => {});
+}
+
+const dataUrlToBlob = (url) => {
+  const [head, data] = url.split(",");
+  const bytes = Uint8Array.from(atob(data), (char) => char.charCodeAt(0));
+  return new Blob([bytes], { type: /data:([^;]+)/.exec(head)?.[1] ?? "image/png" });
+};
+
+/**
+ * Draw a figure off-screen with the LIGHT theme (reports are printed on white) and return it as a PNG Blob.
+ * Independent of the on-screen theme and of whether the figure is currently visible.
+ */
+export async function figureToPng(figure, { width = 980, scale = 2 } = {}) {
+  const height = Math.round(Math.min(Math.max(figure.layout?.height ?? 460, 260), 900));
+  const holder = document.createElement("div");
+  holder.style.cssText = `position:fixed;left:-20000px;top:0;width:${width}px;height:${height}px`;
+  document.body.appendChild(holder);
+  try {
+    const colors = palette(false);
+    const layout = {
+      ...plain(figure.layout ?? {}), autosize: false, width, height,
+      paper_bgcolor: "#ffffff", plot_bgcolor: "#ffffff", font: { ...(figure.layout?.font ?? {}), color: colors.text },
+    };
+    await Plotly.newPlot(holder, plain(figure.data ?? []), layout, { staticPlot: true, displayModeBar: false });
+    const url = await Plotly.toImage(holder, { format: "png", width, height, scale });
+    return dataUrlToBlob(url);
+  } finally {
+    Plotly.purge(holder);
+    holder.remove();
+  }
+}
+
+/**
+ * Before printing: draw every visible figure as a static image on white (browsers print live SVG charts at the
+ * screen width and in the dark theme). Returns a function that undoes it.
+ */
+export async function freezeFiguresForPrint() {
+  const dark = isDark();
+  if (dark) {
+    document.documentElement.classList.remove("dark");
+    await rethemeAll();
+  }
+  const images = [];
+  for (const element of document.querySelectorAll("[data-plot]")) {
+    if (!element.isConnected || element.offsetParent === null) continue;
+    try {
+      const width = Math.round(element.clientWidth) || 800;
+      const height = Math.round(element.clientHeight) || 420;
+      const url = await Plotly.toImage(element, { format: "png", width, height, scale: 2 });
+      const image = Object.assign(document.createElement("img"), { src: url, alt: "Gráfico", className: "print-figure" });
+      element.after(image);
+      element.dataset.plotFrozen = "1";
+      images.push([element, image]);
+    } catch { /* a figure that cannot be frozen prints as it is */ }
+  }
+  return async () => {
+    for (const [element, image] of images) {
+      image.remove();
+      delete element.dataset.plotFrozen;
+    }
+    if (dark) {
+      document.documentElement.classList.add("dark");
+      await rethemeAll();
+    }
+  };
 }
 
 export function purgeFigures(container) {

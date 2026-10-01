@@ -58,6 +58,8 @@
         {{ tool_button("Reiniciar kernel", "restartKernel()", "refresh") }}
         {{ tool_button("Limpiar salidas", "clearOutputs()", "trash") }}
         {{ tool_button("Guardar", "save()", "save", "", "!dirty || saving") }}
+        {{ tool_button("Exportar informe", "exportReport()", "download") }}
+        {{ tool_button("Imprimir…", "openPrint()", "print") }}
         <span class="ml-auto flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
           <span class="flex items-center gap-1.5" role="status">
             <span class="size-2 rounded-full" :class="kernel.starting ? 'animate-pulse bg-amber-500' : (kernel.running ? (kernel.busy ? 'bg-amber-500' : 'bg-emerald-500') : 'bg-slate-400')"></span>
@@ -100,6 +102,8 @@
 
       <template x-for="(cell, i) in current.cells" :key="cell.id">
         <article class="cell group" :class="cell.running && 'cell-active'">
+          <p class="border-b border-dashed border-amber-400 bg-amber-50 px-3 py-0.5 text-center text-[11px] font-medium text-amber-800 dark:border-amber-600 dark:bg-amber-950/40 dark:text-amber-200"
+             x-show="hasPageBreak(cell)" x-cloak>— salto de página antes de esta celda —</p>
           <div class="flex items-start gap-1 p-1 sm:gap-2">
             <div class="w-12 shrink-0 select-none pt-3 text-right font-mono text-xs text-slate-400 sm:w-14">
               <span x-show="cell.cell_type === 'code'" x-text="cell.running ? '[*]' : `[${cell.execution_count ?? ' '}]`"></span>
@@ -129,6 +133,8 @@
               <button type="button" class="btn btn-ghost btn-sm !p-1.5" @click="moveCell(cell, -1)" :disabled="i === 0" aria-label="Subir celda" title="Subir"><span aria-hidden="true">↑</span></button>
               <button type="button" class="btn btn-ghost btn-sm !p-1.5" @click="moveCell(cell, 1)" :disabled="i === current.cells.length - 1" aria-label="Bajar celda" title="Bajar"><span aria-hidden="true">↓</span></button>
               <button type="button" class="btn btn-ghost btn-sm !p-1.5 text-xs font-semibold" @click="toggleType(cell)" :title="cell.cell_type === 'code' ? 'Convertir en texto' : 'Convertir en código'" aria-label="Cambiar tipo de celda"><span x-text="cell.cell_type === 'code' ? 'T' : '</>'"></span></button>
+              <button type="button" class="btn btn-ghost btn-sm !p-1.5 text-xs" :class="hasPageBreak(cell) && 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200'" @click="togglePageBreak(cell)" :aria-pressed="hasPageBreak(cell)"
+                      aria-label="Salto de página antes de esta celda" title="Salto de página antes (al imprimir y en el PDF/Word)"><span aria-hidden="true">⤒</span></button>
               <button type="button" class="btn btn-ghost btn-sm !p-1.5 text-red-600 dark:text-red-400" @click="deleteCell(cell)" aria-label="Eliminar celda" title="Eliminar">{{ icon("trash", "size-4") }}</button>
             </div>
           </div>
@@ -145,5 +151,61 @@
       </div>
     </section>
   </template>
+
+  {# ---------------------------------------------------------------- print dialog #}
+  <div x-show="printOpen" x-cloak class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-labelledby="nb-print-title"
+       @keydown.escape.window="printOpen = false">
+    <div class="absolute inset-0 bg-slate-900/60" @click="printOpen = false"></div>
+    <form class="card relative max-h-[92vh] w-full max-w-xl overflow-y-auto shadow-xl" @submit.prevent="doPrint()">
+      <div class="card-header"><h2 id="nb-print-title" class="card-title">Imprimir el notebook</h2></div>
+      <div class="card-body space-y-4">
+        <div class="grid gap-4 sm:grid-cols-3">
+          <div><label class="label" for="pr-size">Tamaño de página</label>
+            <select id="pr-size" class="input" x-model="printOptions.pageSize"><option value="A4">A4</option><option value="Letter">Carta</option><option value="Legal">Legal</option></select></div>
+          <div><label class="label" for="pr-orientation">Orientación</label>
+            <select id="pr-orientation" class="input" x-model="printOptions.orientation"><option value="portrait">Vertical</option><option value="landscape">Horizontal</option></select></div>
+          <div><label class="label" for="pr-margin">Márgenes (mm)</label>
+            <input id="pr-margin" class="input" type="number" min="5" max="40" x-model.number="printOptions.margin"></div>
+        </div>
+        <fieldset>
+          <legend class="label">Contenido</legend>
+          <div class="grid gap-1 sm:grid-cols-2">
+            <label class="check-row"><input type="checkbox" class="check" x-model="printOptions.text"> Celdas de texto</label>
+            <label class="check-row"><input type="checkbox" class="check" x-model="printOptions.code"> Código</label>
+            <label class="check-row"><input type="checkbox" class="check" x-model="printOptions.outputs"> Salidas y gráficos</label>
+            <label class="check-row"><input type="checkbox" class="check" x-model="printOptions.numbers"> Numerar las celdas de código</label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend class="label">Saltos de página</legend>
+          <div class="grid gap-1">
+            <label class="check-row"><input type="checkbox" class="check" x-model="printOptions.breakH1"> Antes de cada encabezado de nivel 1 (<code class="font-mono">#</code>)</label>
+            <label class="check-row"><input type="checkbox" class="check" x-model="printOptions.breakH2"> Antes de cada encabezado de nivel 2 (<code class="font-mono">##</code>)</label>
+            <label class="check-row"><input type="checkbox" class="check" x-model="printOptions.keepCells"> No partir las celdas cortas entre dos páginas</label>
+          </div>
+          <p class="hint">Use el botón <span aria-hidden="true">⤒</span> de una celda para forzar un salto antes de ella.</p>
+        </fieldset>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div><label class="label" for="pr-template">Plantilla (logotipo y organización)</label>
+            <select id="pr-template" class="input" x-model="printOptions.templateId">
+              <option value="">Predeterminada</option>
+              <template x-for="t in templates" :key="t.id"><option :value="t.id" x-text="t.name"></option></template>
+            </select></div>
+          <div><label class="label" for="pr-footer">Texto de pie (opcional)</label>
+            <input id="pr-footer" class="input" type="text" maxlength="120" x-model="printOptions.footerText"></div>
+          <label class="check-row"><input type="checkbox" class="check" x-model="printOptions.header"> Cabecera con el título</label>
+          <label class="check-row"><input type="checkbox" class="check" x-model="printOptions.footer"> Pie con «Página X de Y»</label>
+        </div>
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+          En el diálogo de impresión desactive «Encabezados y pies de página» del navegador para no duplicarlos. Los números de página requieren Chrome o
+          Edge recientes; el PDF de <strong>Exportar informe</strong> los incluye en cualquier navegador.
+        </p>
+      </div>
+      <div class="flex justify-end gap-2 border-t border-slate-200 px-5 py-3 dark:border-slate-800">
+        <button type="button" class="btn btn-ghost" @click="printOpen = false">Cancelar</button>
+        <button type="submit" class="btn btn-primary">{{ icon("print", "size-4") }} Imprimir</button>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}

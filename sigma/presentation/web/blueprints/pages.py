@@ -22,6 +22,7 @@ PAGES = {
     "mercados": ("/mercados", "Análisis de mercados", "pages/mercados.html"),
     "consola": ("/consola", "Consola Python", "pages/consola.html"),
     "resultados": ("/resultados", "Resultados guardados", "pages/resultados.html"),
+    "plantillas": ("/plantillas", "Plantillas de informe", "pages/plantillas.html"),
     "cuenta": ("/cuenta", "Mi cuenta", "pages/cuenta.html"),
     "usuarios": ("/usuarios", "Usuarios", "pages/usuarios.html"),
 }

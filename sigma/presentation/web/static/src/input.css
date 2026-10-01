@@ -123,3 +123,47 @@
   .code-input { @apply block w-full resize-none rounded-md bg-slate-50 p-3 font-mono text-[13px] leading-relaxed text-slate-900 outline-none dark:bg-slate-950 dark:text-slate-100; }
   .cell-output { @apply overflow-x-auto px-3 py-2 font-mono text-[13px] leading-relaxed whitespace-pre-wrap; }
 }
+
+/* ======================================================================== printing */
+.print-figure { display: none; }
+.nb-print { display: none; }
+
+@media print {
+  html, body { background: #fff !important; color: #0f172a !important; }
+  /* application chrome and controls never print */
+  aside, header.sticky, [role="dialog"], form, .btn, .tab-bar, .toast-host, .print\:hidden { display: none !important; }
+  main { max-width: none !important; padding: 0 !important; }
+  .card { box-shadow: none !important; border-color: #cbd5e1 !important; background: #fff !important; }
+  .table-wrap { max-height: none !important; overflow: visible !important; }
+  .tbl thead { display: table-header-group; }
+  .tbl tr, .tile, .alert, figure.plot-card, .print-figure { break-inside: avoid; page-break-inside: avoid; }
+  h1, h2, h3, h4 { break-after: avoid; }
+  /* charts are printed as the images drawn by «Imprimir» (white background, readable text) */
+  [data-plot-frozen] { display: none !important; }
+  .print-figure { display: block; max-width: 100%; margin: 0 auto; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* ---------- notebook printout (see notebook-print.js) ---------- */
+  .nb-print { font: 10pt/1.45 "Segoe UI", Arial, sans-serif; color: #0f172a; }
+  .nb-print-head { margin-bottom: 8mm; padding-bottom: 3mm; border-bottom: 1.5pt solid #4f46e5; }
+  .nb-print-logo { max-height: 14mm; max-width: 45mm; margin-bottom: 3mm; }
+  .nb-print-title { font-size: 20pt; font-weight: 700; color: #4f46e5; margin: 0; }
+  .nb-print-meta { margin: 1mm 0 0; font-size: 9pt; color: #64748b; }
+  .nb-cell { margin: 0 0 4mm; }
+  .nb-keep { break-inside: avoid; page-break-inside: avoid; }
+  .nb-break { break-before: page; page-break-before: always; }
+  .nb-print .nb-break:first-child { break-before: auto; page-break-before: auto; }
+  .nb-label { font: 8pt Consolas, monospace; color: #64748b; margin-bottom: 1mm; }
+  .nb-code { margin: 0; padding: 2.5mm 3mm; background: #f1f5f9 !important; border-radius: 1.5mm; font: 8.5pt/1.4 Consolas, "Courier New", monospace; white-space: pre-wrap; word-break: break-word; }
+  .nb-out { margin-top: 1.5mm; padding-left: 3mm; border-left: 1.2pt solid #cbd5e1; }
+  .nb-out pre, .nb-out .cell-output { font: 8.5pt/1.4 Consolas, "Courier New", monospace; white-space: pre-wrap; word-break: break-word; margin: 0; }
+  .nb-out img, .nb-md img { max-width: 100%; height: auto; break-inside: avoid; }
+  .nb-print table { border-collapse: collapse; font-size: 8.5pt; max-width: 100%; display: table; }
+  .nb-print th, .nb-print td { border: 0.5pt solid #cbd5e1; padding: 0.8mm 1.6mm; text-align: right; }
+  .nb-print th { background: #f1f5f9 !important; font-weight: 600; }
+  .nb-print tr { break-inside: avoid; }
+  .nb-print h1 { font-size: 16pt; margin: 4mm 0 2mm; } .nb-print h2 { font-size: 13pt; margin: 3mm 0 2mm; } .nb-print h3 { font-size: 11pt; margin: 3mm 0 1mm; }
+  .nb-print p { margin: 1.5mm 0; } .nb-print ul { list-style: disc; padding-left: 6mm; } .nb-print ol { list-style: decimal; padding-left: 6mm; }
+  .nb-print code { font-family: Consolas, "Courier New", monospace; background: #f1f5f9; padding: 0 1mm; border-radius: 1mm; }
+  .nb-print a { color: #4f46e5; text-decoration: none; }
+}

@@ -6,9 +6,15 @@ import re
 
 from flask import Blueprint, Response, jsonify, request
 
+from sigma.application.use_cases.exports import NotebookReportOptions
 from sigma.domain.errors import InvalidInputError
 from sigma.presentation.web.auth import require_console
-from sigma.presentation.web.blueprints._helpers import container, parse_body
+from sigma.presentation.web.blueprints._helpers import (
+    container,
+    export_options_from_query,
+    file_response,
+    parse_body,
+)
 from sigma.presentation.web.schemas.notebooks import (
     CreateNotebookRequest,
     ExecuteRequest,
@@ -109,3 +115,23 @@ def kernel_restart(notebook_id: str):
 def _stamp(document) -> dict:
     """What the editor needs after a save: the new revision to send with the next one."""
     return {"id": document.id, "name": document.name, "updated_at": document.updated_at, "revision": document.revision}
+
+
+def _flag(name: str, default: bool) -> bool:
+    value = request.args.get(name)
+    return default if value is None else value.lower() in {"1", "true", "yes", "on"}
+
+
+@bp.get("/<notebook_id>/report/<fmt>")
+def notebook_report(notebook_id: str, fmt: str):
+    """The notebook as a report (PDF, Word or Excel); ``text``/``code``/``outputs`` choose what to include."""
+    content = NotebookReportOptions(
+        include_text=_flag("text", True),
+        include_code=_flag("code", True),
+        include_outputs=_flag("outputs", True),
+        number_cells=_flag("numbers", False),
+        break_before_h1=_flag("break_h1", False),
+        break_before_h2=_flag("break_h2", False),
+    )
+    exported = container().export_notebook_report.execute(notebook_id, fmt, export_options_from_query(), content)
+    return file_response(exported)

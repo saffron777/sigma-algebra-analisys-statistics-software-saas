@@ -66,3 +66,56 @@ export function downloadUrl(url) {
   link.click();
   link.remove();
 }
+
+/** The file name a download response suggests (RFC 5987 ``filename*`` first, then ``filename``). */
+function filenameOf(response, fallback) {
+  const header = response.headers.get("Content-Disposition") ?? "";
+  const star = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (star) {
+    try { return decodeURIComponent(star[1]); } catch { /* fall through */ }
+  }
+  return /filename="?([^";]+)"?/i.exec(header)?.[1] ?? fallback;
+}
+
+/**
+ * Fetch a file (report) and return `{blob, filename}`; error payloads become ApiError like in `api()`.
+ * @param {string} url
+ * @param {{method?: string, json?: unknown, form?: FormData, signal?: AbortSignal}} [options]
+ */
+export async function fetchFile(url, { method = "GET", json, form, signal } = {}) {
+  const headers = { "X-CSRF-Token": csrfToken() };
+  let body;
+  if (json !== undefined) {
+    headers["Content-Type"] = "application/json";
+    body = JSON.stringify(json);
+  } else if (form) {
+    body = form;
+  }
+  let response;
+  try {
+    response = await fetch(url, { method, headers, body, signal, credentials: "same-origin" });
+  } catch (error) {
+    if (error.name === "AbortError") throw error;
+    throw new ApiError("No se pudo conectar con el servidor de Sigma. ¿Sigue en ejecución?");
+  }
+  if (response.status === 401) location.assign(`/login?next=${encodeURIComponent(location.pathname + location.search)}`);
+  if (!response.ok) {
+    let info = null;
+    try { info = (await response.json())?.error; } catch { /* not JSON */ }
+    throw new ApiError(info?.message ?? `Error ${response.status} del servidor.`, { status: response.status, code: info?.code });
+  }
+  return { blob: await response.blob(), filename: filenameOf(response, "informe") };
+}
+
+/** Hand a Blob to the browser as a download. */
+export function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}

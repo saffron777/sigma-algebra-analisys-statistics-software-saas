@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Any, TypeVar
 
-from flask import current_app, g, jsonify, request
+from flask import Response, current_app, g, jsonify, request
 
+from sigma.application.use_cases.exports import ExportedFile, ExportOptions
 from sigma.bootstrap import Container, UserServices
 from sigma.presentation.web.reports.blocks import ReportBuilder
 from sigma.presentation.web.schemas.base import RequestModel
@@ -61,4 +62,44 @@ def analysis_response(
             "figures": builder.figures,
             **(extra or {}),
         }
+    )
+
+
+def _flag(name: str) -> bool | None:
+    value = request.args.get(name)
+    return None if value is None else value.lower() in {"1", "true", "yes", "on"}
+
+
+def export_options_from_query() -> ExportOptions:
+    """The export dialog's choices when they travel in the query string (dataset and notebook reports)."""
+    args = request.args
+    return ExportOptions(
+        template_id=args.get("template") or None,
+        title=args.get("title") or None,
+        subtitle=args.get("subtitle") or None,
+        author=args.get("author", ""),
+        cover=_flag("cover"),
+        toc=_flag("toc"),
+        page_size=args.get("page_size") or None,
+        orientation=args.get("orientation") or None,
+    )
+
+
+def file_response(exported: ExportedFile) -> Response:
+    """A download: UTF-8 file name (with an ASCII fallback), never sniffed, never cached."""
+    import unicodedata
+    from urllib.parse import quote
+
+    ascii_name = unicodedata.normalize("NFKD", exported.filename).encode("ascii", "ignore").decode() or "informe"
+    ascii_name = ascii_name.replace('"', "'")
+    return Response(
+        exported.data,
+        mimetype=exported.content_type,
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(exported.filename)}"
+            ),
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "no-store",
+        },
     )

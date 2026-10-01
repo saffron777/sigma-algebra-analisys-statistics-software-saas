@@ -87,3 +87,27 @@ def test_home_can_clear_every_module_and_the_console_page_shows_the_notebook_con
     assert "Limpiar todos los módulos" in api.raw.get("/").get_data(as_text=True)
     console = api.raw.get("/consola").get_data(as_text=True)
     assert "Sobrescribir con la mía" in console and "Otra ventana modificó este notebook" in console
+
+
+EXPORT_PAGES = ["descriptiva", "distribuciones", "hipotesis", "regresion", "anova", "mercados"]
+
+
+@pytest.mark.parametrize("key", EXPORT_PAGES)
+def test_analysis_pages_offer_export_and_print(api, key):
+    html = api.raw.get(PAGES[key][0]).get_data(as_text=True)
+    assert "openExport()" in html and "Exportar" in html and "printResult()" in html and "Imprimir" in html
+
+
+def test_export_dialog_and_templates_page_are_available_everywhere(api):
+    home = api.raw.get("/").get_data(as_text=True)
+    assert 'id="export-title"' in home and "Gestionar plantillas" in home  # the dialog is part of every layout
+    assert 'href="/plantillas"' in home  # …and the templates page is in the menu
+    templates = api.raw.get("/plantillas").get_data(as_text=True)
+    assert "Mis plantillas" in templates and "Logotipo" in templates and "No se admite SVG" in templates
+
+
+def test_results_data_and_console_pages_have_their_export_controls(api):
+    assert "Exportar informe" in api.raw.get("/resultados").get_data(as_text=True)
+    assert "Exportar ficha" in api.raw.get("/datos").get_data(as_text=True)
+    console = api.raw.get("/consola").get_data(as_text=True)
+    assert "Exportar informe" in console and "Imprimir el notebook" in console and "Salto de página antes" in console

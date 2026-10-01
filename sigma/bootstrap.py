@@ -45,6 +45,12 @@ from sigma.application.use_cases.datasets import (
     RenameDataset,
     UploadImportFile,
 )
+from sigma.application.use_cases.exports import (
+    ExportDatasetReport,
+    ExporterRegistry,
+    ExportNotebookReport,
+    ExportReport,
+)
 from sigma.application.use_cases.notebooks import (
     ControlKernel,
     CreateNotebook,
@@ -72,9 +78,24 @@ from sigma.application.use_cases.survey import (
     RunCrosstab,
     RunLikert,
 )
+from sigma.application.use_cases.templates import (
+    CreateTemplate,
+    DeleteTemplate,
+    GetTemplate,
+    GetTemplateLogo,
+    ListTemplates,
+    RemoveTemplateLogo,
+    SetDefaultTemplate,
+    UpdateTemplate,
+    UploadTemplateLogo,
+)
 from sigma.application.use_cases.workspace import ClearWorkspace, GetSyncState, GetWorkspace, SaveWorkspace
 from sigma.config import PROJECT_ROOT, Config
 from sigma.domain.users import User
+from sigma.infrastructure.exporters.docx_exporter import DocxExporter
+from sigma.infrastructure.exporters.pdf_exporter import PdfExporter
+from sigma.infrastructure.exporters.xlsx_exporter import XlsxExporter
+from sigma.infrastructure.imaging import PillowImageProcessor
 from sigma.infrastructure.importers.registry import DefaultImporterRegistry
 from sigma.infrastructure.kernel.jupyter_executor import JupyterKernelPool
 from sigma.infrastructure.persistence.file_notebook_store import FileNotebookStore
@@ -82,6 +103,7 @@ from sigma.infrastructure.persistence.sqlite.database import Database
 from sigma.infrastructure.persistence.sqlite.dataset_repository import SqliteDatasetRepository
 from sigma.infrastructure.persistence.sqlite.import_draft_store import SqliteImportDraftStore, purge_stale_drafts
 from sigma.infrastructure.persistence.sqlite.result_repository import SqliteResultRepository
+from sigma.infrastructure.persistence.sqlite.template_repository import SqliteTemplateRepository
 from sigma.infrastructure.persistence.sqlite.user_repository import SqliteUserRepository
 from sigma.infrastructure.persistence.sqlite.workspace_repository import (
     SqliteSyncRepository,
@@ -142,6 +164,19 @@ class UserServices:
     export_notebook: ExportNotebook
     execute_code: ExecuteCode
     control_kernel: ControlKernel
+    # report templates and exports
+    list_templates: ListTemplates
+    get_template: GetTemplate
+    create_template: CreateTemplate
+    update_template: UpdateTemplate
+    delete_template: DeleteTemplate
+    set_default_template: SetDefaultTemplate
+    upload_template_logo: UploadTemplateLogo
+    remove_template_logo: RemoveTemplateLogo
+    get_template_logo: GetTemplateLogo
+    export_report: ExportReport
+    export_dataset_report: ExportDatasetReport
+    export_notebook_report: ExportNotebookReport
     # workspace and live synchronisation
     get_workspace: GetWorkspace
     save_workspace: SaveWorkspace
@@ -159,6 +194,8 @@ class Container:
         self.config = config
         self.database = Database(config.db_path)
         self.importers = DefaultImporterRegistry()
+        self.exporters = ExporterRegistry([PdfExporter(), DocxExporter(), XlsxExporter()])
+        self.images = PillowImageProcessor()
         purge_stale_drafts(self.database, config.draft_retention_days)  # pending imports nobody touched for weeks
         self.kernels = JupyterKernelPool(
             project_root=PROJECT_ROOT,
@@ -192,6 +229,7 @@ class Container:
         drafts = SqliteImportDraftStore(self.database, user.id)
         workspace = SqliteWorkspaceRepository(self.database, user.id)
         sync = SqliteSyncRepository(self.database, user.id)
+        templates = SqliteTemplateRepository(self.database, user.id)
         return UserServices(
             user=user,
             inspect_source=InspectSource(self.importers, drafts),
@@ -234,6 +272,18 @@ class Container:
             export_notebook=ExportNotebook(notebooks),
             execute_code=ExecuteCode(notebooks, self.kernels, self.config.cell_timeout_seconds, owner),
             control_kernel=ControlKernel(notebooks, self.kernels, owner),
+            list_templates=ListTemplates(templates),
+            get_template=GetTemplate(templates),
+            create_template=CreateTemplate(templates),
+            update_template=UpdateTemplate(templates),
+            delete_template=DeleteTemplate(templates),
+            set_default_template=SetDefaultTemplate(templates),
+            upload_template_logo=UploadTemplateLogo(templates, self.images),
+            remove_template_logo=RemoveTemplateLogo(templates),
+            get_template_logo=GetTemplateLogo(templates),
+            export_report=ExportReport(self.exporters, templates, self.images),
+            export_dataset_report=ExportDatasetReport(self.exporters, templates, datasets),
+            export_notebook_report=ExportNotebookReport(self.exporters, templates, notebooks),
             get_workspace=GetWorkspace(workspace),
             save_workspace=SaveWorkspace(workspace),
             clear_workspace=ClearWorkspace(workspace, drafts),

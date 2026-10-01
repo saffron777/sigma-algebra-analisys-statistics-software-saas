@@ -138,4 +138,27 @@ CREATE TABLE import_drafts (
 {_bump_trigger("import_drafts", "drafts")}
 """
 
-MIGRATIONS: tuple[str, ...] = (V1_BASE, V2_ACCOUNTS, V3_WORKSPACE, V4_IMPORT_DRAFTS)
+V5_REPORT_TEMPLATES = f"""
+CREATE TABLE report_templates (
+    id              TEXT PRIMARY KEY,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name            TEXT NOT NULL COLLATE NOCASE,
+    organization    TEXT NOT NULL DEFAULT '',
+    primary_color   TEXT NOT NULL,
+    secondary_color TEXT NOT NULL,
+    footer_text     TEXT NOT NULL DEFAULT '',
+    cover_text      TEXT NOT NULL DEFAULT '',
+    logo            BLOB,
+    page_size       TEXT NOT NULL DEFAULT 'A4',
+    orientation     TEXT NOT NULL DEFAULT 'portrait',
+    show_cover      INTEGER NOT NULL DEFAULT 1,
+    show_toc        INTEGER NOT NULL DEFAULT 1,
+    is_default      INTEGER NOT NULL DEFAULT 0,
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL,
+    UNIQUE (user_id, name)
+);
+{_bump_trigger("report_templates", "templates")}
+"""
+
+MIGRATIONS: tuple[str, ...] = (V1_BASE, V2_ACCOUNTS, V3_WORKSPACE, V4_IMPORT_DRAFTS, V5_REPORT_TEMPLATES)

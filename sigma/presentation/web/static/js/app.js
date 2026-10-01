@@ -3,6 +3,7 @@
 
 import { api } from "./api.js";
 import { rethemeAll } from "./plot.js";
+import { defineExportStore } from "./export.js";
 import { defineSyncStore } from "./sync.js";
 
 const ACTIVE_DATASET_KEY = "sigma-active-dataset";
@@ -97,6 +98,7 @@ document.addEventListener("alpine:init", () => {
     },
   });
 
+  defineExportStore();
   Alpine.store("sync").start();
 
   // ------------------------------------------------------------------ "save result" dialog
@@ -140,4 +142,22 @@ document.addEventListener("alpine:init", () => {
       }
     },
   });
+});
+
+// Printing with Ctrl+P (the «Imprimir» buttons freeze the charts as images first): paper is white, so drop the dark
+// theme for the duration of the print job and redraw the charts in the light theme.
+let wasDark = false;
+window.addEventListener("beforeprint", () => {
+  wasDark = document.documentElement.classList.contains("dark");
+  if (wasDark) {
+    document.documentElement.classList.remove("dark");
+    rethemeAll();
+  }
+});
+window.addEventListener("afterprint", () => {
+  if (wasDark) {
+    document.documentElement.classList.add("dark");
+    rethemeAll();
+    wasDark = false;
+  }
 });

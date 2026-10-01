@@ -14,7 +14,7 @@ from sigma.presentation.web.errors import register_error_handlers
 from sigma.presentation.web.security import init_security
 
 NAV_GROUPS = (
-    ("General", ("home", "datos", "resultados")),
+    ("General", ("home", "datos", "resultados", "plantillas")),
     ("Análisis", ("descriptiva", "distribuciones", "hipotesis", "regresion", "anova", "mercados")),
     ("Programación", ("consola",)),
 )

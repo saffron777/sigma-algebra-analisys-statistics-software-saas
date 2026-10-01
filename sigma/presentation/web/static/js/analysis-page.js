@@ -5,6 +5,7 @@
 // and call `await this.startWorkspace()` at the end of `init()`.
 
 import { api } from "./api.js";
+import { printPage, resultSection } from "./export.js";
 import { renderReport } from "./report.js";
 import { workspace } from "./workspace.js";
 
@@ -51,6 +52,17 @@ export function analysisPage(module, fields = [], options = {}) {
 
     openSave() {
       Alpine.store("save").show(this.payload, (id) => { this.savedId = id; });
+    },
+
+    /** «Exportar»: PDF, Word or Excel of the result on screen (charts are drawn in the light theme). */
+    openExport() {
+      if (!this.payload) return;
+      const payload = this.payload;
+      Alpine.store("export").show({ title: payload.report.title, sections: () => [resultSection(payload)] });
+    },
+
+    printResult() {
+      printPage();
     },
 
     /** Call `callback` whenever the active dataset changes (selections made for another dataset are stale). */

@@ -84,3 +84,7 @@ class ConflictError(SigmaError):
     """The resource changed since the client last saw it (optimistic concurrency)."""
 
     code = "conflict"
+
+
+class TemplateNotFoundError(SigmaError):
+    code = "template_not_found"

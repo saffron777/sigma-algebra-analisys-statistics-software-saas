@@ -14,7 +14,16 @@
         </select></div>
       <div><label class="label" for="filter-search">Buscar en título, notas o dataset</label>
         <input id="filter-search" class="input" type="search" placeholder="Ej.: regresión ventas" x-model="filters.search" @input="debouncedSearch()"></div>
-      <div class="flex justify-end sm:col-span-2">{{ clear_button() }}</div>
+      <div class="flex flex-wrap items-center justify-between gap-2 sm:col-span-2">
+        <div class="flex flex-wrap items-center gap-2" x-show="items.length" x-cloak>
+          <button type="button" class="btn btn-ghost btn-sm" @click="toggleAll()">Marcar todos</button>
+          <button type="button" class="btn btn-primary btn-sm" :disabled="!selectedCount" @click="exportSelected()"
+                  title="Reúne los resultados marcados en un único documento con portada e índice">
+            {{ icon("download", "size-4") }} <span x-text="selectedCount ? `Exportar informe (${selectedCount})` : 'Exportar informe'"></span></button>
+          <button type="button" class="btn btn-ghost btn-sm" x-show="selectedCount" x-cloak @click="clearSelection()">Quitar marcas</button>
+        </div>
+        {{ clear_button() }}
+      </div>
     </div>
   </section>
 
@@ -28,7 +37,10 @@
     <template x-for="item in items" :key="item.id">
       <article class="card" :class="detail?.id === item.id && 'border-brand-400 dark:border-brand-500'">
         <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
-          <div class="min-w-0 space-y-1">
+          <label class="mt-0.5 flex shrink-0 cursor-pointer items-start" :title="selected[item.id] ? 'Quitar del informe combinado' : 'Añadir al informe combinado'">
+            <input type="checkbox" class="check" :checked="!!selected[item.id]" @change="toggle(item)" :aria-label="`Incluir ${item.title} en el informe`">
+          </label>
+          <div class="min-w-0 flex-1 space-y-1">
             <div class="flex flex-wrap items-center gap-2">
               <span class="badge badge-brand" x-text="moduleLabel(item.module)"></span>
               <span class="badge badge-gray" x-show="item.dataset_name" x-text="item.dataset_name"></span>
@@ -41,7 +53,8 @@
             <button type="button" class="btn btn-primary btn-sm" @click="open(item.id)">Ver</button>
             <a class="btn btn-secondary btn-sm" :href="pageFor(item)" title="Abrir en su módulo con los mismos parámetros">Abrir en el módulo</a>
             <button type="button" class="btn btn-ghost btn-sm" @click="edit(item)" :aria-label="`Editar ${item.title}`">{{ icon("edit", "size-4") }}</button>
-            <button type="button" class="btn btn-ghost btn-sm" @click="exportJson(item)" :aria-label="`Exportar ${item.title} a JSON`">{{ icon("download", "size-4") }}</button>
+            <button type="button" class="btn btn-ghost btn-sm" @click="exportOne(item)" :aria-label="`Exportar ${item.title} como informe`" title="Exportar como PDF, Word o Excel">{{ icon("download", "size-4") }}</button>
+            <button type="button" class="btn btn-ghost btn-sm" @click="exportJson(item)" :aria-label="`Descargar ${item.title} en JSON`" title="Descargar los datos en JSON">JSON</button>
             <button type="button" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400" @click="remove(item)" :aria-label="`Eliminar ${item.title}`">{{ icon("trash", "size-4") }}</button>
           </div>
         </div>
@@ -60,7 +73,11 @@
         <p class="text-sm text-slate-500" x-text="detail ? `${moduleLabel(detail.module)} · guardado ${formatDate(detail.created_at)}` : ''"></p>
         <p class="mt-2 whitespace-pre-line text-sm text-slate-600 dark:text-slate-300" x-show="detail?.notes" x-text="detail?.notes"></p>
       </div>
-      <button type="button" class="btn btn-ghost btn-sm" @click="closeDetail()">{{ icon("close", "size-4") }} Cerrar</button>
+      <div class="flex gap-2 print:hidden">
+        <button type="button" class="btn btn-secondary btn-sm" @click="exportOne(detail)">{{ icon("download", "size-4") }} Exportar</button>
+        <button type="button" class="btn btn-secondary btn-sm" @click="printDetail()">{{ icon("print", "size-4") }} Imprimir</button>
+        <button type="button" class="btn btn-ghost btn-sm" @click="closeDetail()">{{ icon("close", "size-4") }} Cerrar</button>
+      </div>
     </div>
     <div x-ref="out" class="space-y-4"></div>
   </section>

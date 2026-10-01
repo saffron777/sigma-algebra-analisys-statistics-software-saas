@@ -1,6 +1,7 @@
 // Saved results: browse, filter, reopen (tables + charts re-rendered from the stored report), edit, export, delete.
 
 import { api, downloadUrl } from "../api.js";
+import { printPage } from "../export.js";
 import { renderReport } from "../report.js";
 import { workspace } from "../workspace.js";
 
@@ -13,6 +14,7 @@ const PAGE_SIZE = 20;
 document.addEventListener("alpine:init", () => {
   Alpine.data("resultadosPage", () => ({
     ...workspace("resultados", ["filters"], { dataset: false }),
+    selected: {}, // ids ticked for the combined report
     items: [],
     total: 0,
     modules: {},
@@ -33,14 +35,16 @@ document.addEventListener("alpine:init", () => {
 
     // ------------------------------------------------------------------ workspace
     workspaceState() {
-      return { filters: { ...this.filters }, openId: this.detail?.id ?? null };
+      return { filters: { ...this.filters }, openId: this.detail?.id ?? null, selectedIds: Object.keys(this.selected) };
     },
     async applyWorkspace(state) {
       this.filters = { module: state.filters?.module ?? "", search: state.filters?.search ?? "" };
+      this.selected = Object.fromEntries((state.selectedIds ?? []).map((id) => [id, true]));
       await this.load(true);
       if (state.openId) await this.open(state.openId, false);
     },
     async resetWorkspace() {
+      this.selected = {};
       this.filters = { module: "", search: "" };
       this.detail = null;
       this.editing = null;
@@ -91,6 +95,48 @@ document.addEventListener("alpine:init", () => {
     },
 
     closeDetail() { this.detail = null; },
+
+    // ------------------------------------------------------------------ combined report
+    get selectedCount() { return Object.keys(this.selected).length; },
+    toggle(item) {
+      if (this.selected[item.id]) { const { [item.id]: _removed, ...rest } = this.selected; this.selected = rest; }
+      else this.selected = { ...this.selected, [item.id]: true };
+    },
+    toggleAll() {
+      const everySelected = this.items.length && this.items.every((item) => this.selected[item.id]);
+      this.selected = everySelected ? {} : Object.fromEntries(this.items.map((item) => [item.id, true]));
+    },
+    clearSelection() { this.selected = {}; },
+
+    /** One section per saved result: its notes, its tables and its charts, in the order of the list. */
+    async sectionsFor(ids) {
+      const sections = [];
+      for (const id of ids) {
+        const { result } = await api(`/api/results/${encodeURIComponent(id)}`);
+        const blocks = [];
+        if (result.notes) blocks.push({ type: "heading", text: "Notas" }, { type: "text", paragraphs: result.notes.split(/\n{2,}/) });
+        blocks.push(...(result.report.blocks ?? []));
+        sections.push({
+          title: result.title, subtitle: result.report.subtitle ?? null, blocks, figures: result.figures ?? [],
+          meta: [result.dataset_name ? `Dataset: ${result.dataset_name}` : null, `${this.moduleLabel(result.module)}`,
+                 `Guardado: ${this.formatDate(result.created_at)}`].filter(Boolean),
+        });
+      }
+      return sections;
+    },
+    exportSelected() {
+      const ids = this.items.filter((item) => this.selected[item.id]).map((item) => item.id);
+      if (!ids.length) return;
+      Alpine.store("export").show({
+        title: ids.length === 1 ? this.items.find((item) => item.id === ids[0]).title : "Informe de resultados",
+        heading: ids.length === 1 ? "Exportar resultado" : `Exportar informe combinado (${ids.length} resultados)`,
+        sections: () => this.sectionsFor(ids),
+      });
+    },
+    printDetail() { printPage(); },
+    exportOne(item) {
+      Alpine.store("export").show({ title: item.title, heading: "Exportar resultado", sections: () => this.sectionsFor([item.id]) });
+    },
     exportJson(item) { downloadUrl(`/api/results/${item.id}/export`); },
 
     edit(item) { this.editing = { id: item.id, title: item.title, notes: item.notes ?? "", error: "" }; },

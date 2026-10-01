@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import icon %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/plantillas.js') }}"></script>{% endblock %}
+
+{% block content %}
+<div x-data="plantillasPage" class="grid gap-5 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
+
+  {# ---------------------------------------------------------------- list #}
+  <section class="card" aria-labelledby="tpl-list-title">
+    <div class="card-header">
+      <h2 id="tpl-list-title" class="card-title">Mis plantillas</h2>
+      <button type="button" class="btn btn-primary btn-sm" @click="newTemplate()">{{ icon("plus", "size-4") }} Nueva</button>
+    </div>
+    <div class="card-body space-y-2">
+      <p class="text-sm text-slate-500 dark:text-slate-400" x-show="loaded && !templates.length" x-cloak>
+        Una plantilla guarda el aspecto corporativo de sus informes: logotipo, colores, pie de página y tamaño de hoja.
+        Cree la primera con <strong>Nueva</strong>.
+      </p>
+      <template x-for="t in templates" :key="t.id">
+        <div class="flex items-center gap-3 rounded-lg border p-3 transition"
+             :class="editing?.id === t.id ? 'border-brand-400 bg-brand-50/60 dark:border-brand-500 dark:bg-brand-950/30' : 'border-slate-200 dark:border-slate-800'">
+          <span class="grid size-11 shrink-0 place-items-center overflow-hidden rounded-md border border-slate-200 bg-white dark:border-slate-700">
+            <img x-show="t.has_logo" x-cloak class="max-h-full max-w-full object-contain" :src="logoUrl(t)" alt="">
+            <span x-show="!t.has_logo" class="size-5 rounded-full" :style="{ background: t.primary_color }"></span>
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-semibold text-slate-900 dark:text-slate-100" x-text="t.name"></p>
+            <p class="truncate text-xs text-slate-500" x-text="`${t.organization || 'Sin organización'} · ${t.page_size} ${t.orientation === 'landscape' ? 'horizontal' : 'vertical'}`"></p>
+            <span class="badge badge-brand mt-1" x-show="t.is_default" x-cloak>Predeterminada</span>
+          </div>
+          <div class="flex shrink-0 flex-col gap-1">
+            <button type="button" class="btn btn-secondary btn-sm" @click="edit(t)">Editar</button>
+            <button type="button" class="btn btn-ghost btn-sm" x-show="!t.is_default" @click="makeDefault(t)">Usar siempre</button>
+          </div>
+        </div>
+      </template>
+    </div>
+  </section>
+
+  {# ---------------------------------------------------------------- editor #}
+  <section class="space-y-5" x-show="editing" x-cloak>
+    <form class="card" @submit.prevent="save()" aria-labelledby="tpl-edit-title">
+      <div class="card-header">
+        <h2 id="tpl-edit-title" class="card-title" x-text="editing?.id ? 'Editar plantilla' : 'Nueva plantilla'"></h2>
+        <button type="button" class="btn btn-ghost btn-sm" @click="editing = null">Cerrar</button>
+      </div>
+      <div class="card-body grid gap-4 sm:grid-cols-2" x-show="editing">
+        <div class="sm:col-span-2"><label class="label" for="tpl-name">Nombre de la plantilla</label>
+          <input id="tpl-name" class="input" type="text" maxlength="80" required x-model="form.name" placeholder="Informe corporativo"></div>
+        <div class="sm:col-span-2"><label class="label" for="tpl-org">Organización</label>
+          <input id="tpl-org" class="input" type="text" maxlength="120" x-model="form.organization" placeholder="Nombre que aparece en la portada y la cabecera"></div>
+        <div><label class="label" for="tpl-primary">Color principal</label>
+          <div class="flex items-center gap-2"><input id="tpl-primary" type="color" class="h-10 w-14 cursor-pointer rounded border border-slate-300 bg-white p-1 dark:border-slate-700" x-model="form.primary_color">
+            <input class="input" type="text" maxlength="7" x-model="form.primary_color" aria-label="Color principal en hexadecimal"></div></div>
+        <div><label class="label" for="tpl-secondary">Color secundario</label>
+          <div class="flex items-center gap-2"><input id="tpl-secondary" type="color" class="h-10 w-14 cursor-pointer rounded border border-slate-300 bg-white p-1 dark:border-slate-700" x-model="form.secondary_color">
+            <input class="input" type="text" maxlength="7" x-model="form.secondary_color" aria-label="Color secundario en hexadecimal"></div></div>
+        <div class="sm:col-span-2"><label class="label" for="tpl-footer">Texto de pie de página</label>
+          <input id="tpl-footer" class="input" type="text" maxlength="200" x-model="form.footer_text" placeholder="Confidencial · Acme S.A."></div>
+        <div class="sm:col-span-2"><label class="label" for="tpl-cover">Texto de la portada</label>
+          <input id="tpl-cover" class="input" type="text" maxlength="300" x-model="form.cover_text" placeholder="Informe preparado para la gerencia"></div>
+        <div><label class="label" for="tpl-size">Tamaño de página</label>
+          <select id="tpl-size" class="input" x-model="form.page_size"><option value="A4">A4</option><option value="Letter">Carta</option><option value="Legal">Legal</option></select></div>
+        <div><label class="label" for="tpl-orientation">Orientación</label>
+          <select id="tpl-orientation" class="input" x-model="form.orientation"><option value="portrait">Vertical</option><option value="landscape">Horizontal</option></select></div>
+        <label class="check-row"><input type="checkbox" class="check" x-model="form.show_cover"> Incluir portada</label>
+        <label class="check-row"><input type="checkbox" class="check" x-model="form.show_toc"> Incluir índice</label>
+        <label class="check-row sm:col-span-2" x-show="!editing?.id"><input type="checkbox" class="check" x-model="form.make_default"> Usar esta plantilla por defecto</label>
+
+        <div class="sm:col-span-2 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+          <label class="label" for="tpl-logo">Logotipo</label>
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="grid h-14 w-28 place-items-center overflow-hidden rounded-md border border-slate-200 bg-white dark:border-slate-700">
+              <img x-show="logoPreview" x-cloak class="max-h-full max-w-full object-contain" :src="logoPreview" alt="Logotipo">
+              <span x-show="!logoPreview" class="text-xs text-slate-400">Sin logotipo</span>
+            </span>
+            <input id="tpl-logo" x-ref="logo" type="file" accept="image/png,image/jpeg" @change="chooseLogo($event)"
+                   class="block max-w-xs cursor-pointer text-sm text-slate-600 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-700 hover:file:bg-brand-100 dark:text-slate-300 dark:file:bg-brand-900/40 dark:file:text-brand-200">
+            <button type="button" class="btn btn-ghost btn-sm" x-show="logoPreview" x-cloak @click="removeLogo()">Quitar</button>
+          </div>
+          <p class="hint">PNG o JPG de hasta 2 MB (se reduce y se guarda como PNG). No se admite SVG.</p>
+        </div>
+      </div>
+      <p class="alert alert-danger mx-5 mb-4" role="alert" x-show="error" x-cloak x-text="error"></p>
+      <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-5 py-3 dark:border-slate-800">
+        <button type="button" class="btn btn-ghost text-red-600 dark:text-red-400" x-show="editing?.id" x-cloak @click="remove()">{{ icon("trash", "size-4") }} Eliminar</button>
+        <span class="ml-auto flex gap-2">
+          <button type="button" class="btn btn-ghost" @click="editing = null">Cancelar</button>
+          <button type="submit" class="btn btn-primary" :disabled="saving || !form.name.trim()"><span x-text="saving ? 'Guardando…' : 'Guardar plantilla'"></span></button>
+        </span>
+      </div>
+    </form>
+
+    {# live preview of the cover #}
+    <div class="card" aria-label="Vista previa">
+      <div class="card-header"><h2 class="card-title">Vista previa de la portada</h2></div>
+      <div class="card-body">
+        <div class="mx-auto flex aspect-[1/1.2] max-w-xs flex-col justify-between overflow-hidden rounded-md border border-slate-300 bg-white p-6 text-left shadow-sm sm:max-w-sm">
+          <div>
+            <img x-show="logoPreview" x-cloak class="mb-8 max-h-14 max-w-[8rem] object-contain" :src="logoPreview" alt="">
+            <p class="mt-10 text-2xl font-bold leading-tight" :style="{ color: form.primary_color }">Título del informe</p>
+            <p class="mt-1 text-sm text-slate-500">Subtítulo del análisis</p>
+            <div class="my-4 h-1 w-16 rounded" :style="{ background: form.primary_color }"></div>
+            <p class="text-sm font-medium" :style="{ color: form.secondary_color }" x-text="form.organization || 'Su organización'"></p>
+            <p class="text-xs text-slate-500" x-text="form.cover_text"></p>
+          </div>
+          <div class="border-t pt-2 text-[10px] text-slate-500" :style="{ borderColor: form.primary_color }" x-text="form.footer_text || 'Generado con Sigma'"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
