@@ -7,6 +7,8 @@
   <meta name="color-scheme" content="light dark">
   <title>{{ page_title }} · Sigma</title>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+  <link rel="icon" type="image/x-icon" sizes="any" href="{{ url_for('static', filename='img/favicon.ico') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
   <script src="{{ url_for('static', filename='js/theme-init.js') }}"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
   {% block scripts %}{% endblock %}
@@ -16,7 +18,7 @@
   <main class="grid min-h-screen place-items-center px-4 py-10">
     <div class="w-full max-w-md space-y-6">
       <div class="flex flex-col items-center gap-3 text-center">
-        <span class="grid size-14 place-items-center rounded-2xl bg-brand-600 text-3xl font-bold text-white shadow-lg">Σ</span>
+        <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="72" height="72" class="size-[4.5rem] drop-shadow-md">
         <div>
           <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Sigma</h1>
           <p class="text-sm text-slate-500 dark:text-slate-400">Plataforma de análisis estadístico</p>

@@ -81,8 +81,9 @@ class ExporterRegistry:
 class DocumentAssembler:
     """Applies a template and the dialog's choices to a list of sections, producing the document to render."""
 
-    def __init__(self, templates: TemplateRepository) -> None:
+    def __init__(self, templates: TemplateRepository, default_logo: bytes | None = None) -> None:
         self._templates = templates
+        self._default_logo = default_logo  # the Sigma mark: the look of a report that has no template
 
     def build(
         self,
@@ -92,7 +93,7 @@ class DocumentAssembler:
         data_tables=None,
     ) -> ReportDocument:
         template = self._template(options.template_id)
-        branding = Branding()
+        branding = Branding(logo_png=self._default_logo)
         layout = LayoutOptions()
         if template:
             logo = self._templates.get_logo(template.id) if template.has_logo else None
@@ -150,9 +151,15 @@ def _file(exporter: DocumentExporter, document: ReportDocument) -> ExportedFile:
 class ExportReport:
     """The report the browser built (one result, or several for the combined report) plus its chart images."""
 
-    def __init__(self, exporters: ExporterRegistry, templates: TemplateRepository, images: ImageProcessor) -> None:
+    def __init__(
+        self,
+        exporters: ExporterRegistry,
+        templates: TemplateRepository,
+        images: ImageProcessor,
+        default_logo: bytes | None = None,
+    ) -> None:
         self._exporters = exporters
-        self._assembler = DocumentAssembler(templates)
+        self._assembler = DocumentAssembler(templates, default_logo)
         self._images = images
 
     def execute(self, fmt: str, sections: list[SectionInput], options: ExportOptions) -> ExportedFile:
@@ -190,9 +197,15 @@ class ExportReport:
 class ExportDatasetReport:
     """The dataset's «ficha» (summary, columns, statistics, first rows); Excel also carries every row."""
 
-    def __init__(self, exporters: ExporterRegistry, templates: TemplateRepository, datasets: DatasetRepository) -> None:
+    def __init__(
+        self,
+        exporters: ExporterRegistry,
+        templates: TemplateRepository,
+        datasets: DatasetRepository,
+        default_logo: bytes | None = None,
+    ) -> None:
         self._exporters = exporters
-        self._assembler = DocumentAssembler(templates)
+        self._assembler = DocumentAssembler(templates, default_logo)
         self._datasets = datasets
 
     def execute(self, dataset_id: str, fmt: str, options: ExportOptions) -> ExportedFile:
@@ -207,9 +220,15 @@ class ExportDatasetReport:
 class ExportNotebookReport:
     """A notebook as a report (text cells, code and outputs)."""
 
-    def __init__(self, exporters: ExporterRegistry, templates: TemplateRepository, notebooks: NotebookStore) -> None:
+    def __init__(
+        self,
+        exporters: ExporterRegistry,
+        templates: TemplateRepository,
+        notebooks: NotebookStore,
+        default_logo: bytes | None = None,
+    ) -> None:
         self._exporters = exporters
-        self._assembler = DocumentAssembler(templates)
+        self._assembler = DocumentAssembler(templates, default_logo)
         self._notebooks = notebooks
 
     def execute(

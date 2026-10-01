@@ -126,3 +126,26 @@ def test_ai_controls_are_in_the_pages_that_use_them(api):
     assert "Interpretar con IA" in api.raw.get("/consola").get_data(as_text=True)
     users = api.raw.get("/usuarios").get_data(as_text=True)
     assert "Interpretación con IA" in users and "Clave de API del servidor" in users and "Probar conexión" in users
+
+
+def test_the_logo_is_used_in_the_layouts_and_served(api, app):
+    home = api.raw.get("/").get_data(as_text=True)
+    assert "img/logo-mark.svg" in home and 'rel="apple-touch-icon"' in home and "img/favicon.ico" in home
+    login = ApiClientless(app).raw.get("/login").get_data(as_text=True)
+    assert "img/logo-mark.svg" in login and "img/favicon.svg" in login
+    for asset in (
+        "logo-mark.svg",
+        "logo-mark-small.svg",
+        "logo-wordmark.svg",
+        "logo-mark-256.png",
+        "favicon.ico",
+        "apple-touch-icon.png",
+    ):
+        assert api.raw.get(f"/static/img/{asset}").status_code == 200, asset
+
+
+class ApiClientless:
+    """A client with no session (the login page is public)."""
+
+    def __init__(self, app):
+        self.raw = app.test_client()

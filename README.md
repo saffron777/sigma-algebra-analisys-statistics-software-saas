@@ -1,4 +1,6 @@
-# Σ Sigma
+<p align="center"><img src="docs/logo.png" alt="Sigma" height="90"></p>
+
+# Sigma
 
 Plataforma web de análisis estadístico, hecha con **Flask** y **Tailwind CSS**, con arquitectura limpia.
 Funciona con **cuentas de usuario**: cada persona ve únicamente sus propios datasets, resultados y notebooks.
@@ -209,6 +211,13 @@ La consola ejecuta código arbitrario por diseño (solo para cuentas autorizadas
 - Los resultados importados, el HTML de los notebooks y los datos se muestran saneados (DOMPurify / `textContent`).
 - Las sentencias SQLite usan parámetros y los nombres de tabla se generan desde identificadores internos.
 
+## Identidad visual
+
+El logotipo (anillo Ω = espacio muestral, disco A con una Σ = el suceso y la σ-álgebra, y la estrella Pollux como un
+resultado ω del complemento) se genera con `python scripts/make_logo.py` a partir de una única definición geométrica:
+SVG (marca completa, variante compacta para favicons y marca con texto), PNG (512, 256, *apple-touch* 180) y `favicon.ico`
+(16/32/48). Encabeza la barra lateral y las pantallas de acceso, y es el aspecto por defecto de los informes sin plantilla.
+
 ## Estructura
 
 Arquitectura limpia: `presentation → application → domain` e `infrastructure → application/domain`. Detalle y
@@ -226,7 +235,7 @@ tests/              unit/ (dominio, infraestructura) e integration/ (API, págin
 ## Desarrollo
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest              # 497 pruebas (la consola arranca kernels reales: ~1 min)
+.\.venv\Scripts\python.exe -m pytest              # 509 pruebas (la consola arranca kernels reales: ~1 min)
 .\.venv\Scripts\python.exe -m ruff check .        # lint
 .\.venv\Scripts\python.exe -m ruff format .       # formato
 npm run watch:css                                 # recompila Tailwind al editar plantillas/JS

@@ -17,7 +17,8 @@
 <div x-data="homePage" class="space-y-6">
   <section class="overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 px-6 py-8 text-white shadow-sm sm:px-10 sm:py-10">
     <p class="text-sm font-medium text-brand-100">Plataforma de análisis estadístico</p>
-    <h2 class="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Σ Sigma</h2>
+    <h2 class="mt-1 flex items-center gap-3 text-3xl font-bold tracking-tight sm:text-4xl">
+      <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="44" height="44" class="size-11 rounded-full bg-white/10"> Sigma</h2>
     <p class="mt-3 max-w-2xl text-brand-100">Importe sus datos, analícelos con pruebas rigurosas y conserve los resultados. Todo se ejecuta y se guarda en su servidor Sigma, y es privado para cada cuenta.</p>
     <div class="mt-5 flex flex-wrap gap-2">
       <a class="btn bg-white text-brand-700 hover:bg-brand-50" href="{{ url_for('pages.page_datos') }}">{{ icon("upload", "size-4") }} Importar datos</a>

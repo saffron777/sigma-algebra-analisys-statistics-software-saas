@@ -124,6 +124,15 @@ from sigma.infrastructure.security.login_throttle import InMemoryLoginThrottle
 from sigma.infrastructure.security.password_hasher import WerkzeugPasswordHasher
 
 
+def _read_default_logo() -> bytes | None:
+    """The Sigma mark (PNG) that heads reports made without a template; reports still work if the file is missing."""
+    path = PROJECT_ROOT / "sigma" / "presentation" / "web" / "static" / "img" / "logo-mark-256.png"
+    try:
+        return path.read_bytes()
+    except OSError:
+        return None
+
+
 @dataclass
 class UserServices:
     """Every use case a signed-in user can run, already bound to that user's data."""
@@ -209,6 +218,7 @@ class Container:
         self.importers = DefaultImporterRegistry()
         self.exporters = ExporterRegistry([PdfExporter(), DocxExporter(), XlsxExporter()])
         self.images = PillowImageProcessor()
+        self.default_logo = _read_default_logo()
         purge_stale_drafts(self.database, config.draft_retention_days)  # pending imports nobody touched for weeks
         self.kernels = JupyterKernelPool(
             project_root=PROJECT_ROOT,
@@ -304,9 +314,9 @@ class Container:
             upload_template_logo=UploadTemplateLogo(templates, self.images),
             remove_template_logo=RemoveTemplateLogo(templates),
             get_template_logo=GetTemplateLogo(templates),
-            export_report=ExportReport(self.exporters, templates, self.images),
-            export_dataset_report=ExportDatasetReport(self.exporters, templates, datasets),
-            export_notebook_report=ExportNotebookReport(self.exporters, templates, notebooks),
+            export_report=ExportReport(self.exporters, templates, self.images, self.default_logo),
+            export_dataset_report=ExportDatasetReport(self.exporters, templates, datasets, self.default_logo),
+            export_notebook_report=ExportNotebookReport(self.exporters, templates, notebooks, self.default_logo),
             get_workspace=GetWorkspace(workspace),
             save_workspace=SaveWorkspace(workspace),
             clear_workspace=ClearWorkspace(workspace, drafts),

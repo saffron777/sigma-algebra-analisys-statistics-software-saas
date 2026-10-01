@@ -78,7 +78,9 @@ def test_every_format_downloads_a_valid_file(api, fmt):
         assert "Ana" in text and sum(len(p.images) for p in reader.pages) >= 1
     elif fmt == "docx":
         doc = Document(io.BytesIO(data))
-        assert "Regresión de ventas" in [p.text for p in doc.paragraphs] and len(doc.inline_shapes) == 1
+        assert (
+            "Regresión de ventas" in [p.text for p in doc.paragraphs] and len(doc.inline_shapes) == 2
+        )  # the chart and the Sigma mark on the cover (no template)
     else:
         book = load_workbook(io.BytesIO(data))
         assert "T01 Coeficientes" in book.sheetnames and len(book["Gráficos"]._images) == 1
