@@ -3,6 +3,7 @@
 
 import { api } from "./api.js";
 import { rethemeAll } from "./plot.js";
+import { defineAiStore } from "./ai.js";
 import { defineExportStore } from "./export.js";
 import { defineSyncStore } from "./sync.js";
 
@@ -99,6 +100,7 @@ document.addEventListener("alpine:init", () => {
   });
 
   defineExportStore();
+  defineAiStore();
   Alpine.store("sync").start();
 
   // ------------------------------------------------------------------ "save result" dialog
@@ -127,10 +129,10 @@ document.addEventListener("alpine:init", () => {
       this.saving = true;
       this.error = "";
       try {
-        const { meta, result, report, figures } = this.payload;
+        const { meta, result, report, figures, interpretation } = this.payload;
         const { result: saved } = await api("/api/results", {
           method: "POST",
-          json: { ...meta, title: this.title, notes: this.notes, result, report, figures },
+          json: { ...meta, title: this.title, notes: this.notes, result, report, figures, interpretation: interpretation ?? null },
         });
         this.open = false;
         Alpine.store("toast").show("Resultado guardado en la base de datos local.", "success");

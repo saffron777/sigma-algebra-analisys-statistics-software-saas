@@ -88,3 +88,9 @@ class ConflictError(SigmaError):
 
 class TemplateNotFoundError(SigmaError):
     code = "template_not_found"
+
+
+class AiUnavailableError(SigmaError):
+    """The AI service cannot be used right now (disabled, no key, network or service problem)."""
+
+    code = "ai_unavailable"

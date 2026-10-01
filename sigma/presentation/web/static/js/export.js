@@ -2,6 +2,7 @@
 // into the section the server needs. Charts are drawn here (light theme) and travel to the server as PNG files.
 
 import { api, fetchFile, saveBlob } from "./api.js";
+import { interpretationBlocks } from "./ai.js";
 import { figureToPng, freezeFiguresForPrint } from "./plot.js";
 
 const AUTHOR_KEY = "sigma-author";
@@ -23,7 +24,8 @@ export function resultSection(payload, { datasetName, extraMeta = [] } = {}) {
   meta.push(`Fecha: ${new Date().toLocaleDateString("es")}`);
   return {
     title: payload.report.title, subtitle: payload.report.subtitle ?? null, meta,
-    blocks: payload.report.blocks ?? [], figures: payload.figures ?? [],
+    blocks: [...(payload.report.blocks ?? []), ...interpretationBlocks(payload.interpretation)],
+    figures: payload.figures ?? [],
   };
 }
 

@@ -13,6 +13,7 @@
   "consola": "M4 5h16v14H4zM8 10l3 2-3 2M13 15h4",
   "resultados": "M5 4h14v17l-7-4-7 4z",
   "plantillas": "M4 4h16v16H4zM4 9h16M9 9v11",
+  "ai": "M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z",
   "print": "M7 8V3h10v5M7 17H4v-6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6h-3M7 14h10v7H7z",
   "cuenta": "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 3.6-7 8-7s8 3 8 7",
   "usuarios": "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2 20c0-3.3 3-6 7-6s7 2.7 7 6M16 4.3a3.5 3.5 0 0 1 0 6.4M18 14c2.4.6 4 2.5 4 5",
@@ -122,10 +123,52 @@
       <button type="button" class="btn btn-secondary btn-sm" @click="openSave()">{{ icon("save", "size-4") }} Guardar resultado</button>
       <button type="button" class="btn btn-secondary btn-sm" @click="openExport()" title="Descargar como PDF, Word o Excel">{{ icon("download", "size-4") }} Exportar</button>
       <button type="button" class="btn btn-secondary btn-sm" @click="printResult()" title="Imprimir este resultado">{{ icon("print", "size-4") }} Imprimir</button>
+      <button type="button" class="btn btn-secondary btn-sm" x-show="$store.ai.available" x-cloak @click="aiOpen = !aiOpen"
+              :title="`Explicación del resultado generada por ${$store.ai.status.model}`">{{ icon("ai", "size-4") }} Interpretar con IA</button>
       <a class="btn btn-ghost btn-sm" href="{{ url_for('pages.page_resultados') }}" x-show="savedId" x-cloak>Ver guardados</a>
     </div>
   </div>
+  {{ ai_ask_bar() }}
   <div x-ref="out" class="space-y-4"></div>
+  {{ interpretation_card() }}
+</section>
+{% endmacro %}
+
+{# «¿Qué quieres saber?» — optional focus for the AI, then the request. State lives in analysisPage(). #}
+{% macro ai_ask_bar() %}
+<form x-show="aiOpen" x-cloak class="card print:hidden" @submit.prevent="askAi()">
+  <div class="card-body space-y-3">
+    <div>
+      <label class="label" for="ai-focus">¿Qué quieres saber? (opcional)</label>
+      <input id="ai-focus" class="input" type="text" maxlength="400" x-model="aiFocus" placeholder="Por ejemplo: explícalo para gerencia, o ¿es fiable el modelo?">
+      <p class="hint">Se envía a la API de Anthropic un resumen del resultado (parámetros, cifras y tablas), no sus datos completos ni los gráficos.
+        <span x-show="$store.ai.status.requests_per_hour" x-text="`Uso: ${$store.ai.status.requests_this_hour} de ${$store.ai.status.requests_per_hour} esta hora.`"></span></p>
+    </div>
+    <p class="alert alert-danger" role="alert" x-show="aiError" x-cloak x-text="aiError"></p>
+    <div class="flex gap-2">
+      <button type="submit" class="btn btn-primary btn-sm" :disabled="$store.ai.busy">{{ icon("ai", "size-4") }} <span x-text="$store.ai.busy ? 'Interpretando…' : 'Interpretar'"></span></button>
+      <button type="button" class="btn btn-ghost btn-sm" @click="aiOpen = false" :disabled="$store.ai.busy">Cancelar</button>
+    </div>
+  </div>
+</form>
+{% endmacro %}
+
+{# The interpretation kept with the result (it is part of the workspace, of «Guardar resultado» and of every export). #}
+{% macro interpretation_card() %}
+<section x-show="payload?.interpretation" x-cloak class="card" aria-labelledby="ai-card-title">
+  <div class="card-header">
+    <h3 id="ai-card-title" class="card-title flex items-center gap-2">{{ icon("ai", "size-4") }} Interpretación (IA)</h3>
+    <div class="flex gap-1 print:hidden">
+      <button type="button" class="btn btn-ghost btn-sm" x-show="$store.ai.available" @click="aiOpen = true" title="Pedir otra interpretación">Regenerar</button>
+      <button type="button" class="btn btn-ghost btn-sm" @click="copyInterpretation()">Copiar</button>
+      <button type="button" class="btn btn-ghost btn-sm" @click="removeInterpretation()">Quitar</button>
+    </div>
+  </div>
+  <div class="card-body space-y-3">
+    <div class="rendered-html" x-effect="drawInterpretation($el)"></div>
+    <p class="alert alert-warning text-xs"><strong>Generado por IA</strong><span x-text="payload?.interpretation?.model ? ` (${payload.interpretation.model})` : ''"></span>:
+      puede contener errores. Verifique las cifras con el análisis antes de usarlo.</p>
+  </div>
 </section>
 {% endmacro %}
 

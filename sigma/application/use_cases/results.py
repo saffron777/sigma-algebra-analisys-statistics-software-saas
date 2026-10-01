@@ -11,7 +11,9 @@ from typing import Any
 from sigma.application.dto import SaveResultCommand
 from sigma.application.ports import DatasetRepository, ResultRepository
 from sigma.domain.errors import DatasetNotFoundError, InvalidInputError
+from sigma.domain.interpretation import clean_interpretation
 from sigma.domain.saved_results import MODULES, SavedResult, SavedResultSummary
+from sigma.domain.workspace import UNSET
 
 MAX_TITLE_LENGTH = 200
 MAX_NOTES_LENGTH = 5000
@@ -69,6 +71,7 @@ class SaveResult:
                 result=cmd.result,
                 report=cmd.report,
                 figures=cmd.figures,
+                interpretation=clean_interpretation(cmd.interpretation),
             )
         )
 
@@ -99,10 +102,15 @@ class UpdateResult:
     def __init__(self, results: ResultRepository) -> None:
         self._results = results
 
-    def execute(self, result_id: str, title: str | None, notes: str | None) -> SavedResult:
+    def execute(
+        self, result_id: str, title: str | None, notes: str | None, interpretation: object = UNSET
+    ) -> SavedResult:
         _validate_text(title, notes)
         return self._results.update(
-            result_id, title.strip() if title is not None else None, notes.strip() if notes is not None else None
+            result_id,
+            title.strip() if title is not None else None,
+            notes.strip() if notes is not None else None,
+            clean_interpretation(interpretation) if interpretation is not UNSET else UNSET,
         )
 
 

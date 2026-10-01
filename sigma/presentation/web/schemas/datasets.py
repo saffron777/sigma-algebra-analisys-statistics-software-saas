@@ -32,6 +32,7 @@ class SaveResultRequest(RequestModel):
     result: dict[str, Any] = {}
     report: dict[str, Any] = {}
     figures: list[dict[str, Any]] = []
+    interpretation: dict[str, Any] | None = None
 
     def to_command(self) -> SaveResultCommand:
         return SaveResultCommand(**self.model_dump())
@@ -42,3 +43,4 @@ class UpdateResultRequest(RequestModel):
 
     title: str | None = None
     notes: str | None = None
+    interpretation: dict[str, Any] | None = None  # sent as null to remove it

@@ -7,6 +7,7 @@ import json
 from flask import Blueprint, Response, jsonify, request
 
 from sigma.domain.saved_results import MODULE_LABELS
+from sigma.domain.workspace import UNSET
 from sigma.presentation.web.blueprints._helpers import container, parse_body
 from sigma.presentation.web.schemas.datasets import SaveResultRequest, UpdateResultRequest
 from sigma.presentation.web.serializers import to_jsonable
@@ -39,7 +40,8 @@ def get_result(result_id: str):
 @bp.patch("/<result_id>")
 def update_result(result_id: str):
     body = parse_body(UpdateResultRequest)
-    updated = container().update_result.execute(result_id, body.title, body.notes)
+    interpretation = body.interpretation if "interpretation" in body.model_fields_set else UNSET
+    updated = container().update_result.execute(result_id, body.title, body.notes, interpretation)
     return jsonify({"result": to_jsonable(_summary_of(updated))})
 
 

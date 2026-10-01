@@ -71,6 +71,8 @@ Variables de entorno (opcionales, también en un archivo `.env`, ver `.env.examp
 | `SIGMA_ALLOWED_HOSTS` | — | Nombres extra con los que se accede (uso en red). |
 | `SIGMA_MAX_KERNELS_PER_USER` / `SIGMA_MAX_KERNELS_TOTAL` | `3` / `8` | Límite de kernels simultáneos. |
 | `SIGMA_DRAFT_RETENTION_DAYS` | `14` | Días tras los que se descarta una importación pendiente sin tocar. |
+| `SIGMA_AI_REQUESTS_PER_HOUR` | `20` | Interpretaciones con IA por persona y hora. |
+| `ANTHROPIC_API_KEY` | — | Clave de API de la IA (alternativa a guardarla desde *Usuarios*). |
 | `SIGMA_DEBUG` | — | `1` activa la recarga automática (solo desarrollo). |
 
 ## Cuentas de usuario
@@ -98,6 +100,29 @@ Variables de entorno (opcionales, también en un archivo `.env`, ver `.env.examp
   `sigma.save`). Si otra ventana cambia un módulo mientras usted tiene ediciones sin guardar, Sigma pregunta:
   *Cargar la versión nueva* o *Mantener la mía*. En la consola, guardar un notebook que otra ventana modificó
   responde con un conflicto (`409`): *Cargar la versión nueva* o *Sobrescribir con la mía*.
+
+## Interpretación con IA (opcional)
+
+En cada módulo, en la ficha de **Datos**, en **Resultados guardados** y en cada celda de código de la **Consola**, el
+botón **Interpretar con IA** pide a Claude una explicación en español (*Resumen · Hallazgos · Supuestos y advertencias ·
+Conclusión · Siguientes pasos*) con criterios propios de cada análisis; un campo opcional («¿Qué quieres saber?») orienta
+el enfoque (p. ej. «explícalo para gerencia»). **Solo se ejecuta cuando usted lo pulsa.**
+
+- **Qué se envía**: únicamente el *resumen del resultado* (parámetros, cifras, tablas recortadas y avisos; hasta ~24 000
+  caracteres), dentro de etiquetas de datos y con instrucciones de ignorar cualquier orden que aparezca en él. Nunca el
+  dataset (ni sus filas ni las categorías de columnas tipo identificador), ni los gráficos. La primera vez se pide
+  consentimiento. La respuesta es una ayuda: lleva el aviso «Generado por IA: verifique las cifras».
+- **Dónde queda**: la interpretación forma parte del resultado: se conserva en el espacio de trabajo, se guarda con
+  *Guardar resultado* (y se puede añadir o quitar después en *Resultados guardados*), va en los metadatos de la celda
+  del notebook y aparece en los PDF, Word y Excel exportados.
+- **Configuración (administrador)**: la clave de API es única del servidor, en la variable de entorno
+  `ANTHROPIC_API_KEY` o guardada desde **Usuarios → Interpretación con IA** (`instance/ai_key.txt`; nunca se vuelve a
+  mostrar ni llega al navegador ni a los kernels). Allí también se elige el modelo (por defecto `claude-opus-5-5`, con
+  esfuerzo medio y, si el modelo declina, reserva en `claude-opus-4-8`), se activa o desactiva la función, se prueba la
+  conexión y se ve el consumo de los últimos 30 días por cuenta. El permiso **IA** se concede por usuario (activo para
+  administradores, desactivado por defecto para el resto).
+- **Límites y costo**: `SIGMA_AI_REQUESTS_PER_HOUR` (20) solicitudes por persona y hora; cada una consume tokens de su
+  cuenta de Anthropic. Sin clave, sin conexión o con la IA desactivada el resto de Sigma funciona igual.
 
 ## Informes: exportar e imprimir
 
@@ -201,7 +226,7 @@ tests/              unit/ (dominio, infraestructura) e integration/ (API, págin
 ## Desarrollo
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest              # 449 pruebas (la consola arranca kernels reales: ~1 min)
+.\.venv\Scripts\python.exe -m pytest              # 497 pruebas (la consola arranca kernels reales: ~1 min)
 .\.venv\Scripts\python.exe -m ruff check .        # lint
 .\.venv\Scripts\python.exe -m ruff format .       # formato
 npm run watch:css                                 # recompila Tailwind al editar plantillas/JS

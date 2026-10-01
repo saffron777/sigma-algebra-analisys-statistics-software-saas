@@ -9,6 +9,7 @@ import pandas as pd
 
 from sigma.domain.datasets import ColumnInfo, Dataset, DatasetInfo
 from sigma.domain.documents import ReportDocument
+from sigma.domain.interpretation import InterpretationOutput, Prompt
 from sigma.domain.notebooks import ExecutionResult, KernelStatus, NotebookDocument, NotebookSummary
 from sigma.domain.report_templates import ReportTemplate, TemplateFields
 from sigma.domain.saved_results import SavedResult, SavedResultSummary
@@ -263,7 +264,9 @@ class ResultRepository(Protocol):
         self, module: str | None, search: str | None, limit: int, offset: int
     ) -> tuple[list[SavedResultSummary], int]: ...
 
-    def update(self, result_id: str, title: str | None, notes: str | None) -> SavedResult: ...
+    def update(
+        self, result_id: str, title: str | None, notes: str | None, interpretation: Any = UNSET
+    ) -> SavedResult: ...
 
     def delete(self, result_id: str) -> None: ...
 
@@ -302,3 +305,44 @@ class DocumentExporter(Protocol):
     extension: str
 
     def export(self, document: ReportDocument) -> bytes: ...
+
+
+class AiGateway(Protocol):
+    """The AI service: turns a prompt into text (and says what it cost)."""
+
+    def interpret(self, prompt: Prompt) -> InterpretationOutput: ...
+
+    def test_connection(self) -> InterpretationOutput: ...
+
+
+class AiConfiguration(Protocol):
+    """Server-wide AI settings (the administrator's): key, model and the on/off switch."""
+
+    @property
+    def enabled(self) -> bool: ...
+
+    @property
+    def configured(self) -> bool: ...
+
+    @property
+    def model(self) -> str: ...
+
+    def describe(self) -> dict[str, Any]: ...
+
+    def set_key(self, key: str) -> None: ...
+
+    def clear_key(self) -> None: ...
+
+    def set_model(self, model: str) -> None: ...
+
+    def set_enabled(self, enabled: bool) -> None: ...
+
+
+class AiUsageRepository(Protocol):
+    def add(self, user_id: int, module: str, model: str, input_tokens: int, output_tokens: int) -> None: ...
+
+    def count_since(self, user_id: int, since_iso: str) -> int: ...
+
+    def oldest_since(self, user_id: int, since_iso: str) -> str | None: ...
+
+    def summary(self, since_iso: str) -> list[dict[str, Any]]: ...

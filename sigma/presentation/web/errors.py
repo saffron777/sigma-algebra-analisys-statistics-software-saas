@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException
 
 from sigma.domain.errors import (
+    AiUnavailableError,
     AuthenticationError,
     ComputationError,
     ConflictError,
@@ -42,6 +43,7 @@ _STATUS = {
     SetupRequiredError: 401,
     PermissionDeniedError: 403,
     ConflictError: 409,
+    AiUnavailableError: 503,
     RateLimitedError: 429,
 }
 _HTTP_MESSAGES = {

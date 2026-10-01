@@ -1,6 +1,7 @@
 // Data page: import from CSV / Excel / text / SQL Server / JSON API, review, save, and manage datasets.
 
 import { api } from "../api.js";
+import { drawInterpretation } from "../ai.js";
 import { printPage } from "../export.js";
 import { workspace } from "../workspace.js";
 
@@ -302,6 +303,26 @@ document.addEventListener("alpine:init", () => {
     closeViewer() { this.viewer.dataset = null; },
 
     printViewer() { printPage(); },
+
+    // ------------------------------------------------------------------ AI interpretation of the dataset (data quality)
+    ficha: { interpretation: null, error: "", for: "" },
+    async askAiDataset() {
+      const dataset = this.viewer.dataset;
+      if (!dataset) return;
+      this.ficha.error = "";
+      try {
+        const interpretation = await Alpine.store("ai").interpret({ module: "dataset", dataset_id: dataset.id });
+        if (interpretation) { this.ficha.interpretation = interpretation; this.ficha.for = dataset.id; }
+      } catch (error) {
+        this.ficha.error = error.message;
+      }
+    },
+    drawFichaInterpretation(element) {
+      drawInterpretation(element, this.ficha.for === this.viewer.dataset?.id ? this.ficha.interpretation : null);
+    },
+    get fichaInterpretation() {
+      return this.ficha.for === this.viewer.dataset?.id ? this.ficha.interpretation : null;
+    },
 
     /** «Exportar ficha»: summary, columns, statistics and first rows (Excel also gets every row). */
     exportFicha(dataset = this.viewer.dataset) {

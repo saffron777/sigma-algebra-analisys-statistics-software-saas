@@ -120,6 +120,24 @@ def html_table(html: str) -> dict[str, Any] | None:
     }
 
 
+def _interpretation_blocks(interpretation: Any) -> list[dict[str, Any]]:
+    """An AI explanation attached to a code cell, with its notice."""
+    text = interpretation.get("text") if isinstance(interpretation, dict) else None
+    if not isinstance(text, str) or not text.strip():
+        return []
+    model = interpretation.get("model") or ""
+    return [
+        {"type": "heading", "text": "Interpretación (IA)", "level": 4},
+        *markdown_to_blocks(text[:20_000], base_level=4),
+        {
+            "type": "alert",
+            "kind": "info",
+            "message": "Generado por IA: puede contener errores. Verifique las cifras antes de usarlo."
+            + (f" Modelo: {model}." if model else ""),
+        },
+    ]
+
+
 def _output_blocks(output: dict[str, Any], images: list[bytes | None]) -> list[dict[str, Any]]:
     kind = output.get("output_type")
     if kind == "stream":
@@ -185,6 +203,7 @@ def notebook_section(
             if options.include_outputs:
                 for output in cell.get("outputs") or []:
                     blocks.extend(_output_blocks(output, images))
+                blocks.extend(_interpretation_blocks(sigma_meta.get("interpretation")))
     return ReportSection(
         title=document.name,
         subtitle=f"Notebook · {len(document.cells)} celdas",

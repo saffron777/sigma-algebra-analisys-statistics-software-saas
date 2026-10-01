@@ -227,3 +227,37 @@ def test_dataset_ficha_has_summary_columns_statistics_and_rows():
     assert data.columns == ["ventas", "region", "fecha"] and len(data.rows) == 4 and data.rows[2][0] is None
     assert hasattr(data.rows[0][2], "year")  # a real datetime for Excel
     assert isinstance(ColumnInfo("a", "numeric", "int64", 0, 1), ColumnInfo)
+
+
+# ------------------------------------------------------------------ AI text in reports
+def test_markdown_blocks_from_the_browser_become_ordinary_blocks():
+    cleaned = clean_blocks(
+        [{"type": "markdown", "text": "**Resumen**\nTodo bien.\n\n- uno\n- dos\n\n### Detalle\ntexto"}]
+    )
+    assert [b["type"] for b in cleaned] == ["text", "list", "heading", "text"]
+    assert (
+        cleaned[0]["markdown"] is True and cleaned[1]["items"] == ["uno", "dos"] and cleaned[2]["level"] == 4
+    )  # «###» under the section's own «Interpretación» heading: deepest level
+    assert clean_blocks([{"type": "markdown", "text": "<script>x</script> normal"}])[0]["paragraphs"] == [
+        "<script>x</script> normal"
+    ]
+
+
+def test_a_cell_interpretation_is_part_of_the_notebook_report():
+    cell = {
+        "cell_type": "code",
+        "source": "print(6)",
+        "outputs": [{"output_type": "stream", "text": "6\n"}],
+        "metadata": {"sigma": {"interpretation": {"text": "**Qué hace**\nImprime 6.", "model": "claude-opus-5-5"}}},
+    }
+    section = notebook_section(make_notebook([cell]))
+    kinds = [b["type"] for b in section.blocks]
+    assert kinds == ["code", "output", "heading", "text", "alert"]
+    assert section.blocks[2]["text"] == "Interpretación (IA)" and "Imprime 6." in section.blocks[3]["paragraphs"][0]
+    assert (
+        "puede contener errores" in section.blocks[4]["message"] and "claude-opus-5-5" in section.blocks[4]["message"]
+    )
+    plain = notebook_section(make_notebook([{**cell, "metadata": {}}]))
+    assert [b["type"] for b in plain.blocks] == ["code", "output"]
+    off = notebook_section(make_notebook([cell]), NotebookReportOptions(include_outputs=False))
+    assert [b["type"] for b in off.blocks] == ["code"]  # the explanation follows the outputs setting

@@ -17,6 +17,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from sigma.domain.markdown_blocks import markdown_to_blocks
+
 PAGE_SIZES = ("A4", "Letter", "Legal")
 ORIENTATIONS = ("portrait", "landscape")
 TONES = ("strong", "good", "bad", "muted")
@@ -122,7 +124,19 @@ def safe_filename(title: str, extension: str, date: str) -> str:
 
 
 # ------------------------------------------------------------------ sanitising blocks that come from the browser
-ALLOWED_BLOCKS = ("heading", "tiles", "table", "text", "alert", "figure", "list", "code", "output", "pagebreak")
+ALLOWED_BLOCKS = (
+    "heading",
+    "tiles",
+    "table",
+    "text",
+    "alert",
+    "figure",
+    "list",
+    "code",
+    "output",
+    "pagebreak",
+    "markdown",
+)
 ALERT_KINDS = ("info", "success", "warning", "danger")
 MAX_BLOCKS_PER_SECTION = 3000
 MAX_TABLE_ROWS = 5000
@@ -214,6 +228,8 @@ def clean_blocks(blocks: Any) -> list[dict[str, Any]]:
                     "items": [_str(i, 1000) for i in (block.get("items") or [])][:500],
                 }
             )
+        elif kind == "markdown":  # Markdown text (an AI interpretation) → ordinary blocks
+            cleaned.extend(clean_blocks(markdown_to_blocks(_str(block.get("text"), 20_000), base_level=3)))
         elif kind in ("code", "output"):
             field = "source" if kind == "code" else "text"
             cleaned.append(

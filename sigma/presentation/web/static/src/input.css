@@ -167,3 +167,7 @@
   .nb-print code { font-family: Consolas, "Courier New", monospace; background: #f1f5f9; padding: 0 1mm; border-radius: 1mm; }
   .nb-print a { color: #4f46e5; text-decoration: none; }
 }
+
+@media print {
+  .nb-ai { margin-top: 1.5mm; padding: 2mm 3mm; border: 0.5pt solid #c7d2fe; background: #eef2ff !important; border-radius: 1.5mm; font-size: 9pt; }
+}

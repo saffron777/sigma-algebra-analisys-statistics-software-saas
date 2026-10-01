@@ -1,10 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/macros.html" import icon %}
-{% block scripts %}
-<script defer src="{{ url_for('static', filename='vendor/marked.min.js') }}"></script>
-<script defer src="{{ url_for('static', filename='vendor/purify.min.js') }}"></script>
-<script type="module" src="{{ url_for('static', filename='js/modules/consola.js') }}"></script>
-{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/consola.js') }}"></script>{% endblock %}
 
 {% macro tool_button(label, click, icon_name, extra="", disabled="") %}
 <button type="button" class="btn btn-secondary btn-sm {{ extra }}" @click="{{ click }}" {% if disabled %}:disabled="{{ disabled }}"{% endif %} title="{{ label }}">
@@ -126,6 +122,15 @@
                 <div x-effect="drawOutputs($el, cell)" class="max-h-[32rem] overflow-auto"></div>
               </div>
               <p class="px-3 py-1 text-xs text-slate-500" x-show="cell.running" x-cloak>Ejecutando…</p>
+              <p class="alert alert-danger mx-3 my-1 text-xs" role="alert" x-show="cell.aiError" x-cloak x-text="cell.aiError"></p>
+              <div class="mx-3 mb-2 rounded-md border border-brand-200 bg-brand-50/50 p-3 dark:border-brand-900 dark:bg-brand-950/30" x-show="cellAi(cell)" x-cloak>
+                <div class="mb-1 flex items-center justify-between gap-2">
+                  <span class="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200">{{ icon("ai", "size-3.5") }} Interpretación (IA)</span>
+                  <button type="button" class="rounded px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" @click="removeCellAi(cell)">Quitar</button>
+                </div>
+                <div class="rendered-html" x-effect="drawCellAi($el, cell)"></div>
+                <p class="mt-2 text-[11px] text-slate-500"><strong>Generado por IA</strong>: puede contener errores; verifique el resultado.</p>
+              </div>
             </div>
 
             <div class="flex shrink-0 flex-col gap-0.5 opacity-100 transition lg:opacity-0 lg:group-focus-within:opacity-100 lg:group-hover:opacity-100">
@@ -133,6 +138,8 @@
               <button type="button" class="btn btn-ghost btn-sm !p-1.5" @click="moveCell(cell, -1)" :disabled="i === 0" aria-label="Subir celda" title="Subir"><span aria-hidden="true">↑</span></button>
               <button type="button" class="btn btn-ghost btn-sm !p-1.5" @click="moveCell(cell, 1)" :disabled="i === current.cells.length - 1" aria-label="Bajar celda" title="Bajar"><span aria-hidden="true">↓</span></button>
               <button type="button" class="btn btn-ghost btn-sm !p-1.5 text-xs font-semibold" @click="toggleType(cell)" :title="cell.cell_type === 'code' ? 'Convertir en texto' : 'Convertir en código'" aria-label="Cambiar tipo de celda"><span x-text="cell.cell_type === 'code' ? 'T' : '</>'"></span></button>
+              <button type="button" class="btn btn-ghost btn-sm !p-1.5" x-show="cell.cell_type === 'code' && $store.ai.available" x-cloak @click="askAiCell(cell)" :disabled="$store.ai.busy || !cell.source.trim()"
+                      aria-label="Interpretar esta celda con IA" title="Interpretar con IA (explica el código y su salida)">{{ icon("ai", "size-4") }}</button>
               <button type="button" class="btn btn-ghost btn-sm !p-1.5 text-xs" :class="hasPageBreak(cell) && 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200'" @click="togglePageBreak(cell)" :aria-pressed="hasPageBreak(cell)"
                       aria-label="Salto de página antes de esta celda" title="Salto de página antes (al imprimir y en el PDF/Word)"><span aria-hidden="true">⤒</span></button>
               <button type="button" class="btn btn-ghost btn-sm !p-1.5 text-red-600 dark:text-red-400" @click="deleteCell(cell)" aria-label="Eliminar celda" title="Eliminar">{{ icon("trash", "size-4") }}</button>

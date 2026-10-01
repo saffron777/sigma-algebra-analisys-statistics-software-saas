@@ -22,6 +22,13 @@ from sigma.application.use_cases.accounts import (
     UpdateProfile,
     UpdateUser,
 )
+from sigma.application.use_cases.ai import (
+    GetAiAdmin,
+    GetAiStatus,
+    InterpretResult,
+    TestAiConnection,
+    UpdateAiSettings,
+)
 from sigma.application.use_cases.analysis import (
     CalculateDistribution,
     RunAnova,
@@ -92,6 +99,8 @@ from sigma.application.use_cases.templates import (
 from sigma.application.use_cases.workspace import ClearWorkspace, GetSyncState, GetWorkspace, SaveWorkspace
 from sigma.config import PROJECT_ROOT, Config
 from sigma.domain.users import User
+from sigma.infrastructure.ai.anthropic_gateway import AnthropicGateway
+from sigma.infrastructure.ai.settings import AiSettings
 from sigma.infrastructure.exporters.docx_exporter import DocxExporter
 from sigma.infrastructure.exporters.pdf_exporter import PdfExporter
 from sigma.infrastructure.exporters.xlsx_exporter import XlsxExporter
@@ -99,6 +108,7 @@ from sigma.infrastructure.imaging import PillowImageProcessor
 from sigma.infrastructure.importers.registry import DefaultImporterRegistry
 from sigma.infrastructure.kernel.jupyter_executor import JupyterKernelPool
 from sigma.infrastructure.persistence.file_notebook_store import FileNotebookStore
+from sigma.infrastructure.persistence.sqlite.ai_repositories import SqliteAiUsageRepository, SqliteSettingsRepository
 from sigma.infrastructure.persistence.sqlite.database import Database
 from sigma.infrastructure.persistence.sqlite.dataset_repository import SqliteDatasetRepository
 from sigma.infrastructure.persistence.sqlite.import_draft_store import SqliteImportDraftStore, purge_stale_drafts
@@ -164,6 +174,9 @@ class UserServices:
     export_notebook: ExportNotebook
     execute_code: ExecuteCode
     control_kernel: ControlKernel
+    # AI interpretation
+    get_ai_status: GetAiStatus
+    interpret_result: InterpretResult
     # report templates and exports
     list_templates: ListTemplates
     get_template: GetTemplate
@@ -206,6 +219,12 @@ class Container:
             max_total=config.max_kernels_total,
         )
         self.users = SqliteUserRepository(self.database)
+        self.ai_settings = AiSettings(SqliteSettingsRepository(self.database), config.instance_dir)
+        self.ai_usage = SqliteAiUsageRepository(self.database)
+        self.ai_gateway = AnthropicGateway(self.ai_settings)
+        self.get_ai_admin = GetAiAdmin(self.ai_settings, self.ai_usage, config.ai_requests_per_hour)
+        self.update_ai_settings = UpdateAiSettings(self.ai_settings)
+        self.test_ai_connection = TestAiConnection(self.ai_gateway, self.ai_settings)
         hasher = WerkzeugPasswordHasher()
         throttle = InMemoryLoginThrottle()
         adopter = SqliteLegacyDataAdopter(self.database, config.notebooks_dir)
@@ -272,6 +291,10 @@ class Container:
             export_notebook=ExportNotebook(notebooks),
             execute_code=ExecuteCode(notebooks, self.kernels, self.config.cell_timeout_seconds, owner),
             control_kernel=ControlKernel(notebooks, self.kernels, owner),
+            get_ai_status=GetAiStatus(self.ai_settings, self.ai_usage, user, self.config.ai_requests_per_hour),
+            interpret_result=InterpretResult(
+                self.ai_gateway, self.ai_settings, self.ai_usage, datasets, user, self.config.ai_requests_per_hour
+            ),
             list_templates=ListTemplates(templates),
             get_template=GetTemplate(templates),
             create_template=CreateTemplate(templates),

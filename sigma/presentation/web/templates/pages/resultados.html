@@ -76,10 +76,21 @@
       <div class="flex gap-2 print:hidden">
         <button type="button" class="btn btn-secondary btn-sm" @click="exportOne(detail)">{{ icon("download", "size-4") }} Exportar</button>
         <button type="button" class="btn btn-secondary btn-sm" @click="printDetail()">{{ icon("print", "size-4") }} Imprimir</button>
+        <button type="button" class="btn btn-secondary btn-sm" x-show="$store.ai.available" x-cloak @click="askAiDetail()" :disabled="$store.ai.busy"
+                title="Explicación del resultado generada por IA (se guarda con el resultado)">{{ icon("ai", "size-4") }} <span x-text="$store.ai.busy ? 'Interpretando…' : (detail?.interpretation ? 'Regenerar IA' : 'Interpretar con IA')"></span></button>
         <button type="button" class="btn btn-ghost btn-sm" @click="closeDetail()">{{ icon("close", "size-4") }} Cerrar</button>
       </div>
     </div>
+    <p class="alert alert-danger" role="alert" x-show="aiError" x-cloak x-text="aiError"></p>
     <div x-ref="out" class="space-y-4"></div>
+    <section class="card" x-show="detail?.interpretation" x-cloak aria-label="Interpretación con IA">
+      <div class="card-header"><h3 class="card-title flex items-center gap-2">{{ icon("ai", "size-4") }} Interpretación (IA)</h3>
+        <button type="button" class="btn btn-ghost btn-sm print:hidden" @click="removeAiDetail()">Quitar</button></div>
+      <div class="card-body space-y-3">
+        <div class="rendered-html" x-effect="drawDetailInterpretation($el)"></div>
+        <p class="alert alert-warning text-xs"><strong>Generado por IA</strong><span x-text="detail?.interpretation?.model ? ` (${detail.interpretation.model})` : ''"></span>: puede contener errores. Verifique las cifras con el análisis antes de usarlo.</p>
+      </div>
+    </section>
   </section>
 
   {# ---------------------------------------------------------------- edit dialog #}

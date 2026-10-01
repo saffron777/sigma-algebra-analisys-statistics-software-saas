@@ -132,3 +132,4 @@ class SaveResultCommand:
     result: dict[str, Any] = field(default_factory=dict)
     report: dict[str, Any] = field(default_factory=dict)
     figures: list[dict[str, Any]] = field(default_factory=list)
+    interpretation: dict[str, Any] | None = None

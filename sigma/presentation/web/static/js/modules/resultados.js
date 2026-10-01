@@ -1,6 +1,7 @@
 // Saved results: browse, filter, reopen (tables + charts re-rendered from the stored report), edit, export, delete.
 
 import { api, downloadUrl } from "../api.js";
+import { drawInterpretation, interpretationBlocks } from "../ai.js";
 import { printPage } from "../export.js";
 import { renderReport } from "../report.js";
 import { workspace } from "../workspace.js";
@@ -115,7 +116,7 @@ document.addEventListener("alpine:init", () => {
         const { result } = await api(`/api/results/${encodeURIComponent(id)}`);
         const blocks = [];
         if (result.notes) blocks.push({ type: "heading", text: "Notas" }, { type: "text", paragraphs: result.notes.split(/\n{2,}/) });
-        blocks.push(...(result.report.blocks ?? []));
+        blocks.push(...(result.report.blocks ?? []), ...interpretationBlocks(result.interpretation));
         sections.push({
           title: result.title, subtitle: result.report.subtitle ?? null, blocks, figures: result.figures ?? [],
           meta: [result.dataset_name ? `Dataset: ${result.dataset_name}` : null, `${this.moduleLabel(result.module)}`,
@@ -134,6 +135,33 @@ document.addEventListener("alpine:init", () => {
       });
     },
     printDetail() { printPage(); },
+
+    // ------------------------------------------------------------------ AI interpretation of the open result
+    aiError: "",
+    async askAiDetail() {
+      const detail = this.detail;
+      if (!detail) return;
+      this.aiError = "";
+      try {
+        const interpretation = await Alpine.store("ai").interpret({ module: detail.module, title: detail.title, report: detail.report });
+        if (!interpretation) return;
+        await api(`/api/results/${detail.id}`, { method: "PATCH", json: { interpretation } });
+        detail.interpretation = interpretation;
+      } catch (error) {
+        this.aiError = error.message;
+      }
+    },
+    async removeAiDetail() {
+      try {
+        await api(`/api/results/${this.detail.id}`, { method: "PATCH", json: { interpretation: null } });
+        this.detail.interpretation = null;
+      } catch (error) {
+        this.aiError = error.message;
+      }
+    },
+    drawDetailInterpretation(element) {
+      drawInterpretation(element, this.detail?.interpretation);
+    },
     exportOne(item) {
       Alpine.store("export").show({ title: item.title, heading: "Exportar resultado", sections: () => this.sectionsFor([item.id]) });
     },

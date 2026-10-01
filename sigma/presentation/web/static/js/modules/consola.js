@@ -1,6 +1,7 @@
 // Python console: notebook editor (code + markdown cells) backed by one Jupyter kernel per notebook.
 
 import { api, downloadUrl } from "../api.js";
+import { drawInterpretation } from "../ai.js";
 import { PRINT_DEFAULTS, printNotebook } from "../notebook-print.js";
 import { renderMarkdown, renderOutputs } from "../output.js";
 
@@ -83,6 +84,39 @@ document.addEventListener("alpine:init", () => {
       this.printOpen = false;
       const notebook = { name: this.current.name, cells: JSON.parse(JSON.stringify(this.current.cells)) };
       this.$nextTick(() => printNotebook(notebook, { ...this.printOptions }, template));
+    },
+
+    // ------------------------------------------------------------------ AI explanation of a code cell
+    cellAi(cell) { return cell.metadata?.sigma?.interpretation ?? null; },
+    drawCellAi(element, cell) { drawInterpretation(element, this.cellAi(cell)); },
+    /** «Interpretar»: the cell's code and its text output go to the model; the answer is kept in the cell's metadata. */
+    async askAiCell(cell) {
+      if (!cell.source.trim()) return;
+      cell.aiError = "";
+      const text = (cell.outputs ?? []).map((o) => {
+        if (o.output_type === "stream") return Array.isArray(o.text) ? o.text.join("") : String(o.text ?? "");
+        if (o.output_type === "error") return `${o.ename}: ${o.evalue}`;
+        const plain = o.data?.["text/plain"];
+        return plain ? (Array.isArray(plain) ? plain.join("") : String(plain)) : "";
+      }).filter(Boolean).join("\n");
+      try {
+        const interpretation = await Alpine.store("ai").interpret({
+          module: "console", title: this.current.name,
+          report: { title: this.current.name, blocks: [{ type: "code", source: cell.source }, ...(text ? [{ type: "output", text }] : [])] },
+        });
+        if (!interpretation) return;
+        cell.metadata = { ...(cell.metadata ?? {}), sigma: { ...(cell.metadata?.sigma ?? {}), interpretation } };
+        this.touch();
+      } catch (error) {
+        cell.aiError = error.message;
+      }
+    },
+    removeCellAi(cell) {
+      const sigma = { ...(cell.metadata?.sigma ?? {}) };
+      delete sigma.interpretation;
+      cell.metadata = { ...(cell.metadata ?? {}), sigma };
+      if (!Object.keys(sigma).length) delete cell.metadata.sigma;
+      this.touch();
     },
 
     /** Mark a cell so that it starts a new page when printed or exported. */

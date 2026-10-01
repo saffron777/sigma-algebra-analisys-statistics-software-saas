@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 
 from sigma.domain.errors import ResultNotFoundError
 from sigma.domain.saved_results import SavedResult, SavedResultSummary
+from sigma.domain.workspace import UNSET
 from sigma.infrastructure.persistence.sqlite.database import Database
 
 _SUMMARY_COLUMNS = "id, module, analysis_type, title, notes, dataset_id, dataset_name, created_at, updated_at"
@@ -26,8 +27,8 @@ class SqliteResultRepository:
         with self._db.connection() as conn:
             conn.execute(
                 "INSERT INTO saved_results (id, user_id, module, analysis_type, title, notes, dataset_id, dataset_name,"
-                " params, result, report, figures, created_at, updated_at)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                " params, result, report, figures, created_at, updated_at, interpretation)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     result.id,
                     self._user,
@@ -43,6 +44,7 @@ class SqliteResultRepository:
                     _dump(result.figures),
                     result.created_at,
                     result.updated_at,
+                    None if result.interpretation is None else _dump(result.interpretation),
                 ),
             )
         return result
@@ -68,6 +70,7 @@ class SqliteResultRepository:
             result=json.loads(row["result"]),
             report=json.loads(row["report"]),
             figures=json.loads(row["figures"]),
+            interpretation=json.loads(row["interpretation"]) if row["interpretation"] else None,
         )
 
     def list(
@@ -91,9 +94,16 @@ class SqliteResultRepository:
             ).fetchall()
         return [_summary(row) for row in rows], int(total)
 
-    def update(self, result_id: str, title: str | None, notes: str | None) -> SavedResult:
+    def update(
+        self, result_id: str, title: str | None, notes: str | None, interpretation: object = UNSET
+    ) -> SavedResult:
         self.get(result_id)
         with self._db.connection() as conn:
+            if interpretation is not UNSET:  # None removes it
+                conn.execute(
+                    "UPDATE saved_results SET interpretation = ? WHERE id = ? AND user_id = ?",
+                    (None if interpretation is None else _dump(interpretation), result_id, self._user),
+                )
             if title is not None:
                 conn.execute(
                     "UPDATE saved_results SET title = ? WHERE id = ? AND user_id = ?", (title, result_id, self._user)

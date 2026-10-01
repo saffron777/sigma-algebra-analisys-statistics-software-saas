@@ -100,6 +100,18 @@ function buildRoot(notebook, options, template) {
         renderOutputs(out, cell.outputs);
         section.appendChild(out);
       }
+      const ai = cell.metadata?.sigma?.interpretation;
+      if (options.outputs && ai?.text) {
+        const note = document.createElement("div");
+        note.className = "nb-ai";
+        const heading = document.createElement("p");
+        heading.className = "nb-label";
+        heading.textContent = "Interpretación (IA) — puede contener errores; verifique las cifras";
+        const body = document.createElement("div");
+        renderMarkdown(body, ai.text);
+        note.append(heading, body);
+        section.appendChild(note);
+      }
       const short = lines(source) <= SHORT_CELL_LINES && (cell.outputs ?? []).reduce((n, o) => n + lines(o.text ?? ""), 0) <= SHORT_CELL_LINES;
       if (options.keepCells && short) section.classList.add("nb-keep");
     } else {

@@ -8,6 +8,7 @@ requires-python = ">=3.11"
 testpaths = ["tests"]
 pythonpath = ["."]
 filterwarnings = ["ignore::DeprecationWarning"]
+markers = ["live: llama a servicios reales (necesita claves; se omite por defecto: pytest -m live)"]
 
 [tool.ruff]
 line-length = 120

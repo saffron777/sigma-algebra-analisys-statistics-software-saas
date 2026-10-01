@@ -255,10 +255,18 @@
         <button type="button" class="btn btn-secondary btn-sm" @click="page(1)" :disabled="viewer.offset + 50 >= viewer.total || viewer.busy">Siguiente</button>
         <button type="button" class="btn btn-secondary btn-sm print:hidden" @click="exportFicha()">{{ icon("download", "size-4") }} Exportar ficha</button>
         <button type="button" class="btn btn-secondary btn-sm print:hidden" @click="printViewer()">{{ icon("print", "size-4") }} Imprimir</button>
+        <button type="button" class="btn btn-secondary btn-sm print:hidden" x-show="$store.ai.available" x-cloak @click="askAiDataset()" :disabled="$store.ai.busy"
+                title="Evaluación de la calidad de los datos generada por IA (no se envían las filas)">{{ icon("ai", "size-4") }} <span x-text="$store.ai.busy ? 'Interpretando…' : 'Interpretar con IA'"></span></button>
         <button type="button" class="btn btn-ghost btn-sm" @click="closeViewer()" aria-label="Cerrar">{{ icon("close", "size-4") }}</button>
       </div>
     </div>
     <div class="card-body space-y-4">
+      <p class="alert alert-danger" role="alert" x-show="ficha.error" x-cloak x-text="ficha.error"></p>
+      <section class="rounded-lg border border-brand-200 bg-brand-50/50 p-4 dark:border-brand-900 dark:bg-brand-950/30" x-show="fichaInterpretation" x-cloak aria-label="Interpretación con IA">
+        <h3 class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ icon("ai", "size-4") }} Calidad de los datos (IA)</h3>
+        <div class="rendered-html" x-effect="drawFichaInterpretation($el)"></div>
+        <p class="mt-3 text-xs text-slate-500"><strong>Generado por IA</strong>: puede contener errores; verifique las cifras con la ficha.</p>
+      </section>
       <div class="table-wrap max-h-96">
         <table class="tbl">
           <thead class="sticky top-0"><tr>

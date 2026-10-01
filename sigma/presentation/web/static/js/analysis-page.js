@@ -5,6 +5,7 @@
 // and call `await this.startWorkspace()` at the end of `init()`.
 
 import { api } from "./api.js";
+import { drawInterpretation } from "./ai.js";
 import { printPage, resultSection } from "./export.js";
 import { renderReport } from "./report.js";
 import { workspace } from "./workspace.js";
@@ -21,6 +22,9 @@ export function analysisPage(module, fields = [], options = {}) {
     error: "",
     payload: null,
     savedId: null,
+    aiOpen: false, // the «¿Qué quieres saber?» bar is shown
+    aiFocus: "",
+    aiError: "",
 
     /** POST `body` to `url` and show the resulting report. Returns the payload (or null on error). */
     async runAnalysis(url, body) {
@@ -65,6 +69,38 @@ export function analysisPage(module, fields = [], options = {}) {
       printPage();
     },
 
+    // ------------------------------------------------------------------ AI interpretation (optional, on request)
+    /** «Interpretar con IA»: sends this result's report (never the data) and keeps the answer with the result. */
+    async askAi() {
+      if (!this.payload) return;
+      this.aiError = "";
+      const report = this.payload.report;
+      try {
+        const interpretation = await Alpine.store("ai").interpret({
+          module: this.payload.meta?.module ?? "descriptive", title: report.title, report, focus: this.aiFocus.trim() || undefined,
+        });
+        if (!interpretation) return;
+        this.payload.interpretation = interpretation;
+        this.aiOpen = false;
+        this.wsPayloadChanged?.(); // it belongs to the workspace (and to a later «Guardar resultado»)
+      } catch (error) {
+        this.aiError = error.message;
+      }
+    },
+    removeInterpretation() {
+      if (this.payload) delete this.payload.interpretation;
+      this.wsPayloadChanged?.();
+    },
+    async copyInterpretation() {
+      try {
+        await navigator.clipboard.writeText(this.payload?.interpretation?.text ?? "");
+        Alpine.store("toast").show("Interpretación copiada.", "success", 2200);
+      } catch { Alpine.store("toast").show("No se pudo copiar al portapapeles.", "error"); }
+    },
+    drawInterpretation(element) {
+      drawInterpretation(element, this.payload?.interpretation);
+    },
+
     /** Call `callback` whenever the active dataset changes (selections made for another dataset are stale). */
     onDatasetChange(callback) {
       this.$watch("$store.datasets.activeId", () => {
@@ -89,6 +125,7 @@ export function analysisPage(module, fields = [], options = {}) {
           meta: { module: result.module, analysis_type: result.analysis_type, title: result.title,
                   dataset_id: result.dataset_id, params: result.params },
           result: result.result, report: result.report, figures: result.figures,
+          interpretation: result.interpretation ?? undefined,
         });
         this.savedId = result.id;
         return true;

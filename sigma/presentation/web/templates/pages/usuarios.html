@@ -47,6 +47,69 @@
     </div>
   </section>
 
+  {# ---------------------------------------------------------------- AI #}
+  <section class="card" aria-labelledby="ai-admin-title" x-show="ai" x-cloak>
+    <div class="card-header">
+      <h2 id="ai-admin-title" class="card-title flex items-center gap-2">{{ icon("ai", "size-4") }} Interpretación con IA</h2>
+      <span class="badge" :class="ai?.enabled && ai?.configured ? 'badge-brand' : 'badge-gray'"
+            x-text="!ai?.configured ? 'Sin clave' : (ai?.enabled ? 'Activa' : 'Desactivada')"></span>
+    </div>
+    <div class="card-body space-y-5">
+      <p class="text-sm text-slate-600 dark:text-slate-300">
+        Con la IA activa, cada persona con el permiso <strong>IA</strong> (columna de la tabla de cuentas) puede pedir una explicación de un resultado.
+        Se envía a la API de Anthropic <strong>solo el resumen</strong> del resultado (parámetros, cifras y tablas): nunca los datos completos ni los gráficos.
+        Cada solicitud tiene un costo; el límite es de <span x-text="ai?.requests_per_hour"></span> por persona y hora
+        (<code class="font-mono">SIGMA_AI_REQUESTS_PER_HOUR</code>).
+      </p>
+
+      <div class="grid gap-5 lg:grid-cols-2">
+        <div class="space-y-2">
+          <label class="label" for="ai-key">Clave de API del servidor</label>
+          <p class="text-sm" x-show="ai?.configured">
+            <span class="font-mono" x-text="ai?.key_hint"></span> ·
+            <span x-text="ai?.key_source === 'env' ? 'definida en la variable de entorno ANTHROPIC_API_KEY' : 'guardada en instance/ai_key.txt'"></span>
+          </p>
+          <div class="flex gap-2">
+            <input id="ai-key" class="input" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" x-model="aiForm.key">
+            <button type="button" class="btn btn-primary" @click="saveKey()" :disabled="aiBusy || !aiForm.key.trim()">Guardar</button>
+          </div>
+          <p class="hint">La clave nunca se muestra después de guardarla ni llega al navegador ni a la consola.
+            <button type="button" class="underline" x-show="ai?.key_source === 'file'" x-cloak @click="clearKey()">Quitar la clave guardada</button></p>
+        </div>
+        <div class="space-y-2">
+          <label class="label" for="ai-model">Modelo</label>
+          <div class="flex gap-2">
+            <input id="ai-model" class="input font-mono" type="text" x-model="aiForm.model" spellcheck="false">
+            <button type="button" class="btn btn-secondary" @click="saveModel()" :disabled="aiBusy || aiForm.model === ai?.model">Guardar</button>
+          </div>
+          <p class="hint">Recomendado: <code class="font-mono" x-text="ai?.default_model"></code>.</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" class="btn btn-secondary" @click="toggleAi()" :disabled="aiBusy" x-text="ai?.enabled ? 'Desactivar la IA' : 'Activar la IA'"></button>
+        <button type="button" class="btn btn-secondary" @click="testAi()" :disabled="aiBusy || !ai?.configured">Probar conexión</button>
+        <span class="text-sm text-emerald-700 dark:text-emerald-300" x-show="aiMessage" x-cloak x-text="aiMessage"></span>
+      </div>
+      <p class="alert alert-danger" role="alert" x-show="aiError" x-cloak x-text="aiError"></p>
+
+      <div>
+        <h3 class="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Consumo de los últimos 30 días</h3>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr><th>Cuenta</th><th class="text-right">Solicitudes</th><th class="text-right">Tokens de entrada</th><th class="text-right">Tokens de salida</th></tr></thead>
+            <tbody>
+              <template x-for="row in ai?.usage ?? []" :key="row.user_id">
+                <tr><td x-text="row.username"></td><td class="text-right" x-text="row.requests"></td>
+                  <td class="text-right" x-text="formatTokens(row.input_tokens)"></td><td class="text-right" x-text="formatTokens(row.output_tokens)"></td></tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
   {# ---------------------------------------------------------------- create dialog #}
   <div x-show="creating" x-cloak class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Nuevo usuario" @keydown.escape.window="creating = false">
     <div class="absolute inset-0 bg-slate-900/60" @click="creating = false"></div>

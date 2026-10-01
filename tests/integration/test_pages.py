@@ -111,3 +111,18 @@ def test_results_data_and_console_pages_have_their_export_controls(api):
     assert "Exportar ficha" in api.raw.get("/datos").get_data(as_text=True)
     console = api.raw.get("/consola").get_data(as_text=True)
     assert "Exportar informe" in console and "Imprimir el notebook" in console and "Salto de página antes" in console
+
+
+def test_ai_controls_are_in_the_pages_that_use_them(api):
+    regression = api.raw.get("/regresion").get_data(as_text=True)
+    assert (
+        "Interpretar con IA" in regression
+        and "Interpretación (IA)" in regression
+        and "¿Qué quieres saber?" in regression
+    )
+    assert "marked.min.js" in api.raw.get("/").get_data(as_text=True)  # Markdown is rendered with marked + DOMPurify
+    assert "Interpretar con IA" in api.raw.get("/resultados").get_data(as_text=True)
+    assert "Interpretar con IA" in api.raw.get("/datos").get_data(as_text=True)
+    assert "Interpretar con IA" in api.raw.get("/consola").get_data(as_text=True)
+    users = api.raw.get("/usuarios").get_data(as_text=True)
+    assert "Interpretación con IA" in users and "Clave de API del servidor" in users and "Probar conexión" in users

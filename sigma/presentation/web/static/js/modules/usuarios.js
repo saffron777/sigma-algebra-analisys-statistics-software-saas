@@ -14,10 +14,64 @@ document.addEventListener("alpine:init", () => {
     error: "",
     busy: false,
 
+    // ------------------------------------------------------------------ AI settings (server-wide)
+    ai: null, // {enabled, configured, key_source, key_hint, model, requests_per_hour, usage: [...]}
+    aiForm: { key: "", model: "" },
+    aiBusy: false,
+    aiMessage: "",
+    aiError: "",
+
     async init() {
       this.me = (await api("/api/auth/me")).user.id;
-      await this.load();
+      await Promise.all([this.load(), this.loadAi()]);
     },
+
+    async loadAi() {
+      try {
+        this.ai = await api("/api/admin/ai");
+        this.aiForm.model = this.ai.model;
+      } catch (error) {
+        this.aiError = error.message;
+      }
+    },
+    /** One call to the settings endpoint; shows the outcome and refreshes what the page knows. */
+    async saveAi(changes, message) {
+      this.aiBusy = true;
+      this.aiError = "";
+      this.aiMessage = "";
+      try {
+        this.ai = await api("/api/admin/ai", { method: "PUT", json: changes });
+        this.aiForm = { key: "", model: this.ai.model };
+        this.aiMessage = message;
+        Alpine.store("ai").refresh();
+      } catch (error) {
+        this.aiError = error.message;
+      } finally {
+        this.aiBusy = false;
+      }
+    },
+    saveKey() { return this.saveAi({ key: this.aiForm.key }, "Clave guardada."); },
+    clearKey() {
+      if (window.confirm("¿Quitar la clave de API guardada por Sigma? (No afecta a la variable de entorno ANTHROPIC_API_KEY.)")) {
+        return this.saveAi({ clear_key: true }, "Clave eliminada.");
+      }
+    },
+    saveModel() { return this.saveAi({ model: this.aiForm.model }, "Modelo guardado."); },
+    toggleAi() { return this.saveAi({ enabled: !this.ai.enabled }, this.ai.enabled ? "IA desactivada." : "IA activada."); },
+    async testAi() {
+      this.aiBusy = true;
+      this.aiError = "";
+      this.aiMessage = "";
+      try {
+        const result = await api("/api/admin/ai/test", { method: "POST" });
+        this.aiMessage = `Conexión correcta con ${result.model}${result.fallback_used ? " (respondió el modelo de reserva)" : ""}.`;
+      } catch (error) {
+        this.aiError = error.message;
+      } finally {
+        this.aiBusy = false;
+      }
+    },
+    formatTokens(n) { return (n ?? 0).toLocaleString("es"); },
 
     async load() {
       this.users = (await api("/api/users")).users;
