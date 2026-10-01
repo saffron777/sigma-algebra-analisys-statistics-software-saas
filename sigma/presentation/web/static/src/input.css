@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+/* Tailwind scans these paths for class names */
+@source "../../templates";
+@source "../js";
+
+/* Dark mode is toggled by adding the `dark` class to <html> (see js/theme-init.js) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-slate-50 text-slate-800 antialiased dark:bg-slate-950 dark:text-slate-200; }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-brand-500; }
+  [x-cloak] { display: none !important; }
+}
+
+@layer components {
+  /* ---------- surfaces ---------- */
+  .card { @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900; }
+  .card-header { @apply flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:px-5; }
+  .card-title { @apply text-sm font-semibold text-slate-900 dark:text-slate-100; }
+  .card-body { @apply p-4 sm:p-5; }
+
+  /* ---------- forms ---------- */
+  .label { @apply mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400; }
+  .hint { @apply mt-1 text-xs text-slate-500 dark:text-slate-500; }
+  .input {
+    @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm
+           placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none
+           disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400
+           dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:disabled:bg-slate-800;
+  }
+  textarea.input { @apply font-mono text-xs leading-relaxed; }
+  .check { @apply size-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800; }
+  .check-row { @apply flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800; }
+  .checklist { @apply max-h-48 overflow-y-auto rounded-lg border border-slate-200 p-1 dark:border-slate-700; }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2
+           disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-900;
+  }
+  .btn-primary { @apply bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:bg-brand-800; }
+  .btn-secondary { @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700; }
+  .btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
+  .btn-ghost { @apply text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800; }
+  .btn-sm { @apply px-2.5 py-1.5 text-xs; }
+
+  /* ---------- tabs ---------- */
+  .tab-bar { @apply flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800; }
+  .tab { @apply shrink-0 cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100; }
+  .tab-active { @apply bg-white text-brand-700 shadow-sm dark:bg-slate-900 dark:text-brand-300; }
+
+  /* ---------- badges / alerts ---------- */
+  .badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium; }
+  .badge-brand { @apply bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-200; }
+  .badge-gray { @apply bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300; }
+  .alert { @apply rounded-lg border px-4 py-3 text-sm; }
+  .alert-info { @apply border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-900 dark:bg-sky-950/50 dark:text-sky-200; }
+  .alert-success { @apply border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200; }
+  .alert-warning { @apply border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-200; }
+  .alert-danger { @apply border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/50 dark:text-red-200; }
+
+  /* ---------- report blocks (rendered by js/report.js) ---------- */
+  .tile { @apply rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900; }
+  .tile-label { @apply text-xs font-medium text-slate-500 dark:text-slate-400; }
+  .tile-value { @apply mt-0.5 text-xl font-semibold tabular-nums text-slate-900 dark:text-slate-50; }
+  .tile-hint { @apply mt-0.5 text-xs text-slate-500 dark:text-slate-400; }
+  .table-wrap { @apply overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800; }
+  .tbl { @apply w-full border-collapse text-sm tabular-nums; }
+  .tbl th { @apply whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300; }
+  .tbl td { @apply whitespace-nowrap border-b border-slate-100 px-3 py-1.5 dark:border-slate-800/70; }
+  .tbl tr:last-child td { @apply border-b-0; }
+  .tbl tbody tr:hover { @apply bg-slate-50 dark:bg-slate-800/40; }
+  .tbl td:first-child { @apply font-medium text-slate-900 dark:text-slate-100; }
+  .tone-strong { @apply font-bold text-brand-700 dark:text-brand-300; }
+  .tone-good { @apply text-emerald-700 dark:text-emerald-400; }
+  .tone-bad { @apply font-medium text-red-600 dark:text-red-400; }
+  .tone-muted { @apply text-slate-400; }
+  .report-heading { @apply mt-2 border-b border-slate-200 pb-1 text-base font-semibold text-slate-900 dark:border-slate-800 dark:text-slate-100; }
+  .plot-card { @apply overflow-hidden rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900; }
+  .caption { @apply px-3 pb-2 text-xs text-slate-500 dark:text-slate-400; }
+
+  /* ---------- sanitised HTML / markdown (notebook outputs, markdown cells) ---------- */
+  .rendered-html { @apply text-sm leading-relaxed text-slate-800 dark:text-slate-200; }
+  .rendered-html h1 { @apply mb-2 mt-3 text-xl font-bold text-slate-900 dark:text-slate-50; }
+  .rendered-html h2 { @apply mb-2 mt-3 text-lg font-semibold text-slate-900 dark:text-slate-50; }
+  .rendered-html h3, .rendered-html h4 { @apply mb-1 mt-2 text-base font-semibold text-slate-900 dark:text-slate-100; }
+  .rendered-html p { @apply my-2; }
+  .rendered-html ul { @apply my-2 list-disc pl-6; }
+  .rendered-html ol { @apply my-2 list-decimal pl-6; }
+  .rendered-html a { @apply text-brand-600 underline dark:text-brand-300; }
+  .rendered-html blockquote { @apply my-2 border-l-4 border-slate-300 pl-3 text-slate-600 dark:border-slate-600 dark:text-slate-400; }
+  .rendered-html code { @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-[12.5px] dark:bg-slate-800; }
+  .rendered-html pre { @apply my-2 overflow-x-auto rounded-md bg-slate-100 p-3 dark:bg-slate-800; }
+  .rendered-html pre code { @apply bg-transparent p-0; }
+  .rendered-html img { @apply max-w-full; }
+  .rendered-html table { @apply my-2 block max-w-full overflow-x-auto border-collapse text-xs tabular-nums; }
+  .rendered-html th, .rendered-html td { @apply border border-slate-200 px-2 py-1 text-right dark:border-slate-700; }
+  .rendered-html th { @apply bg-slate-50 font-semibold dark:bg-slate-800; }
+  .rendered-html tbody th { @apply text-left; }
+
+  /* ---------- notebook cells ---------- */
+  .cell { @apply rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900; }
+  .cell-active { @apply border-brand-400 ring-1 ring-brand-400/40 dark:border-brand-500; }
+  .code-input { @apply block w-full resize-none rounded-md bg-slate-50 p-3 font-mono text-[13px] leading-relaxed text-slate-900 outline-none dark:bg-slate-950 dark:text-slate-100; }
+  .cell-output { @apply overflow-x-auto px-3 py-2 font-mono text-[13px] leading-relaxed whitespace-pre-wrap; }
+}

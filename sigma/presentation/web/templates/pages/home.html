@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import icon %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/home.js') }}"></script>{% endblock %}
+
+{% set modules = [
+  ("datos", "Datos", "Importe desde Excel, CSV, texto, SQL Server o APIs JSON y guárdelos en SQLite."),
+  ("descriptiva", "Estadística descriptiva", "Medidas de posición y dispersión, normalidad, ajuste de distribuciones y correlaciones."),
+  ("distribuciones", "Distribuciones", "15 distribuciones: densidad, acumulada, cuantiles y valor p con el área sombreada."),
+  ("hipotesis", "Pruebas de hipótesis", "z, t, χ², F, proporciones, Fisher, correlación y no paramétricas."),
+  ("regresion", "Regresión lineal", "Simple y múltiple con diagnóstico de supuestos y predicción."),
+  ("anova", "ANOVA", "Uno y dos factores, supuestos, post-hoc de Tukey y tamaños de efecto."),
+  ("mercados", "Análisis de mercados", "Encuestas y sondeos: tamaño de muestra, muestreo aleatorio y márgenes de error."),
+  ("consola", "Consola Python", "Ejecute código y abra notebooks Jupyter (.ipynb) con sus datos de Sigma."),
+] %}
+
+{% block content %}
+<div x-data="homePage" class="space-y-6">
+  <section class="overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 px-6 py-8 text-white shadow-sm sm:px-10 sm:py-10">
+    <p class="text-sm font-medium text-brand-100">Plataforma de análisis estadístico</p>
+    <h2 class="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Σ Sigma</h2>
+    <p class="mt-3 max-w-2xl text-brand-100">Importe sus datos, analícelos con pruebas rigurosas y conserve los resultados. Todo se ejecuta y se guarda en su propio equipo.</p>
+    <div class="mt-5 flex flex-wrap gap-2">
+      <a class="btn bg-white text-brand-700 hover:bg-brand-50" href="{{ url_for('pages.page_datos') }}">{{ icon("upload", "size-4") }} Importar datos</a>
+      <a class="btn border border-white/40 text-white hover:bg-white/10" href="{{ url_for('pages.page_resultados') }}">Ver resultados guardados</a>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Resumen">
+    <div class="tile"><p class="tile-label">Datasets</p><p class="tile-value" x-text="$store.datasets.list.length">0</p></div>
+    <div class="tile"><p class="tile-label">Resultados guardados</p><p class="tile-value" x-text="total">0</p></div>
+    <div class="tile col-span-2"><p class="tile-label">Dataset activo</p>
+      <p class="tile-value truncate text-base" x-text="$store.datasets.active?.name ?? 'Ninguno'"></p></div>
+  </section>
+
+  <section aria-labelledby="modules-title">
+    <h2 id="modules-title" class="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Módulos</h2>
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {% for key, title, text in modules %}
+      <a href="{{ url_for('pages.page_' ~ key) }}" class="card group p-4 transition hover:border-brand-300 hover:shadow dark:hover:border-brand-700">
+        <div class="mb-2 flex items-center gap-2.5 text-brand-600 dark:text-brand-300">{{ icon(key) }}<span class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ title }}</span></div>
+        <p class="text-sm text-slate-500 dark:text-slate-400">{{ text }}</p>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="recent-title" x-show="recent.length" x-cloak>
+    <div class="card-header"><h2 id="recent-title" class="card-title">Resultados recientes</h2>
+      <a class="text-xs font-medium text-brand-600 hover:underline dark:text-brand-300" href="{{ url_for('pages.page_resultados') }}">Ver todos</a></div>
+    <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+      <template x-for="r in recent" :key="r.id">
+        <li><a class="flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50" :href="`{{ url_for('pages.page_resultados') }}?open=${r.id}`">
+          <span class="min-w-0"><span class="block truncate text-sm font-medium text-slate-900 dark:text-slate-100" x-text="r.title"></span>
+            <span class="block text-xs text-slate-500" x-text="`${modules[r.module] ?? r.module}${r.dataset_name ? ' · ' + r.dataset_name : ''}`"></span></span>
+          <span class="shrink-0 text-xs text-slate-400" x-text="formatDate(r.created_at)"></span></a></li>
+      </template>
+    </ul>
+  </section>
+</div>
+{% endblock %}

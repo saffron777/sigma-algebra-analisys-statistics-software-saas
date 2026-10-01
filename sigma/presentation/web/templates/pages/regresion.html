@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import dataset_picker, column_select, column_checklist, result_area, run_button, icon %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/regresion.js') }}"></script>{% endblock %}
+
+{% block content %}
+<div x-data="regresionPage" class="space-y-5">
+  {{ dataset_picker() }}
+
+  <form class="card" @submit.prevent="submit()">
+    <div class="card-header">
+      <h2 class="card-title">Modelo</h2>
+      <span class="badge badge-brand" x-show="kind" x-cloak x-text="`Regresión ${kind}`"></span>
+    </div>
+    <div class="card-body grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      {{ column_select("Variable respuesta (Y)", "form.response", ["numeric"], False, "Debe ser numérica.") }}
+      {{ column_checklist("Variables predictoras (X)", "form.predictors", ["numeric", "categorical", "boolean"], "Una numérica = simple; varias = múltiple. Las categóricas se codifican con variables ficticias.") }}
+      <div>
+        <label class="label">Tratar como categóricas</label>
+        <div class="checklist">
+          <template x-for="n in numericPredictors" :key="n">
+            <label class="check-row"><input type="checkbox" class="check" :value="n" x-model="form.categorical"><span class="truncate" x-text="n"></span></label>
+          </template>
+          <p class="px-2 py-1.5 text-xs text-slate-400" x-show="!numericPredictors.length">Se muestran los predictores numéricos elegidos.</p>
+        </div>
+        <p class="hint">Útil para códigos numéricos (p. ej. mes 1–12).</p>
+      </div>
+      <div class="space-y-4">
+        <div><label class="label" for="r-conf">Nivel de confianza</label>
+          <select id="r-conf" class="input" x-model.number="form.confidence"><option value="0.9">90 %</option><option value="0.95">95 %</option><option value="0.99">99 %</option></select></div>
+        <label class="check-row !px-0"><input type="checkbox" class="check" x-model="form.intercept"> Incluir intercepto</label>
+      </div>
+    </div>
+
+    <details class="border-t border-slate-200 dark:border-slate-800" x-show="form.predictors.length" x-cloak>
+      <summary class="cursor-pointer px-5 py-3 text-sm font-medium text-slate-700 dark:text-slate-300">Predecir con valores nuevos (opcional)</summary>
+      <div class="space-y-3 px-5 pb-5">
+        <div class="table-wrap" x-show="rows.length">
+          <table class="tbl">
+            <thead><tr><template x-for="n in form.predictors" :key="n"><th x-text="n"></th></template><th class="w-10"></th></tr></thead>
+            <tbody><template x-for="(row, i) in rows" :key="i"><tr>
+              <template x-for="n in form.predictors" :key="n">
+                <td class="!p-1"><input class="input !py-1" :type="isCategorical(n) ? 'text' : 'number'" step="any" :placeholder="isCategorical(n) ? 'categoría' : 'valor'" x-model="row[n]"></td>
+              </template>
+              <td class="!p-1 text-right"><button type="button" class="btn btn-ghost btn-sm" @click="removeRow(i)" :aria-label="`Quitar fila ${i + 1}`">{{ icon("close", "size-4") }}</button></td>
+            </tr></template></tbody>
+          </table>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" @click="addRow()">{{ icon("plus", "size-4") }} Agregar fila</button>
+        <p class="hint">Devuelve la predicción con el intervalo de confianza de la media y el intervalo de predicción individual.</p>
+      </div>
+    </details>
+
+    <div class="flex flex-wrap items-center gap-3 border-t border-slate-200 px-5 py-3 dark:border-slate-800">
+      {{ run_button("Ajustar modelo") }}
+      <span class="text-xs text-slate-500" x-show="!canRun">Elija la respuesta y al menos un predictor.</span>
+    </div>
+  </form>
+
+  {{ result_area() }}
+</div>
+{% endblock %}

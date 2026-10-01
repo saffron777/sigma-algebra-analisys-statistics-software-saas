@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import dataset_picker, result_area, run_button, dynamic_field %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/hipotesis.js') }}"></script>{% endblock %}
+
+{% block content %}
+<div x-data="hipotesisPage" class="space-y-5">
+  <div x-show="!usingSummary">{{ dataset_picker("Los datos de la prueba se toman de las columnas del dataset elegido.") }}</div>
+
+  <form class="card" @submit.prevent="submit()">
+    <div class="card-header"><h2 class="card-title">Prueba de hipótesis</h2>
+      <div class="tab-bar" x-show="hasSummary" x-cloak role="tablist">
+        <button type="button" role="tab" class="tab" :class="mode === 'data' && 'tab-active'" @click="mode = 'data'">Columnas del dataset</button>
+        <button type="button" role="tab" class="tab" :class="mode === 'summary' && 'tab-active'" @click="mode = 'summary'">Estadísticos resumidos</button>
+      </div>
+    </div>
+    <div class="card-body space-y-5">
+      <div class="grid gap-4 md:grid-cols-[minmax(0,22rem)_1fr]">
+        <div>
+          <label class="label" for="test-select">Prueba</label>
+          <select id="test-select" class="input" :value="testId" @change="selectTest($event.target.value)">
+            <template x-for="g in grouped" :key="g.group">
+              <optgroup :label="g.group">
+                <template x-for="t in g.tests" :key="t.id"><option :value="t.id" :selected="t.id === testId" x-text="t.label"></option></template>
+              </optgroup>
+            </template>
+          </select>
+        </div>
+        <p class="self-end text-sm text-slate-500 dark:text-slate-400" x-text="spec?.description"></p>
+      </div>
+
+      {# columns of the dataset #}
+      <div x-show="!usingSummary" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <template x-for="r in spec?.roles ?? []" :key="testId + r.name">
+          <div>
+            <label class="label"><span x-text="r.label"></span><span class="font-normal text-slate-400" x-show="r.optional"> (opcional)</span></label>
+            <select class="input" x-model="roles[r.name]">
+              <option value="">— Seleccione —</option>
+              <template x-for="c in $store.datasets.columnsOfKind(kindsFor(r))" :key="c.name"><option :value="c.name" x-text="c.name"></option></template>
+            </select>
+          </div>
+        </template>
+      </div>
+
+      {# summary statistics #}
+      <div x-show="usingSummary" x-cloak class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <template x-for="f in spec?.summary_fields ?? []" :key="testId + f.name">
+          <div>{{ dynamic_field("summary") }}</div>
+        </template>
+      </div>
+
+      {# parameters of the test #}
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" x-show="spec?.params.length || spec?.tails.length > 1">
+        <template x-for="f in spec?.params ?? []" :key="testId + f.name"><div>{{ dynamic_field("params") }}</div></template>
+        <div x-show="spec?.tails.length > 1"><label class="label">Hipótesis alternativa</label>
+          <select class="input" x-model="tail"><template x-for="t in spec?.tails ?? []" :key="t"><option :value="t" :selected="t === tail" x-text="tailLabels[t]"></option></template></select></div>
+        <div><label class="label">Nivel de significancia α</label><input class="input" type="number" step="any" min="0" max="1" x-model="alpha"></div>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-3 border-t border-slate-200 px-5 py-3 dark:border-slate-800">
+      {{ run_button("Ejecutar prueba") }}
+    </div>
+  </form>
+
+  {{ result_area() }}
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+# Backend
+Flask>=3.0
+pydantic>=2.7
+waitress>=3.0
+
+# Cálculo estadístico
+numpy>=2.0
+pandas>=2.2
+scipy>=1.13
+statsmodels>=0.14.4
+
+# Gráficos (figuras Plotly como JSON)
+plotly>=5.22
+
+# Importación de datos
+openpyxl>=3.1
+xlrd>=2.0
+SQLAlchemy>=2.0
+pyodbc>=5.1
+requests>=2.32
+
+# Consola Python / notebooks
+jupyter_client>=8.6
+ipykernel>=6.29
+nbformat>=5.10
+matplotlib>=3.8

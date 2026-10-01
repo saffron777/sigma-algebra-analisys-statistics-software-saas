@@ -1,0 +1,9 @@
+<div x-data class="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex flex-col items-center gap-2 p-4 sm:items-end" aria-live="polite">
+  <template x-for="t in $store.toast.items" :key="t.id">
+    <div class="pointer-events-auto flex max-w-sm items-start gap-3 rounded-lg px-4 py-3 text-sm shadow-lg"
+         :class="{'bg-emerald-600 text-white': t.kind === 'success', 'bg-red-600 text-white': t.kind === 'error', 'bg-slate-800 text-white': t.kind === 'info'}"
+         x-transition>
+      <span x-text="t.message"></span>
+    </div>
+  </template>
+</div>

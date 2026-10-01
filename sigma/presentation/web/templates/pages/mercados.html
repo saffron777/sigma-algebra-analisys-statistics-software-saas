@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import dataset_picker, column_select, column_checklist, result_area, run_button %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/mercados.js') }}"></script>{% endblock %}
+
+{% block content %}
+<div x-data="mercadosPage" class="space-y-5">
+
+  <div class="card">
+    <div class="card-body space-y-1 text-sm text-slate-600 dark:text-slate-300">
+      <p><strong class="text-slate-900 dark:text-slate-100">Encuestas y sondeos con muestreo probabilístico.</strong>
+        Calcule cuántas unidades encuestar, seleccione la muestra al azar desde su marco muestral y estime resultados con márgenes de error.</p>
+    </div>
+  </div>
+
+  <div class="tab-bar" role="tablist" aria-label="Herramientas de análisis de mercados">
+    <template x-for="t in tabs" :key="t.key">
+      <button type="button" role="tab" class="tab" :class="tab === t.key && 'tab-active'" :aria-selected="tab === t.key" @click="selectTab(t.key)" x-text="t.label"></button>
+    </template>
+  </div>
+
+  <div x-show="needsDataset" x-cloak>
+    {{ dataset_picker("Marco muestral (para seleccionar la muestra) o resultados de la encuesta (para estimar y tabular).") }}
+  </div>
+
+  {# ============================================================ sample size #}
+  <form class="card" x-show="tab === 'size'" @submit.prevent="submit()">
+    <div class="card-header"><h2 class="card-title">Tamaño de muestra</h2></div>
+    <div class="card-body space-y-5">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div><label class="label">Quiero estimar</label>
+          <select class="input" x-model="f.size.kind"><option value="proportion">Una proporción (porcentaje)</option><option value="mean">Una media</option></select></div>
+        <div><label class="label">Nivel de confianza</label>
+          <select class="input" x-model.number="f.size.confidence"><option value="0.9">90 %</option><option value="0.95">95 %</option><option value="0.99">99 %</option></select></div>
+        <div><label class="label" x-text="f.size.kind === 'proportion' ? 'Margen de error (±%)' : 'Error máximo admitido (± unidades)'"></label>
+          <input class="input" type="number" step="any" min="0" x-model="f.size.margin"></div>
+        <div x-show="f.size.kind === 'proportion'"><label class="label">Proporción esperada (%)</label>
+          <input class="input" type="number" step="any" min="0" max="100" x-model="f.size.proportion"><p class="hint">50 % es el caso más conservador.</p></div>
+        <div x-show="f.size.kind === 'mean'" x-cloak><label class="label">Desviación estándar esperada (σ)</label>
+          <input class="input" type="number" step="any" min="0" x-model="f.size.std_dev"></div>
+        <div><label class="label">Tamaño de la población N (opcional)</label>
+          <input class="input" type="number" min="2" placeholder="infinita" x-model="f.size.population"><p class="hint">Aplica la corrección por población finita.</p></div>
+        <div><label class="label">Efecto de diseño (≥ 1)</label>
+          <input class="input" type="number" step="any" min="1" x-model="f.size.deff"><p class="hint">1 = muestreo aleatorio simple; conglomerados suelen requerir 1.5–2.</p></div>
+      </div>
+      <details class="rounded-lg border border-slate-200 dark:border-slate-800" x-show="hasDataset">
+        <summary class="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300">Repartir la muestra por estratos (usa el dataset activo)</summary>
+        <div class="grid gap-4 border-t border-slate-200 p-4 sm:grid-cols-3 dark:border-slate-800">
+          {{ column_select("Columna de estratos", "f.size.strata_column", ["categorical", "boolean", "text"], True) }}
+          <div><label class="label">Asignación</label>
+            <select class="input" x-model="f.size.allocation"><option value="proportional">Proporcional</option><option value="equal">Igual</option><option value="neyman">Óptima de Neyman</option></select></div>
+          <div x-show="f.size.allocation === 'neyman'">{{ column_select("Variable para la variabilidad (σ por estrato)", "f.size.sd_column", ["numeric"], True) }}</div>
+        </div>
+      </details>
+      {{ run_button("Calcular tamaño de muestra") }}
+    </div>
+  </form>
+
+  {# ============================================================ draw #}
+  <form class="card" x-show="tab === 'draw'" x-cloak @submit.prevent="submit()">
+    <div class="card-header"><h2 class="card-title">Selección de la muestra aleatoria</h2></div>
+    <div class="card-body space-y-5">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div><label class="label">Diseño muestral</label>
+          <select class="input" x-model="f.draw.design">
+            <option value="srs">Aleatorio simple</option><option value="systematic">Sistemático</option>
+            <option value="stratified">Estratificado</option><option value="cluster">Por conglomerados</option></select></div>
+        <div x-show="f.draw.design !== 'cluster'"><label class="label">Tamaño de la muestra (n)</label>
+          <input class="input" type="number" min="1" x-model="f.draw.n">
+          <p class="hint" x-show="suggestedN" x-cloak><button type="button" class="font-medium text-brand-600 underline dark:text-brand-300" @click="useSuggestedSize()" x-text="`Usar n = ${suggestedN} (calculado)`"></button></p></div>
+        <div><label class="label">Semilla (opcional)</label><input class="input" type="number" min="0" placeholder="aleatoria" x-model="f.draw.seed">
+          <p class="hint">Con la misma semilla obtiene la misma muestra.</p></div>
+        <div><label class="label">Guardar la muestra como (opcional)</label><input class="input" type="text" maxlength="120" placeholder="muestra_2024" x-model="f.draw.save_as">
+          <p class="hint">Crea un dataset con probabilidades de inclusión y pesos de diseño.</p></div>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" x-show="f.draw.design === 'stratified'" x-cloak>
+        {{ column_select("Columna de estratos", "f.draw.strata_column", ["categorical", "boolean", "text"]) }}
+        <div><label class="label">Asignación</label>
+          <select class="input" x-model="f.draw.allocation"><option value="proportional">Proporcional</option><option value="equal">Igual</option><option value="neyman">Óptima de Neyman</option></select></div>
+        <div x-show="f.draw.allocation === 'neyman'">{{ column_select("Variable para σ por estrato", "f.draw.sd_column", ["numeric"]) }}</div>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" x-show="f.draw.design === 'cluster'" x-cloak>
+        {{ column_select("Columna de conglomerados", "f.draw.cluster_column", ["categorical", "boolean", "text", "numeric"]) }}
+        <div><label class="label">Conglomerados a seleccionar</label><input class="input" type="number" min="1" x-model="f.draw.n_clusters">
+          <p class="hint">Se encuestan todas las unidades de cada conglomerado elegido.</p></div>
+      </div>
+      <p class="text-xs text-slate-500" x-show="f.draw.design === 'systematic'" x-cloak>Sistemático: intervalo k = N/n con arranque aleatorio; se respeta el orden del marco muestral.</p>
+      {{ run_button("Seleccionar muestra") }}
+    </div>
+  </form>
+
+  {# ============================================================ estimate #}
+  <form class="card" x-show="tab === 'estimate'" x-cloak @submit.prevent="submit()">
+    <div class="card-header"><h2 class="card-title">Estimación con márgenes de error</h2></div>
+    <div class="card-body space-y-5">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div><label class="label">Tipo de estimación</label>
+          <select class="input" x-model="f.estimate.kind" @change="f.estimate.variable = ''"><option value="proportion">Proporciones (pregunta categórica)</option><option value="mean">Media (variable numérica)</option></select></div>
+        <div x-show="f.estimate.kind === 'proportion'">{{ column_select("Pregunta / variable", "f.estimate.variable", ["categorical", "boolean", "text"]) }}</div>
+        <div x-show="f.estimate.kind === 'mean'" x-cloak>{{ column_select("Variable numérica", "f.estimate.variable", ["numeric"]) }}</div>
+        <div><label class="label">Nivel de confianza</label>
+          <select class="input" x-model.number="f.estimate.confidence"><option value="0.9">90 %</option><option value="0.95">95 %</option><option value="0.99">99 %</option></select></div>
+        <div><label class="label">Población N (muestra simple, opcional)</label><input class="input" type="number" min="2" placeholder="infinita" x-model="f.estimate.population"></div>
+      </div>
+      <div x-show="f.estimate.kind === 'proportion'">
+        <p class="label">Método del intervalo de confianza</p>
+        <div class="flex flex-wrap gap-x-4 gap-y-1">
+          <template x-for="m in ciMethods" :key="m.key"><label class="check-row !px-0"><input type="checkbox" class="check" :value="m.key" x-model="f.estimate.methods"><span x-text="m.label"></span></label></template>
+        </div>
+        <p class="hint">Wilson y Clopper-Pearson se recomiendan con muestras pequeñas o proporciones cercanas a 0 % o 100 %.</p>
+      </div>
+      <details class="rounded-lg border border-slate-200 dark:border-slate-800">
+        <summary class="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300">Diseño complejo: pesos, estratos y conglomerados (opcional)</summary>
+        <div class="space-y-3 border-t border-slate-200 p-4 dark:border-slate-800">
+          <div class="grid gap-4 sm:grid-cols-3">
+            {{ column_select("Columna de pesos", "f.estimate.weight", ["numeric"], True, "Por ejemplo «peso_diseno» de una muestra generada aquí.") }}
+            {{ column_select("Columna de estratos", "f.estimate.strata", ["categorical", "boolean", "text"], True) }}
+            {{ column_select("Columna de conglomerados", "f.estimate.cluster", ["categorical", "boolean", "text", "numeric"], True) }}
+          </div>
+          <label class="check-row !px-0"><input type="checkbox" class="check" x-model="f.estimate.fpc"> Aplicar corrección por población finita (derivada de los pesos)</label>
+          <p class="hint">Varianza por linealización de Taylor. Informa el efecto de diseño y el tamaño efectivo de la muestra.</p>
+        </div>
+      </details>
+      {{ run_button("Estimar") }}
+    </div>
+  </form>
+
+  {# ============================================================ crosstab #}
+  <form class="card" x-show="tab === 'crosstab'" x-cloak @submit.prevent="submit()">
+    <div class="card-header"><h2 class="card-title">Tabulación cruzada</h2></div>
+    <div class="card-body space-y-5">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {{ column_select("Variable de filas", "f.crosstab.row", ["categorical", "boolean", "text"]) }}
+        {{ column_select("Variable de columnas", "f.crosstab.col", ["categorical", "boolean", "text"]) }}
+      </div>
+      <p class="hint">Cruza dos preguntas, contrasta la independencia con χ² y mide la asociación con la V de Cramér.</p>
+      {{ run_button("Cruzar variables") }}
+    </div>
+  </form>
+
+  {# ============================================================ likert #}
+  <form class="card" x-show="tab === 'likert'" x-cloak @submit.prevent="submit()">
+    <div class="card-header"><h2 class="card-title">Escala Likert</h2></div>
+    <div class="card-body space-y-5">
+      <div class="max-w-md">{{ column_checklist("Ítems de la escala", "f.likert.items", ["numeric", "categorical"], "Preguntas con las mismas opciones de respuesta (p. ej. 1–5).") }}</div>
+      <p class="hint">Distribución de respuestas por ítem, media, top-2-box y alfa de Cronbach (consistencia interna).</p>
+      {{ run_button("Analizar escala") }}
+    </div>
+  </form>
+
+  {{ result_area() }}
+</div>
+{% endblock %}

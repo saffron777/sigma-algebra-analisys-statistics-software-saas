@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import dataset_picker, column_select, result_area, run_button %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/anova.js') }}"></script>{% endblock %}
+
+{% block content %}
+<div x-data="anovaPage" class="space-y-5">
+  {{ dataset_picker() }}
+
+  <form class="card" @submit.prevent="submit()">
+    <div class="card-header">
+      <h2 class="card-title">Diseño del análisis</h2>
+      <span class="badge badge-brand" x-show="factors.length" x-cloak x-text="factors.length === 1 ? 'ANOVA de un factor' : 'ANOVA de dos factores'"></span>
+    </div>
+    <div class="card-body grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      {{ column_select("Variable respuesta (numérica)", "form.response", ["numeric"]) }}
+      {{ column_select("Factor 1", "form.factor1", ["categorical", "boolean", "text", "numeric"], False, "Grupos a comparar.") }}
+      {{ column_select("Factor 2 (opcional)", "form.factor2", ["categorical", "boolean", "text", "numeric"], True, "Agrega un segundo factor.") }}
+      <div><label class="label" for="a-alpha">Nivel de significancia α</label>
+        <select id="a-alpha" class="input" x-model.number="form.alpha"><option value="0.1">0.10</option><option value="0.05">0.05</option><option value="0.01">0.01</option></select></div>
+
+      <div class="space-y-1 md:col-span-2 xl:col-span-4">
+        <label class="check-row !px-0"><input type="checkbox" class="check" x-model="form.post_hoc"> Comparaciones múltiples de Tukey (post-hoc)</label>
+        <div x-show="form.factor2" x-cloak class="grid gap-4 pt-2 sm:grid-cols-2 lg:grid-cols-3">
+          <label class="check-row !px-0"><input type="checkbox" class="check" x-model="form.interaction"> Incluir la interacción Factor 1 × Factor 2</label>
+          <div><label class="label" for="a-ss">Suma de cuadrados</label>
+            <select id="a-ss" class="input" x-model.number="form.ss_type"><option value="1">Tipo I (secuencial)</option><option value="2">Tipo II</option><option value="3">Tipo III</option></select>
+            <p class="hint">Con datos desbalanceados use tipo II o III.</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-3 border-t border-slate-200 px-5 py-3 dark:border-slate-800">
+      {{ run_button("Ejecutar ANOVA") }}
+      <span class="text-xs text-slate-500" x-show="!canRun">Elija la respuesta y un factor.</span>
+    </div>
+  </form>
+
+  {{ result_area() }}
+</div>
+{% endblock %}

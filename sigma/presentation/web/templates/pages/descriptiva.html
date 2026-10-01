@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import dataset_picker, column_select, column_checklist, result_area, run_button %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/descriptiva.js') }}"></script>{% endblock %}
+
+{% block content %}
+<div x-data="descriptivaPage" class="space-y-5">
+  {{ dataset_picker() }}
+
+  <form class="card" @submit.prevent="submit()">
+    <div class="card-header"><h2 class="card-title">Variables y opciones</h2></div>
+    <div class="card-body grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      {{ column_checklist("Variables numéricas", "form.numeric", ["numeric", "boolean"], "Medidas de posición, dispersión y forma.") }}
+      {{ column_checklist("Variables categóricas", "form.categorical", ["categorical", "boolean", "text"], "Tablas de frecuencias.") }}
+      <div class="space-y-4">
+        {{ column_select("Agrupar por (opcional)", "form.group_by", ["categorical", "boolean"], True, "Calcula cada medida por grupo.") }}
+        <div><label class="label" for="conf">Nivel de confianza</label>
+          <select id="conf" class="input" x-model.number="form.confidence"><option value="0.9">90 %</option><option value="0.95">95 %</option><option value="0.99">99 %</option></select></div>
+        <div><label class="label" for="corr">Correlaciones</label>
+          <select id="corr" class="input" x-model="form.correlation"><option value="">No calcular</option><option value="pearson">Pearson</option><option value="spearman">Spearman</option><option value="kendall">Kendall τ</option></select></div>
+        <label class="check-row !px-0"><input type="checkbox" class="check" x-model="form.normality"> Pruebas de normalidad</label>
+      </div>
+      <div>
+        <label class="label">Ajustar distribuciones</label>
+        <div class="checklist">
+          <template x-for="d in fittable" :key="d.key">
+            <label class="check-row"><input type="checkbox" class="check" :value="d.key" x-model="form.fits"><span x-text="d.label"></span></label>
+          </template>
+        </div>
+        <p class="hint">Compara el ajuste con KS y AIC y superpone la densidad al histograma.</p>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-3 border-t border-slate-200 px-5 py-3 dark:border-slate-800">
+      {{ run_button("Calcular estadísticas") }}
+      <span class="text-xs text-slate-500" x-show="!canRun">Elija al menos una variable.</span>
+    </div>
+  </form>
+
+  {{ result_area() }}
+</div>
+{% endblock %}

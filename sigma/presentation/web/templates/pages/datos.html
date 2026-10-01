@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import icon %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/datos.js') }}"></script>{% endblock %}
+
+{% macro kind_select(model) %}
+<select class="input !py-1 text-xs" x-model="{{ model }}">
+  <option value="">Sin cambios</option>
+  <option value="numeric">Numérica</option>
+  <option value="categorical">Categórica</option>
+  <option value="text">Texto</option>
+  <option value="datetime">Fecha</option>
+  <option value="boolean">Lógica (sí/no)</option>
+</select>
+{% endmacro %}
+
+{% block content %}
+<div x-data="datosPage" class="space-y-5">
+
+  {# ---------------------------------------------------------------- import #}
+  <section class="card" aria-labelledby="import-title">
+    <div class="card-header">
+      <h2 id="import-title" class="card-title">Importar datos</h2>
+      <span class="text-xs text-slate-500">Excel · CSV · texto · SQL Server · API JSON</span>
+    </div>
+    <div class="card-body space-y-5">
+      <div class="tab-bar" role="tablist">
+        <template x-for="s in sources" :key="s.key">
+          <button type="button" role="tab" class="tab" :class="source === s.key && 'tab-active'" :aria-selected="source === s.key"
+                  @click="selectSource(s.key)" x-text="s.label"></button>
+        </template>
+      </div>
+
+      {# ---- file input (csv / excel / text) #}
+      <div x-show="isFileSource" class="space-y-4">
+        <div>
+          <label class="label" for="file-input">Archivo</label>
+          <input id="file-input" x-ref="file" type="file" :accept="fileAccept" @change="onFile($event)"
+                 class="block w-full cursor-pointer rounded-lg border border-slate-300 bg-white text-sm text-slate-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-brand-700 hover:file:bg-brand-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:file:bg-brand-900/40 dark:file:text-brand-200">
+          <p class="hint">Tamaño máximo 100 MB. El archivo se lee en el servidor local; no sale de su equipo.</p>
+        </div>
+
+        {# CSV #}
+        <div x-show="source === 'csv'" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div><label class="label">Delimitador</label>
+            <select class="input" x-model="opts.csv.delimiter">
+              <option value="auto">Detectar</option><option value="comma">Coma ( , )</option><option value="semicolon">Punto y coma ( ; )</option>
+              <option value="tab">Tabulación</option><option value="pipe">Barra ( | )</option></select></div>
+          <div><label class="label">Codificación</label>
+            <select class="input" x-model="opts.csv.encoding"><option value="auto">Detectar</option><option value="utf-8-sig">UTF-8</option><option value="cp1252">Windows-1252</option><option value="latin-1">Latin-1</option></select></div>
+          <div><label class="label">Separador decimal</label>
+            <select class="input" x-model="opts.csv.decimal"><option value="auto">Detectar</option><option value=".">Punto ( . )</option><option value=",">Coma ( , )</option></select></div>
+          <div><label class="label">Filas a omitir</label><input class="input" type="number" min="0" x-model.number="opts.csv.skip_rows"></div>
+          <label class="check-row self-end"><input type="checkbox" class="check" x-model="opts.csv.header"> Primera fila = encabezados</label>
+        </div>
+
+        {# Excel #}
+        <div x-show="source === 'excel'" class="grid gap-4 sm:grid-cols-2">
+          <div><label class="label">Hoja</label>
+            <select class="input" x-model="opts.excel.sheet" :disabled="!sheets.length">
+              <option value="" x-show="!sheets.length">Seleccione un archivo primero</option>
+              <template x-for="s in sheets" :key="s"><option :value="s" x-text="s"></option></template>
+            </select></div>
+          <div><label class="label">Fila de encabezados</label><input class="input" type="number" min="0" x-model.number="opts.excel.header_row">
+            <p class="hint">Use 0 si la hoja no tiene encabezados.</p></div>
+        </div>
+
+        {# Text #}
+        <div x-show="source === 'text'" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div><label class="label">Formato</label>
+            <select class="input" x-model="opts.text.layout"><option value="delimited">Delimitado</option><option value="fixed">Ancho fijo</option></select></div>
+          <div x-show="opts.text.layout === 'delimited'"><label class="label">Delimitador</label>
+            <select class="input" x-model="opts.text.delimiter">
+              <option value="auto">Detectar</option><option value="whitespace">Espacios</option><option value="tab">Tabulación</option>
+              <option value="comma">Coma</option><option value="semicolon">Punto y coma</option><option value="pipe">Barra ( | )</option></select></div>
+          <div x-show="opts.text.layout === 'fixed'"><label class="label">Anchos de columna</label>
+            <input class="input" type="text" placeholder="4,8,4 (vacío = detectar)" x-model="opts.text.widths"></div>
+          <div><label class="label">Codificación</label>
+            <select class="input" x-model="opts.text.encoding"><option value="auto">Detectar</option><option value="utf-8-sig">UTF-8</option><option value="cp1252">Windows-1252</option><option value="latin-1">Latin-1</option></select></div>
+          <div x-show="opts.text.layout === 'delimited'"><label class="label">Separador decimal</label>
+            <select class="input" x-model="opts.text.decimal"><option value="auto">Detectar</option><option value=".">Punto</option><option value=",">Coma</option></select></div>
+          <div><label class="label">Filas a omitir</label><input class="input" type="number" min="0" x-model.number="opts.text.skip_rows"></div>
+          <label class="check-row self-end"><input type="checkbox" class="check" x-model="opts.text.header"> Primera fila = encabezados</label>
+        </div>
+      </div>
+
+      {# ---- SQL Server #}
+      <div x-show="source === 'sqlserver'" x-cloak class="space-y-4">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div><label class="label">Servidor</label><input class="input" type="text" placeholder="servidor\instancia,1433" autocomplete="off" x-model="opts.sqlserver.server"></div>
+          <div><label class="label">Base de datos</label><input class="input" type="text" autocomplete="off" x-model="opts.sqlserver.database"></div>
+          <div><label class="label">Autenticación</label>
+            <select class="input" x-model="opts.sqlserver.auth"><option value="windows">Windows (integrada)</option><option value="sql">Usuario y contraseña SQL</option></select></div>
+          <div x-show="opts.sqlserver.auth === 'sql'"><label class="label">Usuario</label><input class="input" type="text" autocomplete="off" x-model="opts.sqlserver.username"></div>
+          <div x-show="opts.sqlserver.auth === 'sql'"><label class="label">Contraseña</label><input class="input" type="password" autocomplete="new-password" x-model="opts.sqlserver.password">
+            <p class="hint">No se guarda: solo se usa para esta importación.</p></div>
+          <label class="check-row self-end"><input type="checkbox" class="check" x-model="opts.sqlserver.trust_server_certificate"> Confiar en el certificado del servidor</label>
+        </div>
+        <div class="tab-bar w-fit">
+          <button type="button" class="tab" :class="opts.sqlserver.mode === 'query' && 'tab-active'" @click="opts.sqlserver.mode = 'query'">Consulta SQL</button>
+          <button type="button" class="tab" :class="opts.sqlserver.mode === 'table' && 'tab-active'" @click="opts.sqlserver.mode = 'table'">Tabla completa</button>
+        </div>
+        <div x-show="opts.sqlserver.mode === 'query'">
+          <label class="label">Consulta (solo SELECT / WITH)</label>
+          <textarea class="input" rows="6" spellcheck="false" placeholder="SELECT TOP 1000 * FROM dbo.Ventas WHERE Fecha >= '2024-01-01'" x-model="opts.sqlserver.query"></textarea>
+          <p class="hint">La importación es de solo lectura: INSERT, UPDATE, DELETE, DROP, EXEC, SELECT … INTO y similares se rechazan.</p>
+        </div>
+        <div x-show="opts.sqlserver.mode === 'table'" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div><label class="label">Esquema (opcional)</label><input class="input" type="text" placeholder="dbo" x-model="opts.sqlserver.schema"></div>
+          <div><label class="label">Tabla o vista</label><input class="input" type="text" x-model="opts.sqlserver.table"></div>
+        </div>
+        <div class="max-w-xs"><label class="label">Máximo de filas</label><input class="input" type="number" min="1" x-model.number="opts.sqlserver.max_rows"></div>
+      </div>
+
+      {# ---- JSON API #}
+      <div x-show="source === 'json_api'" x-cloak class="space-y-4">
+        <div class="grid gap-4 sm:grid-cols-[8rem_1fr]">
+          <div><label class="label">Método</label><select class="input" x-model="opts.json_api.method"><option>GET</option><option>POST</option></select></div>
+          <div><label class="label">URL</label><input class="input" type="url" placeholder="https://api.ejemplo.com/v1/ventas" autocomplete="off" x-model="opts.json_api.url"></div>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div><label class="label">Cabeceras (una por línea)</label>
+            <textarea class="input" rows="3" spellcheck="false" placeholder="Authorization: Bearer ..." x-model="opts.json_api.headers"></textarea>
+            <p class="hint">Las cabeceras y los tokens no se guardan.</p></div>
+          <div><label class="label">Parámetros de consulta (uno por línea)</label>
+            <textarea class="input" rows="3" spellcheck="false" placeholder="year=2024&#10;limit=500" x-model="opts.json_api.params"></textarea></div>
+        </div>
+        <div x-show="opts.json_api.method === 'POST'"><label class="label">Cuerpo de la petición (JSON)</label>
+          <textarea class="input" rows="3" spellcheck="false" placeholder='{"filtro": "activos"}' x-model="opts.json_api.body"></textarea></div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div><label class="label">Ruta a los registros (opcional)</label><input class="input" type="text" placeholder="data.items" x-model="opts.json_api.records_path">
+            <p class="hint">Vacío = detectar automáticamente la lista de objetos.</p></div>
+          <div><label class="label">Tiempo máximo (segundos)</label><input class="input" type="number" min="1" x-model.number="opts.json_api.timeout"></div>
+        </div>
+      </div>
+
+      <div class="alert alert-danger" role="alert" x-show="error" x-cloak x-text="error"></div>
+
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn btn-primary" @click="previewImport()" :disabled="busy">
+          {{ icon("play", "size-4") }} <span x-text="busy ? 'Leyendo…' : 'Vista previa'"></span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  {# ---------------------------------------------------------------- import preview #}
+  <section class="card" x-ref="previewCard" x-show="preview" x-cloak aria-labelledby="preview-title">
+    <div class="card-header">
+      <h2 id="preview-title" class="card-title">Vista previa de la importación</h2>
+      <span class="text-xs text-slate-500" x-show="preview">
+        <span x-text="preview?.n_rows.toLocaleString('es')"></span> filas × <span x-text="preview?.n_cols"></span> columnas · se muestran las primeras 50
+      </span>
+    </div>
+    <div class="card-body space-y-4">
+      <template x-if="preview">
+        <div class="space-y-4">
+          <div class="flex flex-wrap gap-2 text-xs">
+            <template x-for="(value, key) in preview.detected" :key="key">
+              <span class="badge badge-gray" x-show="value !== null && value !== '' && !Array.isArray(value) && key !== 'query'" x-text="`${key}: ${value}`"></span>
+            </template>
+          </div>
+          <div class="alert alert-warning" x-show="preview.detected.rows_truncated">Se alcanzó el máximo de filas: la consulta devolvió más datos de los importados.</div>
+
+          <div class="table-wrap max-h-96">
+            <table class="tbl">
+              <thead class="sticky top-0"><tr><template x-for="c in preview.columns" :key="c.name"><th>
+                <div x-text="c.name"></div><div class="font-normal text-slate-400" x-text="kindLabels[c.kind]"></div></th></template></tr></thead>
+              <tbody><template x-for="(row, i) in preview.rows" :key="i"><tr><template x-for="c in preview.columns" :key="c.name">
+                <td class="max-w-[16rem] truncate" x-text="formatCell(row[c.name])"></td></template></tr></template></tbody>
+            </table>
+          </div>
+
+          <details class="rounded-lg border border-slate-200 dark:border-slate-800">
+            <summary class="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300">Ajustar el tipo de las columnas (opcional)</summary>
+            <div class="grid gap-3 border-t border-slate-200 p-4 sm:grid-cols-2 lg:grid-cols-3 dark:border-slate-800">
+              <template x-for="c in preview.columns" :key="c.name">
+                <div><label class="label"><span x-text="c.name"></span> <span class="font-normal text-slate-400" x-text="`(${kindLabels[c.kind]}, ${c.n_missing} vacíos)`"></span></label>
+                  {{ kind_select("kinds[c.name]") }}</div>
+              </template>
+            </div>
+          </details>
+
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div class="flex-1"><label class="label" for="save-name">Nombre del dataset</label>
+              <input id="save-name" class="input" type="text" maxlength="120" x-model="saveName" @keydown.enter.prevent="commitImport()"></div>
+            <div class="flex gap-2">
+              <button type="button" class="btn btn-secondary" @click="cancelPreview()">Descartar</button>
+              <button type="button" class="btn btn-primary" @click="commitImport()" :disabled="busy || !saveName.trim()">{{ icon("save", "size-4") }} Guardar dataset</button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </section>
+
+  {# ---------------------------------------------------------------- saved datasets #}
+  <section class="card" aria-labelledby="saved-title">
+    <div class="card-header">
+      <h2 id="saved-title" class="card-title">Datasets guardados</h2>
+      <span class="text-xs text-slate-500" x-text="`${$store.datasets.list.length} dataset(s) en la base SQLite local`"></span>
+    </div>
+    <div class="card-body">
+      <p class="text-sm text-slate-500" x-show="$store.datasets.loaded && !$store.datasets.list.length" x-cloak>Todavía no hay datasets. Importe uno arriba, o pruebe con los archivos de la carpeta <code class="font-mono">sample_data</code>.</p>
+      <div class="table-wrap" x-show="$store.datasets.list.length" x-cloak>
+        <table class="tbl">
+          <thead><tr><th>Nombre</th><th>Origen</th><th class="text-right">Filas</th><th class="text-right">Columnas</th><th>Creado</th><th class="text-right">Acciones</th></tr></thead>
+          <tbody>
+            <template x-for="d in $store.datasets.list" :key="d.id">
+              <tr :class="d.id === $store.datasets.activeId && 'bg-brand-50/60 dark:bg-brand-900/20'">
+                <td class="max-w-[16rem] truncate" x-text="d.name"></td>
+                <td><span class="badge badge-gray" x-text="sourceLabel(d.source_type)"></span></td>
+                <td class="text-right" x-text="d.n_rows.toLocaleString('es')"></td>
+                <td class="text-right" x-text="d.n_cols"></td>
+                <td class="text-slate-500" x-text="formatDate(d.created_at)"></td>
+                <td class="text-right"><div class="flex justify-end gap-1">
+                  <button type="button" class="btn btn-ghost btn-sm" @click="view(d)">Ver</button>
+                  <button type="button" class="btn btn-ghost btn-sm" @click="rename(d)">Renombrar</button>
+                  <button type="button" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400" @click="remove(d)" :aria-label="`Eliminar ${d.name}`">{{ icon("trash", "size-4") }}</button>
+                </div></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  {# ---------------------------------------------------------------- dataset viewer #}
+  <section class="card" x-ref="viewerCard" x-show="viewer.dataset" x-cloak aria-labelledby="viewer-title">
+    <div class="card-header">
+      <h2 id="viewer-title" class="card-title" x-text="viewer.dataset ? `Datos de «${viewer.dataset.name}»` : ''"></h2>
+      <div class="flex items-center gap-2 text-xs text-slate-500">
+        <span x-text="`filas ${viewer.offset + 1}–${Math.min(viewer.offset + 50, viewer.total)} de ${viewer.total.toLocaleString('es')}`"></span>
+        <button type="button" class="btn btn-secondary btn-sm" @click="page(-1)" :disabled="viewer.offset === 0 || viewer.busy">Anterior</button>
+        <button type="button" class="btn btn-secondary btn-sm" @click="page(1)" :disabled="viewer.offset + 50 >= viewer.total || viewer.busy">Siguiente</button>
+        <button type="button" class="btn btn-ghost btn-sm" @click="closeViewer()" aria-label="Cerrar">{{ icon("close", "size-4") }}</button>
+      </div>
+    </div>
+    <div class="card-body space-y-4">
+      <div class="table-wrap max-h-96">
+        <table class="tbl">
+          <thead class="sticky top-0"><tr>
+            <template x-for="c in viewer.dataset?.columns ?? []" :key="c.name"><th><div x-text="c.name"></div>
+              <div class="font-normal text-slate-400" x-text="`${kindLabels[c.kind]} · ${c.n_missing} vacíos`"></div></th></template></tr></thead>
+          <tbody><template x-for="(row, i) in viewer.rows" :key="i"><tr><template x-for="(cell, j) in row" :key="j">
+            <td class="max-w-[16rem] truncate" x-text="formatCell(cell)"></td></template></tr></template></tbody>
+        </table>
+      </div>
+      <details class="rounded-lg border border-slate-200 dark:border-slate-800">
+        <summary class="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300">Cambiar el tipo de las columnas</summary>
+        <div class="space-y-3 border-t border-slate-200 p-4 dark:border-slate-800">
+          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <template x-for="c in viewer.dataset?.columns ?? []" :key="c.name">
+              <div><label class="label"><span x-text="c.name"></span> <span class="font-normal text-slate-400" x-text="`(${kindLabels[c.kind]})`"></span></label>
+                {{ kind_select("viewer.kinds[c.name]") }}</div>
+            </template>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" @click="applyTypes()">Aplicar cambios</button>
+          <p class="hint">Los valores que no se puedan convertir quedarán vacíos y se le avisará de cuántos fueron.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+</div>
+{% endblock %}

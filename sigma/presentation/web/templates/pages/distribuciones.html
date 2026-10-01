@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import result_area, run_button %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/distribuciones.js') }}"></script>{% endblock %}
+
+{% block content %}
+<div x-data="distribucionesPage" class="grid gap-5 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
+
+  <form class="card lg:sticky lg:top-20" @submit.prevent="submit()" @input.debounce.450ms="schedule()" aria-label="Parámetros de la distribución">
+    <div class="card-header"><h2 class="card-title">Distribución</h2><span class="badge badge-gray" x-text="spec?.kind === 'discrete' ? 'discreta' : 'continua'"></span></div>
+    <div class="card-body space-y-4">
+      <div>
+        <label class="label" for="dist-select">Familia</label>
+        <select id="dist-select" class="input" :value="key" @change="selectDistribution($event.target.value)">
+          <template x-for="d in catalog" :key="d.key"><option :value="d.key" :selected="d.key === key" x-text="d.label"></option></template>
+        </select>
+        <p class="hint" x-text="spec?.description"></p>
+      </div>
+
+      <fieldset class="grid grid-cols-2 gap-3">
+        <legend class="sr-only">Parámetros</legend>
+        <template x-for="p in spec?.params ?? []" :key="key + p.name">
+          <div>
+            <label class="label" x-text="p.label"></label>
+            <input class="input" type="number" step="any" inputmode="decimal" :min="p.minimum ?? ''" x-model="params[p.name]">
+          </div>
+        </template>
+      </fieldset>
+
+      <div>
+        <p class="label">¿Qué desea calcular?</p>
+        <div class="grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800" role="tablist">
+          <template x-for="m in modes" :key="m.key">
+            <button type="button" role="tab" class="tab" :class="mode === m.key && 'tab-active'" :aria-selected="mode === m.key" @click="mode = m.key; schedule()" x-text="m.label"></button>
+          </template>
+        </div>
+      </div>
+
+      <div x-show="mode === 'point'"><label class="label" for="in-x">Valor x</label><input id="in-x" class="input" type="number" step="any" x-model="inputs.x"></div>
+      <div x-show="mode === 'between'" class="grid grid-cols-2 gap-3">
+        <div><label class="label" for="in-a">Límite inferior a</label><input id="in-a" class="input" type="number" step="any" x-model="inputs.a"></div>
+        <div><label class="label" for="in-b">Límite superior b</label><input id="in-b" class="input" type="number" step="any" x-model="inputs.b"></div>
+      </div>
+      <div x-show="mode === 'quantile'"><label class="label" for="in-q">Probabilidad acumulada p</label>
+        <input id="in-q" class="input" type="number" step="any" min="0" max="1" x-model="inputs.q"><p class="hint">Devuelve x tal que P(X ≤ x) = p.</p></div>
+      <div x-show="mode === 'pvalue'" class="space-y-3">
+        <div><label class="label" for="in-stat">Estadístico observado</label><input id="in-stat" class="input" type="number" step="any" x-model="inputs.statistic"></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="label">Tipo de prueba</label>
+            <select class="input" x-model="tail"><option value="two-sided">Bilateral</option><option value="left">Cola izquierda</option><option value="right">Cola derecha</option></select></div>
+          <div><label class="label">Nivel α</label><input class="input" type="number" step="any" min="0" max="1" x-model="alpha"></div>
+        </div>
+      </div>
+
+      {{ run_button("Calcular") }}
+    </div>
+  </form>
+
+  <div class="min-w-0 space-y-4">{{ result_area() }}</div>
+</div>
+{% endblock %}

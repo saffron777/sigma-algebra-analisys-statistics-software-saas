@@ -1,0 +1,44 @@
+"""Request models for dataset management and saved results."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from sigma.application.dto import SaveResultCommand
+from sigma.presentation.web.schemas.base import NonEmpty, RequestModel
+
+
+class CommitImportRequest(RequestModel):
+    token: NonEmpty
+    name: str | None = None
+    column_kinds: dict[str, str] = {}
+
+
+class RenameRequest(RequestModel):
+    name: NonEmpty
+
+
+class ColumnTypesRequest(RequestModel):
+    column_kinds: dict[str, str]
+
+
+class SaveResultRequest(RequestModel):
+    module: NonEmpty
+    analysis_type: NonEmpty
+    title: NonEmpty
+    notes: str = ""
+    dataset_id: str | None = None
+    params: dict[str, Any] = {}
+    result: dict[str, Any] = {}
+    report: dict[str, Any] = {}
+    figures: list[dict[str, Any]] = []
+
+    def to_command(self) -> SaveResultCommand:
+        return SaveResultCommand(**self.model_dump())
+
+
+class UpdateResultRequest(RequestModel):
+    blank_as_none = False  # an empty string clears the notes; ``None`` leaves a field untouched
+
+    title: str | None = None
+    notes: str | None = None

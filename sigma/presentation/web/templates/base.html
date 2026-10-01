@@ -1,0 +1,72 @@
+<!doctype html>
+{% from "partials/macros.html" import icon %}
+<html lang="es" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="color-scheme" content="light dark">
+  <title>{{ page_title }} · Sigma</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+  <script src="{{ url_for('static', filename='js/theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <script defer src="{{ url_for('static', filename='vendor/plotly.min.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+  <script defer src="{{ url_for('static', filename='vendor/alpine.min.js') }}"></script>
+</head>
+<body class="h-full" x-data="shell" @keydown.escape.window="menuOpen = false">
+  <div class="flex min-h-full">
+
+    {# ---------- sidebar (drawer on mobile) ---------- #}
+    <div x-show="menuOpen" x-cloak class="fixed inset-0 z-30 bg-slate-900/50 lg:hidden" @click="menuOpen = false" aria-hidden="true"></div>
+    <aside class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-slate-200 bg-white transition-transform duration-200 dark:border-slate-800 dark:bg-slate-900 lg:sticky lg:top-0 lg:h-screen lg:shrink-0 lg:self-start lg:translate-x-0"
+           :class="menuOpen && 'translate-x-0'" aria-label="Navegación principal">
+      <div class="flex h-16 shrink-0 items-center justify-between px-5">
+        <a href="{{ url_for('pages.page_home') }}" class="flex items-center gap-2.5 text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+          <span class="grid size-8 place-items-center rounded-lg bg-brand-600 text-lg font-bold text-white">Σ</span> Sigma
+        </a>
+        <button type="button" class="btn btn-ghost btn-sm lg:hidden" @click="menuOpen = false" aria-label="Cerrar menú">{{ icon("close") }}</button>
+      </div>
+      <nav class="flex-1 space-y-5 overflow-y-auto px-3 pb-6 pt-2">
+        {% for group in nav_groups %}
+        <div>
+          <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ group.title }}</p>
+          <ul class="space-y-0.5">
+            {% for item in group["items"] %}
+            <li>
+              <a href="{{ item.href }}" {% if active == item.key %}aria-current="page"{% endif %}
+                 class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition
+                        {% if active == item.key %}bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200{% else %}text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100{% endif %}">
+                {{ icon(item.key) }} {{ item.label }}
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </nav>
+      <div class="border-t border-slate-200 px-5 py-3 text-xs text-slate-400 dark:border-slate-800">Sigma v{{ sigma_version }} · uso local</div>
+    </aside>
+
+    {# ---------- main column ---------- #}
+    <div class="flex min-w-0 flex-1 flex-col">
+      <header class="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-slate-200 bg-white/85 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-900/85 sm:px-6">
+        <button type="button" class="btn btn-ghost btn-sm lg:hidden" @click="menuOpen = true" aria-label="Abrir menú">{{ icon("menu") }}</button>
+        <h1 class="truncate text-base font-semibold text-slate-900 dark:text-slate-50">{{ page_title }}</h1>
+        <div class="ml-auto flex items-center gap-1">
+          <button type="button" class="btn btn-ghost btn-sm" @click="toggleTheme()" :aria-label="dark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'">
+            <span x-show="!dark">{{ icon("moon") }}</span><span x-show="dark" x-cloak>{{ icon("sun") }}</span>
+          </button>
+        </div>
+      </header>
+      <main class="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 sm:px-6 lg:py-7">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  {% include "partials/save_dialog.html" %}
+  {% include "partials/toasts.html" %}
+</body>
+</html>

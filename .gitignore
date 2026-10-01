@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+node_modules/
+instance/
+.env
+sigma/presentation/web/static/vendor/
+sigma/presentation/web/static/css/app.css
