@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from sigma.application.ports import NotebookStore, SyncRepository, WorkspaceRepository
+from sigma.application.ports import ImportDraftStore, NotebookStore, SyncRepository, WorkspaceRepository
 from sigma.domain.errors import InvalidInputError
-from sigma.domain.workspace import MAX_WORKSPACE_BYTES, UNSET, WorkspaceEntry, validate_module
+from sigma.domain.workspace import IMPORT_MODULE, MAX_WORKSPACE_BYTES, UNSET, WorkspaceEntry, validate_module
 
 
 class GetWorkspace:
@@ -38,13 +38,19 @@ class SaveWorkspace:
 
 
 class ClearWorkspace:
-    def __init__(self, workspace: WorkspaceRepository) -> None:
+    """«Limpiar»: empties a module (or all of them). The Datos workspace includes the pending imports."""
+
+    def __init__(self, workspace: WorkspaceRepository, drafts: ImportDraftStore) -> None:
         self._workspace = workspace
+        self._drafts = drafts
 
     def execute(self, module: str) -> int:
-        return self._workspace.clear(validate_module(module))
+        if validate_module(module) == IMPORT_MODULE:
+            self._drafts.purge()
+        return self._workspace.clear(module)
 
     def execute_all(self) -> dict[str, int]:
+        self._drafts.purge()
         return self._workspace.clear_all()
 
 

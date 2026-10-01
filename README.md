@@ -70,6 +70,7 @@ Variables de entorno (opcionales, también en un archivo `.env`, ver `.env.examp
 | `SIGMA_SECURE_COOKIES` | — | `1` si Sigma se sirve por HTTPS (la cookie de sesión solo viaja cifrada). |
 | `SIGMA_ALLOWED_HOSTS` | — | Nombres extra con los que se accede (uso en red). |
 | `SIGMA_MAX_KERNELS_PER_USER` / `SIGMA_MAX_KERNELS_TOTAL` | `3` / `8` | Límite de kernels simultáneos. |
+| `SIGMA_DRAFT_RETENTION_DAYS` | `14` | Días tras los que se descarta una importación pendiente sin tocar. |
 | `SIGMA_DEBUG` | — | `1` activa la recarga automática (solo desarrollo). |
 
 ## Cuentas de usuario
@@ -97,6 +98,15 @@ Variables de entorno (opcionales, también en un archivo `.env`, ver `.env.examp
   `sigma.save`). Si otra ventana cambia un módulo mientras usted tiene ediciones sin guardar, Sigma pregunta:
   *Cargar la versión nueva* o *Mantener la mía*. En la consola, guardar un notebook que otra ventana modificó
   responde con un conflicto (`409`): *Cargar la versión nueva* o *Sobrescribir con la mía*.
+
+## Importaciones pendientes
+
+El archivo que sube en **Datos** (y, una vez generada, su vista previa) se **conserva en el servidor**: puede cambiar de
+módulo, recargar, cerrar el navegador o reiniciar Sigma y la tarjeta del archivo y la vista previa siguen ahí; al
+cambiar el delimitador, la hoja o la codificación se vuelve a leer el archivo guardado sin subirlo otra vez. Hay una
+importación pendiente por tipo de fuente y cuenta; desaparece al guardarla como dataset, con **Quitar**, con
+**Limpiar** o pasados `SIGMA_DRAFT_RETENTION_DAYS` días (14) sin tocarla. De SQL Server y de las APIs solo se conserva el
+resultado de la consulta: las contraseñas, cabeceras, cuerpos y parámetros nunca se escriben en la base.
 
 ## Datos de ejemplo
 
@@ -170,7 +180,7 @@ tests/              unit/ (dominio, infraestructura) e integration/ (API, págin
 ## Desarrollo
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest              # 346 pruebas (la consola arranca kernels reales: ~1 min)
+.\.venv\Scripts\python.exe -m pytest              # 377 pruebas (la consola arranca kernels reales: ~1 min)
 .\.venv\Scripts\python.exe -m ruff check .        # lint
 .\.venv\Scripts\python.exe -m ruff format .       # formato
 npm run watch:css                                 # recompila Tailwind al editar plantillas/JS

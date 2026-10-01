@@ -33,13 +33,17 @@ from sigma.application.use_cases.datasets import (
     ChangeColumnTypes,
     CommitImport,
     DeleteDataset,
+    DiscardImportDraft,
     GetDatasetInfo,
+    GetImportDraft,
     InspectSource,
     ListDatasets,
+    ListImportDrafts,
     LoadSampleData,
     PreviewDataset,
     PreviewImport,
     RenameDataset,
+    UploadImportFile,
 )
 from sigma.application.use_cases.notebooks import (
     ControlKernel,
@@ -72,11 +76,11 @@ from sigma.application.use_cases.workspace import ClearWorkspace, GetSyncState, 
 from sigma.config import PROJECT_ROOT, Config
 from sigma.domain.users import User
 from sigma.infrastructure.importers.registry import DefaultImporterRegistry
-from sigma.infrastructure.importers.staging import InMemoryImportStaging, OwnedImportStaging
 from sigma.infrastructure.kernel.jupyter_executor import JupyterKernelPool
 from sigma.infrastructure.persistence.file_notebook_store import FileNotebookStore
 from sigma.infrastructure.persistence.sqlite.database import Database
 from sigma.infrastructure.persistence.sqlite.dataset_repository import SqliteDatasetRepository
+from sigma.infrastructure.persistence.sqlite.import_draft_store import SqliteImportDraftStore, purge_stale_drafts
 from sigma.infrastructure.persistence.sqlite.result_repository import SqliteResultRepository
 from sigma.infrastructure.persistence.sqlite.user_repository import SqliteUserRepository
 from sigma.infrastructure.persistence.sqlite.workspace_repository import (
@@ -95,7 +99,11 @@ class UserServices:
     user: User
     # datasets
     inspect_source: InspectSource
+    upload_import_file: UploadImportFile
     preview_import: PreviewImport
+    list_import_drafts: ListImportDrafts
+    get_import_draft: GetImportDraft
+    discard_import_draft: DiscardImportDraft
     commit_import: CommitImport
     list_datasets: ListDatasets
     get_dataset_info: GetDatasetInfo
@@ -151,7 +159,7 @@ class Container:
         self.config = config
         self.database = Database(config.db_path)
         self.importers = DefaultImporterRegistry()
-        self._staging = InMemoryImportStaging()
+        purge_stale_drafts(self.database, config.draft_retention_days)  # pending imports nobody touched for weeks
         self.kernels = JupyterKernelPool(
             project_root=PROJECT_ROOT,
             db_path=config.db_path,
@@ -181,14 +189,18 @@ class Container:
         datasets = SqliteDatasetRepository(self.database, user.id)
         results = SqliteResultRepository(self.database, user.id)
         notebooks = FileNotebookStore(self.config.notebooks_dir / owner)
-        staging = OwnedImportStaging(self._staging, owner)
+        drafts = SqliteImportDraftStore(self.database, user.id)
         workspace = SqliteWorkspaceRepository(self.database, user.id)
         sync = SqliteSyncRepository(self.database, user.id)
         return UserServices(
             user=user,
-            inspect_source=InspectSource(self.importers),
-            preview_import=PreviewImport(self.importers, staging),
-            commit_import=CommitImport(staging, datasets),
+            inspect_source=InspectSource(self.importers, drafts),
+            upload_import_file=UploadImportFile(self.importers, drafts),
+            preview_import=PreviewImport(self.importers, drafts),
+            list_import_drafts=ListImportDrafts(drafts),
+            get_import_draft=GetImportDraft(drafts),
+            discard_import_draft=DiscardImportDraft(drafts),
+            commit_import=CommitImport(drafts, datasets),
             list_datasets=ListDatasets(datasets),
             get_dataset_info=GetDatasetInfo(datasets),
             preview_dataset=PreviewDataset(datasets),
@@ -224,7 +236,7 @@ class Container:
             control_kernel=ControlKernel(notebooks, self.kernels, owner),
             get_workspace=GetWorkspace(workspace),
             save_workspace=SaveWorkspace(workspace),
-            clear_workspace=ClearWorkspace(workspace),
+            clear_workspace=ClearWorkspace(workspace, drafts),
             get_sync_state=GetSyncState(workspace, sync, notebooks),
             change_own_password=ChangeOwnPassword(self.users, self._hasher),
             update_profile=UpdateProfile(self.users),

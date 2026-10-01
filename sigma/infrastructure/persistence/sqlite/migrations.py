@@ -114,4 +114,28 @@ CREATE TABLE workspace (
 );
 """
 
-MIGRATIONS: tuple[str, ...] = (V1_BASE, V2_ACCOUNTS, V3_WORKSPACE)
+V4_IMPORT_DRAFTS = f"""
+CREATE TABLE import_drafts (
+    id             TEXT PRIMARY KEY,
+    user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source_type    TEXT NOT NULL,
+    file_name      TEXT,
+    file_blob      BLOB,
+    file_size      INTEGER NOT NULL DEFAULT 0,
+    options        TEXT NOT NULL DEFAULT '{{}}',
+    staged_table   TEXT,
+    n_rows         INTEGER,
+    n_cols         INTEGER,
+    dtypes         TEXT,
+    columns_info   TEXT,
+    source_meta    TEXT NOT NULL DEFAULT '{{}}',
+    detected       TEXT NOT NULL DEFAULT '{{}}',
+    suggested_name TEXT,
+    created_at     TEXT NOT NULL,
+    updated_at     TEXT NOT NULL,
+    UNIQUE (user_id, source_type)
+);
+{_bump_trigger("import_drafts", "drafts")}
+"""
+
+MIGRATIONS: tuple[str, ...] = (V1_BASE, V2_ACCOUNTS, V3_WORKSPACE, V4_IMPORT_DRAFTS)

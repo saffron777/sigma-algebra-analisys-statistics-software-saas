@@ -37,10 +37,22 @@
       {# ---- file input (csv / excel / text) #}
       <div x-show="isFileSource" class="space-y-4">
         <div>
-          <label class="label" for="file-input">Archivo</label>
+          <label class="label" for="file-input"><span x-text="draft ? 'Cambiar de archivo' : 'Archivo'"></span></label>
           <input id="file-input" x-ref="file" type="file" :accept="fileAccept" @change="onFile($event)"
                  class="block w-full cursor-pointer rounded-lg border border-slate-300 bg-white text-sm text-slate-600 file:mr-3 file:cursor-pointer file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-brand-700 hover:file:bg-brand-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:file:bg-brand-900/40 dark:file:text-brand-200">
-          <p class="hint">Tamaño máximo 100 MB. El archivo se lee en el servidor local; no sale de su equipo.</p>
+          <p class="hint">Tamaño máximo 100 MB. El archivo se conserva en el servidor hasta que lo guarde como dataset o lo quite.</p>
+        </div>
+
+        {# the uploaded file stays here after changing page, reloading or closing the window #}
+        <div x-show="draft" x-cloak class="flex items-center justify-between gap-3 rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 dark:border-brand-900 dark:bg-brand-950/40">
+          <div class="flex min-w-0 items-center gap-3">
+            {{ icon("file", "size-5 text-brand-600 dark:text-brand-300") }}
+            <div class="min-w-0">
+              <p class="truncate text-sm font-medium text-slate-900 dark:text-slate-100" x-text="draft?.file_name"></p>
+              <p class="text-xs text-slate-500 dark:text-slate-400" x-text="draft ? `${formatSize(draft.file_size)} · conservado en el servidor · ${formatDate(draft.updated_at)}` : ''"></p>
+            </div>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm shrink-0" @click="removeDraft()" :disabled="busy">Quitar</button>
         </div>
 
         {# CSV #}
@@ -140,7 +152,7 @@
       <div class="alert alert-danger" role="alert" x-show="error" x-cloak x-text="error"></div>
 
       <div class="flex flex-wrap gap-2">
-        <button type="button" class="btn btn-primary" @click="previewImport()" :disabled="busy">
+        <button type="button" class="btn btn-primary" @click="previewImport()" :disabled="busy || (isFileSource && !draft)">
           {{ icon("play", "size-4") }} <span x-text="busy ? 'Leyendo…' : 'Vista previa'"></span>
         </button>
       </div>

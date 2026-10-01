@@ -22,7 +22,7 @@ const SECRET_FIELDS = { sqlserver: ["password"], json_api: ["headers", "body", "
 
 document.addEventListener("alpine:init", () => {
   Alpine.data("datosPage", () => ({
-    ...workspace("datos", ["source", "saveName"], { dataset: false }),
+    ...workspace("datos", ["source", "saveName", "kinds"], { dataset: false }),
     kindLabels: KIND_LABELS,
     sourceLabels: SOURCE_LABELS,
     sources: [
@@ -31,7 +31,7 @@ document.addEventListener("alpine:init", () => {
     ],
     source: "csv",
     opts: defaultOptions(),
-    file: null,
+    drafts: {}, // pending imports on the server, by source type
     sheets: [],
     busy: false,
     error: "",
@@ -43,6 +43,9 @@ document.addEventListener("alpine:init", () => {
 
     async init() {
       await this.startWorkspace();
+      await this.loadDrafts();
+      // another window uploaded, previewed, saved or removed a pending import
+      Alpine.store("sync").on("drafts", () => this.loadDrafts());
     },
 
     // ------------------------------------------------------------------ workspace (the form; secrets are never kept)
@@ -51,20 +54,26 @@ document.addEventListener("alpine:init", () => {
       const empty = defaultOptions();
       for (const [source, names] of Object.entries(SECRET_FIELDS)) for (const name of names) opts[source][name] = empty[source][name];
       opts.json_api.url = String(opts.json_api.url ?? "").split(/[?#]/)[0]; // a token often travels in the query string
-      return { source: this.source, opts, saveName: this.saveName, viewerId: this.viewer.dataset?.id ?? null, viewerOffset: this.viewer.offset };
+      return {
+        source: this.source, opts, saveName: this.saveName, kinds: { ...this.kinds },
+        viewerId: this.viewer.dataset?.id ?? null, viewerOffset: this.viewer.offset,
+      };
     },
     async applyWorkspace(state) {
       this.source = state.source in this.sourceLabels ? state.source : "csv";
       const defaults = defaultOptions();
       this.opts = Object.fromEntries(Object.keys(defaults).map((key) => [key, { ...defaults[key], ...(state.opts?.[key] ?? {}) }]));
       this.saveName = state.saveName ?? "";
+      this.kinds = { ...(state.kinds ?? {}) };
       const dataset = Alpine.store("datasets").list.find((d) => d.id === state.viewerId);
       if (dataset) await this.view(dataset, state.viewerOffset ?? 0, false);
+      await this.loadDrafts();
     },
-    resetWorkspace() {
+    /** «Limpiar» (the server also discards the pending imports, which belong to this module's workspace). */
+    async resetWorkspace() {
       this.source = "csv";
       this.opts = defaultOptions();
-      this.file = null;
+      this.drafts = {};
       this.sheets = [];
       this.preview = null;
       this.saveName = "";
@@ -74,27 +83,80 @@ document.addEventListener("alpine:init", () => {
       if (this.$refs.file) this.$refs.file.value = "";
     },
 
-    // ------------------------------------------------------------------ import flow
+    // ------------------------------------------------------------------ pending imports (kept on the server)
     get isFileSource() { return FILE_SOURCES.has(this.source); },
+    get draft() { return this.drafts[this.source] ?? null; },
     get fileAccept() {
       return { csv: ".csv,.tsv,text/csv", excel: ".xlsx,.xlsm,.xls", text: ".txt,.tsv,.dat,.prn,text/plain" }[this.source];
     },
 
-    selectSource(key) {
+    /** Read the pending imports and show the one of the selected source again (file card and, if any, its preview). */
+    async loadDrafts() {
+      try {
+        const { drafts } = await api("/api/datasets/import/drafts");
+        this.drafts = Object.fromEntries(drafts.map((draft) => [draft.source_type, draft]));
+      } catch { return; }
+      await this.showDraft();
+    },
+
+    async showDraft() {
+      const draft = this.draft;
+      if (!draft) { this.preview = null; this.sheets = []; return; }
+      if (this.source === "excel" && !this.sheets.length) await this.loadSheets();
+      if (!draft.has_preview) { if (this.preview?.token === draft.id) this.preview = null; return; }
+      if (this.preview?.token === draft.id && this.preview.updated === draft.updated_at) return; // already on screen
+      try {
+        this.preview = { ...(await api(`/api/datasets/import/drafts/${draft.id}`)), updated: draft.updated_at };
+        if (!this.saveName.trim()) this.saveName = this.preview.suggested_name;
+      } catch { this.preview = null; }
+    },
+
+    async selectSource(key) {
       this.source = key;
-      this.file = null;
       this.sheets = [];
       this.error = "";
       this.preview = null;
       if (this.$refs.file) this.$refs.file.value = "";
+      await this.showDraft();
     },
 
     async onFile(event) {
-      this.file = event.target.files[0] ?? null;
+      const file = event.target.files[0] ?? null;
+      if (this.$refs.file) this.$refs.file.value = ""; // the same file can be chosen again later
+      if (!file) return;
       this.preview = null;
       this.error = "";
       this.sheets = [];
-      if (this.file && this.source === "excel") await this.loadSheets();
+      this.busy = true;
+      try {
+        const form = new FormData();
+        form.append("source_type", this.source);
+        form.append("file", file);
+        const { draft } = await api("/api/datasets/import/draft", { method: "POST", form });
+        this.drafts = { ...this.drafts, [draft.source_type]: draft };
+        if (this.source === "excel") await this.loadSheets();
+      } catch (error) {
+        this.error = error.message;
+      } finally {
+        this.busy = false;
+      }
+    },
+
+    /** «Quitar»: forget the pending import of this source (file and preview). */
+    async removeDraft() {
+      const draft = this.draft;
+      if (!draft) return;
+      try {
+        await api(`/api/datasets/import/drafts/${draft.id}`, { method: "DELETE" });
+      } catch (error) {
+        this.error = error.message;
+        return;
+      }
+      const { [this.source]: _removed, ...rest } = this.drafts;
+      this.drafts = rest;
+      this.preview = null;
+      this.sheets = [];
+      this.kinds = {};
     },
 
     buildOptions() {
@@ -107,36 +169,36 @@ document.addEventListener("alpine:init", () => {
       return options;
     },
 
+    /** The request that reads this source: a file source names its stored file (no new upload). */
     requestInit() {
-      const options = this.buildOptions();
-      if (this.isFileSource) {
-        const form = new FormData();
-        form.append("source_type", this.source);
-        form.append("options", JSON.stringify(options));
-        if (this.file) form.append("file", this.file);
-        return { method: "POST", form };
-      }
-      return { method: "POST", json: { source_type: this.source, options } };
+      const json = { source_type: this.source, options: this.buildOptions() };
+      if (this.isFileSource) json.draft_id = this.draft?.id;
+      return { method: "POST", json };
     },
 
     async loadSheets() {
+      if (!this.draft) return;
       try {
         const { sheets } = await api("/api/datasets/import/inspect", this.requestInit());
         this.sheets = sheets;
-        this.opts.excel.sheet = sheets[0] ?? "";
+        if (!sheets.includes(this.opts.excel.sheet)) this.opts.excel.sheet = sheets[0] ?? "";
       } catch (error) {
         this.error = error.message;
       }
     },
 
     async previewImport() {
-      if (this.isFileSource && !this.file) { this.error = "Seleccione un archivo."; return; }
+      if (this.isFileSource && !this.draft) { this.error = "Seleccione un archivo."; return; }
       this.busy = true;
       this.error = "";
       try {
-        this.preview = await api("/api/datasets/import/preview", this.requestInit());
-        this.saveName = this.preview.suggested_name;
+        const preview = await api("/api/datasets/import/preview", this.requestInit());
+        this.preview = preview;
+        this.saveName = preview.suggested_name;
         this.kinds = {};
+        const { drafts } = await api("/api/datasets/import/drafts");
+        this.drafts = Object.fromEntries(drafts.map((draft) => [draft.source_type, draft]));
+        this.preview.updated = this.draft?.updated_at;
         await this.$nextTick();
         this.$refs.previewCard?.scrollIntoView({ behavior: "smooth", block: "start" });
       } catch (error) {
@@ -156,9 +218,12 @@ document.addEventListener("alpine:init", () => {
           method: "POST", json: { token: this.preview.token, name: this.saveName, column_kinds: kinds },
         });
         Alpine.store("toast").show(`Dataset «${dataset.name}» guardado.`, "success");
+        const { [this.source]: _saved, ...rest } = this.drafts; // the server removed the pending import
+        this.drafts = rest;
         this.preview = null;
-        this.file = null;
-        if (this.$refs.file) this.$refs.file.value = "";
+        this.sheets = [];
+        this.kinds = {};
+        this.saveName = "";
         await Alpine.store("datasets").refresh();
         Alpine.store("datasets").select(dataset.id);
       } catch (error) {
@@ -168,9 +233,21 @@ document.addEventListener("alpine:init", () => {
       }
     },
 
-    cancelPreview() {
+    /** «Descartar» the preview: a file stays available to be analysed again with other options. */
+    async cancelPreview() {
+      const draft = this.draft;
       this.preview = null;
       this.error = "";
+      if (!draft) return;
+      try {
+        await api(`/api/datasets/import/drafts/${draft.id}${this.isFileSource ? "?preview_only=1" : ""}`, { method: "DELETE" });
+      } catch { /* already gone */ }
+      await this.loadDrafts();
+    },
+
+    formatSize(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      return bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
     },
 
     async loadSamples() {

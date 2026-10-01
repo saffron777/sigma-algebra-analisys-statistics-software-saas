@@ -48,6 +48,7 @@ class Config:
     max_kernels_per_user: int = 3
     max_kernels_total: int = 8
     session_hours: float = 12.0
+    draft_retention_days: int = 14
     secure_cookies: bool = False
     allowed_hosts: tuple[str, ...] = ("127.0.0.1", "localhost", "[::1]", "::1")
     testing: bool = False
@@ -69,6 +70,7 @@ class Config:
             "max_kernels_per_user": int(os.environ.get("SIGMA_MAX_KERNELS_PER_USER", "3")),
             "max_kernels_total": int(os.environ.get("SIGMA_MAX_KERNELS_TOTAL", "8")),
             "session_hours": float(os.environ.get("SIGMA_SESSION_HOURS", "12")),
+            "draft_retention_days": int(os.environ.get("SIGMA_DRAFT_RETENTION_DAYS", "14")),
             "secure_cookies": os.environ.get("SIGMA_SECURE_COOKIES", "").lower() in {"1", "true", "yes"},
             "debug": os.environ.get("SIGMA_DEBUG", "").lower() in {"1", "true", "yes"},
         }

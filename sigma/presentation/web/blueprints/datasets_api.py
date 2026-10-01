@@ -16,8 +16,15 @@ from sigma.presentation.web.serializers import to_jsonable
 bp = Blueprint("datasets_api", __name__, url_prefix="/api/datasets")
 
 
+def _draft_id() -> str | None:
+    """The pending import a request refers to (its stored file is used instead of a new upload)."""
+    if request.mimetype == "multipart/form-data":
+        return request.form.get("draft_id") or None
+    return (request.get_json(silent=True) or {}).get("draft_id") or None
+
+
 def _import_request() -> ImportRequest:
-    """Accepts multipart (file sources) or JSON (SQL Server / API sources)."""
+    """Accepts multipart (file sources) or JSON (SQL Server / API sources, or a file already kept as a draft)."""
     if request.files or request.mimetype == "multipart/form-data":
         source_type = request.form.get("source_type", "")
         raw_options = request.form.get("options") or "{}"
@@ -47,23 +54,54 @@ def load_samples():
 
 @bp.post("/import/inspect")
 def inspect_source():
-    return jsonify(to_jsonable(container().inspect_source.execute(_import_request())))
+    return jsonify(to_jsonable(container().inspect_source.execute(_import_request(), _draft_id())))
+
+
+@bp.post("/import/draft")
+def upload_draft():
+    """Keep an uploaded file on the server (one pending import per source type); no parsing yet."""
+    upload = request.files.get("file")
+    if upload is None:
+        raise InvalidInputError("Seleccione un archivo.")
+    info = container().upload_import_file.execute(
+        request.form.get("source_type", ""), upload.filename or "archivo", upload.read()
+    )
+    return jsonify({"draft": to_jsonable(info)}), 201
+
+
+@bp.get("/import/drafts")
+def list_drafts():
+    return jsonify({"drafts": to_jsonable(container().list_import_drafts.execute())})
+
+
+@bp.get("/import/drafts/<token>")
+def get_draft(token: str):
+    """The preview of a pending import, as it was shown before the page changed."""
+    return jsonify(_preview_payload(container().get_import_draft.execute(token)))
+
+
+@bp.delete("/import/drafts/<token>")
+def discard_draft(token: str):
+    """Remove the pending import (file included); ``?preview_only=1`` keeps the file and drops only the parsed table."""
+    container().discard_import_draft.execute(token, request.args.get("preview_only") == "1")
+    return jsonify({"discarded": token})
 
 
 @bp.post("/import/preview")
 def preview_import():
-    preview = container().preview_import.execute(_import_request())
-    return jsonify(
-        {
-            "token": preview.token,
-            "suggested_name": preview.suggested_name,
-            "n_rows": preview.n_rows,
-            "n_cols": preview.n_cols,
-            "columns": to_jsonable(preview.columns),
-            "rows": to_jsonable(preview.rows),
-            "detected": to_jsonable(preview.detected),
-        }
-    )
+    return jsonify(_preview_payload(container().preview_import.execute(_import_request(), _draft_id())))
+
+
+def _preview_payload(preview) -> dict:
+    return {
+        "token": preview.token,
+        "suggested_name": preview.suggested_name,
+        "n_rows": preview.n_rows,
+        "n_cols": preview.n_cols,
+        "columns": to_jsonable(preview.columns),
+        "rows": to_jsonable(preview.rows),
+        "detected": to_jsonable(preview.detected),
+    }
 
 
 @bp.post("/import/commit")

@@ -18,9 +18,9 @@ from sigma.infrastructure.importers.json_api_importer import JsonApiImporter, pa
 from sigma.infrastructure.importers.registry import DefaultImporterRegistry
 from sigma.infrastructure.importers.sql_guard import build_table_query, validate_readonly_query
 from sigma.infrastructure.importers.sqlserver_importer import SqlServerImporter, _odbc_value, sqlserver_engine
-from sigma.infrastructure.importers.staging import InMemoryImportStaging
 from sigma.infrastructure.persistence.sqlite.database import Database
 from sigma.infrastructure.persistence.sqlite.dataset_repository import SqliteDatasetRepository
+from sigma.infrastructure.persistence.sqlite.import_draft_store import SqliteImportDraftStore
 from tests.support import add_user
 
 
@@ -31,6 +31,13 @@ def req(source, content=None, name=None, **options):
 def make_repository(path):
     database = Database(path)
     return SqliteDatasetRepository(database, add_user(database))
+
+
+def make_workspace(path):
+    """A dataset repository and the draft store of the same account."""
+    database = Database(path)
+    user = add_user(database)
+    return SqliteDatasetRepository(database, user), SqliteImportDraftStore(database, user)
 
 
 # ------------------------------------------------------------------------- CSV / text
@@ -300,56 +307,46 @@ def test_parse_pairs():
 
 # ------------------------------------------------------------------------- use cases: preview → commit
 def test_preview_then_commit_flow(tmp_path):
-    staging = InMemoryImportStaging()
     registry = DefaultImporterRegistry()
-    repository = make_repository(tmp_path / "s.db")
+    repository, drafts = make_workspace(tmp_path / "s.db")
     content = b"Nombre,Edad,Nombre\nAna,30,x\nLuis,41,y\n"
-    preview = PreviewImport(registry, staging).execute(req("csv", content, "clientes.csv"))
+    preview = PreviewImport(registry, drafts).execute(req("csv", content, "clientes.csv"))
     assert preview.suggested_name == "clientes" and preview.n_rows == 2
     assert [c.name for c in preview.columns] == ["Nombre", "Edad", "Nombre.1"]  # duplicate made unique
-    info = CommitImport(staging, repository).execute(preview.token, None, {"Edad": "text"})
+    info = CommitImport(drafts, repository).execute(preview.token, None, {"Edad": "text"})
     assert info.name == "clientes" and info.source_type == "csv"
     assert repository.get(info.id).data["Edad"].tolist() == ["30", "41"]
-    with pytest.raises(InvalidInputError):  # the token is single-use
-        CommitImport(staging, repository).execute(preview.token, "otra", None)
+    with pytest.raises(InvalidInputError):  # a saved draft is gone
+        CommitImport(drafts, repository).execute(preview.token, "otra", None)
+    assert drafts.list() == []
 
 
-def test_inspect_source_and_unknown_type(workbook):
+def test_a_failed_commit_keeps_the_draft_so_it_can_be_retried(tmp_path):
     registry = DefaultImporterRegistry()
-    assert InspectSource(registry).execute(req("excel", workbook))["sheets"] == ["Ventas", "Otra"]
-    assert InspectSource(registry).execute(req("csv", b"a\n1")) == {}
+    repository, drafts = make_workspace(tmp_path / "r.db")
+    repository.add("clientes", pd.DataFrame({"x": [1]}), "csv", {})
+    token = PreviewImport(registry, drafts).execute(req("csv", b"a\n1\n2\n", "clientes.csv")).token
+    with pytest.raises(InvalidInputError, match="Ya existe"):
+        CommitImport(drafts, repository).execute(token, None, None)
+    assert CommitImport(drafts, repository).execute(token, "clientes 2", None).n_rows == 2
+
+
+def test_inspect_source_and_unknown_type(workbook, tmp_path):
+    registry = DefaultImporterRegistry()
+    _, drafts = make_workspace(tmp_path / "i.db")
+    assert InspectSource(registry, drafts).execute(req("excel", workbook))["sheets"] == ["Ventas", "Otra"]
+    assert InspectSource(registry, drafts).execute(req("csv", b"a\n1")) == {}
     with pytest.raises(InvalidInputError):
         registry.get("ftp")
 
 
-def test_staging_capacity_and_ttl():
-    staging = InMemoryImportStaging(capacity=2, ttl_seconds=0.05)
-    from sigma.application.ports import StagedImport
-
-    tokens = [staging.put(StagedImport(pd.DataFrame({"a": [i]}), "csv", {}, "n")) for i in range(3)]
-    with pytest.raises(InvalidInputError):
-        staging.take(tokens[0])  # evicted by capacity
-    import time
-
-    time.sleep(0.1)
-    with pytest.raises(InvalidInputError):
-        staging.take(tokens[2])  # expired
-
-
 def test_complex_json_cells_become_text(api_server, tmp_path):
     registry = DefaultImporterRegistry()
-    preview = PreviewImport(registry, InMemoryImportStaging()).execute(
-        req("json_api", url=f"{api_server}/items", records_path="data.items")
-    )
+    repository, drafts = make_workspace(tmp_path / "j.db")
+    request = req("json_api", url=f"{api_server}/items", records_path="data.items")
+    preview = PreviewImport(registry, drafts).execute(request)
     assert preview.rows["tags"].map(lambda v: isinstance(v, str)).all()
-    repository = make_repository(tmp_path / "j.db")
-    staging = InMemoryImportStaging()
-    token = (
-        PreviewImport(registry, staging)
-        .execute(req("json_api", url=f"{api_server}/items", records_path="data.items"))
-        .token
-    )
-    assert CommitImport(staging, repository).execute(token, "api").n_rows == 2
+    assert CommitImport(drafts, repository).execute(preview.token, "api").n_rows == 2
 
 
 def test_numpy_scalars_in_object_columns_are_storable(tmp_path):

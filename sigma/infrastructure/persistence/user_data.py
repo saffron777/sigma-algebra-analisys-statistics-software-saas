@@ -8,6 +8,7 @@ from pathlib import Path
 from sigma.application.ports import CodeExecutor
 from sigma.infrastructure.persistence.sqlite.database import Database
 from sigma.infrastructure.persistence.sqlite.dataset_repository import SqliteDatasetRepository
+from sigma.infrastructure.persistence.sqlite.import_draft_store import SqliteImportDraftStore
 
 
 class SqliteLegacyDataAdopter:
@@ -47,4 +48,5 @@ class UserDataPurger:
     def purge(self, user_id: int) -> None:
         self._kernels.shutdown_owner(str(user_id))
         SqliteDatasetRepository(self._db, user_id).purge()
+        SqliteImportDraftStore(self._db, user_id).purge()  # their staged tables are not dropped by the cascade
         shutil.rmtree(self._notebooks_root / str(user_id), ignore_errors=True)

@@ -7,7 +7,7 @@ from typing import Any, Protocol
 
 import pandas as pd
 
-from sigma.domain.datasets import Dataset, DatasetInfo
+from sigma.domain.datasets import ColumnInfo, Dataset, DatasetInfo
 from sigma.domain.notebooks import ExecutionResult, KernelStatus, NotebookDocument, NotebookSummary
 from sigma.domain.saved_results import SavedResult, SavedResultSummary
 from sigma.domain.users import User
@@ -49,10 +49,57 @@ class ImporterRegistry(Protocol):
     def source_types(self) -> list[str]: ...
 
 
-class ImportStaging(Protocol):
-    def put(self, staged: StagedImport) -> str: ...
+@dataclass(frozen=True)
+class DraftInfo:
+    """A pending import: the uploaded file and/or the parsed table awaiting the user's confirmation."""
 
-    def take(self, token: str) -> StagedImport: ...
+    id: str
+    source_type: str
+    file_name: str | None
+    file_size: int
+    options: dict[str, Any]  # never contains secrets (passwords, headers, tokens)
+    n_rows: int | None
+    n_cols: int | None
+    suggested_name: str | None
+    has_preview: bool
+    created_at: str
+    updated_at: str
+
+
+class ImportDraftStore(Protocol):
+    """One draft per user and source type; survives page changes, restarts and other windows."""
+
+    def attach_file(self, source_type: str, file_name: str, content: bytes) -> DraftInfo:
+        """Keep an uploaded file (replacing the previous draft of that source type, preview included)."""
+        ...
+
+    def file(self, token: str) -> tuple[DraftInfo, bytes | None]: ...
+
+    def put(self, staged: StagedImport, token: str | None = None, options: dict[str, Any] | None = None) -> str:
+        """Store the parsed table as the draft's preview; returns the draft id (the commit token)."""
+        ...
+
+    def take(self, token: str) -> StagedImport:
+        """Read the staged table without consuming it (a failed commit can be retried)."""
+        ...
+
+    def preview(self, token: str, limit: int) -> tuple[DraftInfo, tuple[ColumnInfo, ...], pd.DataFrame, dict[str, Any]]:
+        """Everything needed to show the staged table again: info, columns, first rows, detected options."""
+        ...
+
+    def info(self, token: str) -> DraftInfo: ...
+
+    def list(self) -> list[DraftInfo]: ...
+
+    def discard(self, token: str) -> None: ...
+
+    def discard_preview(self, token: str) -> None:
+        """Drop the parsed table but keep the uploaded file and options."""
+        ...
+
+    def purge(self) -> int:
+        """Remove every pending import of the user; returns how many there were."""
+        ...
 
 
 class DatasetRepository(Protocol):

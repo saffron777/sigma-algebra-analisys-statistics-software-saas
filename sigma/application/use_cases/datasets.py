@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path, PurePath
+from typing import Any
 
 import pandas as pd
 
 from sigma.application.ports import (
     DatasetRepository,
+    DraftInfo,
+    ImportDraftStore,
     ImporterRegistry,
     ImportRequest,
-    ImportStaging,
     StagedImport,
 )
 from sigma.domain.datasets import (
@@ -28,6 +30,16 @@ from sigma.domain.errors import InvalidInputError
 
 PREVIEW_ROWS = 50
 MAX_NAME_LENGTH = 120
+# options that must never be written to the database (a pending import is stored, a password must not be)
+SECRET_OPTIONS = {"sqlserver": ("password",), "json_api": ("headers", "body", "params")}
+
+
+def safe_options(source_type: str, options: dict[str, Any]) -> dict[str, Any]:
+    """The import options that are fine to keep with a draft: no passwords, headers, bodies or URL query strings."""
+    kept = {k: v for k, v in options.items() if k not in SECRET_OPTIONS.get(source_type, ())}
+    if isinstance(kept.get("url"), str):
+        kept["url"] = kept["url"].split("?", 1)[0].split("#", 1)[0]  # a token often travels in the query string
+    return kept
 
 
 def clean_dataset_name(name: str | None, fallback: str = "dataset") -> str:
@@ -51,14 +63,31 @@ class ImportPreview:
     detected: dict
 
 
+def _with_stored_file(drafts: ImportDraftStore, request: ImportRequest, draft_id: str | None) -> ImportRequest:
+    """A request that names a draft reads that draft's saved file instead of a new upload."""
+    if draft_id is None or request.file_content is not None:
+        return request
+    info, content = drafts.file(draft_id)
+    if info.source_type != request.source_type:
+        raise InvalidInputError("El archivo guardado corresponde a otro tipo de fuente.")
+    if content is None:
+        return request
+    return replace(request, file_name=info.file_name, file_content=content)
+
+
 class PreviewImport:
-    """Reads a source, normalises it and stages it so the user can review before saving."""
+    """Reads a source, normalises it and keeps it as the user's pending import so they can review it before saving."""
 
-    def __init__(self, importers: ImporterRegistry, staging: ImportStaging) -> None:
+    def __init__(self, importers: ImporterRegistry, drafts: ImportDraftStore) -> None:
         self._importers = importers
-        self._staging = staging
+        self._drafts = drafts
 
-    def execute(self, request: ImportRequest) -> ImportPreview:
+    def execute(self, request: ImportRequest, draft_id: str | None = None) -> ImportPreview:
+        token = draft_id
+        if request.file_content is not None:  # a file arrived with the request: keep it as the draft's file
+            token = self._drafts.attach_file(request.source_type, request.file_name or "", request.file_content).id
+        else:
+            request = _with_stored_file(self._drafts, request, draft_id)
         frame, detected = self._importers.get(request.source_type).read(request)
         frame = prepare_frame(frame)
         if frame.empty and frame.shape[1] == 0:
@@ -74,7 +103,11 @@ class PreviewImport:
             "file_name": request.file_name,
             **{k: v for k, v in detected.items() if k != "password"},
         }
-        token = self._staging.put(StagedImport(frame, request.source_type, meta, suggested, detected))
+        token = self._drafts.put(
+            StagedImport(frame, request.source_type, meta, suggested, detected),
+            token,
+            safe_options(request.source_type, request.options),
+        )
         return ImportPreview(
             token, suggested, len(frame), frame.shape[1], describe_columns(frame), frame.head(PREVIEW_ROWS), detected
         )
@@ -107,32 +140,82 @@ class LoadSampleData:
 class InspectSource:
     """Asks an importer for extra choices before reading (e.g. the sheets of an Excel workbook)."""
 
-    def __init__(self, importers: ImporterRegistry) -> None:
+    def __init__(self, importers: ImporterRegistry, drafts: ImportDraftStore) -> None:
         self._importers = importers
+        self._drafts = drafts
 
-    def execute(self, request: ImportRequest) -> dict:
+    def execute(self, request: ImportRequest, draft_id: str | None = None) -> dict:
+        request = _with_stored_file(self._drafts, request, draft_id)
         importer = self._importers.get(request.source_type)
         inspect = getattr(importer, "inspect", None)
         return inspect(request) if inspect else {}
 
 
-class CommitImport:
-    """Saves a staged import, optionally overriding column types."""
+class UploadImportFile:
+    """Keeps an uploaded file on the server so it survives page changes (it becomes the draft of that source)."""
 
-    def __init__(self, staging: ImportStaging, datasets: DatasetRepository) -> None:
-        self._staging = staging
+    def __init__(self, importers: ImporterRegistry, drafts: ImportDraftStore) -> None:
+        self._importers = importers
+        self._drafts = drafts
+
+    def execute(self, source_type: str, file_name: str, content: bytes) -> DraftInfo:
+        self._importers.get(source_type)  # rejects unknown source types
+        if not content:
+            raise InvalidInputError("El archivo está vacío.")
+        return self._drafts.attach_file(source_type, file_name, content)
+
+
+class ListImportDrafts:
+    def __init__(self, drafts: ImportDraftStore) -> None:
+        self._drafts = drafts
+
+    def execute(self) -> list[DraftInfo]:
+        return self._drafts.list()
+
+
+class GetImportDraft:
+    """Rebuilds the preview of a pending import (after a page change or in another window)."""
+
+    def __init__(self, drafts: ImportDraftStore) -> None:
+        self._drafts = drafts
+
+    def execute(self, token: str) -> ImportPreview:
+        info, columns, rows, detected = self._drafts.preview(token, PREVIEW_ROWS)
+        return ImportPreview(
+            token, info.suggested_name or "importado", info.n_rows or 0, info.n_cols or 0, columns, rows, detected
+        )
+
+
+class DiscardImportDraft:
+    def __init__(self, drafts: ImportDraftStore) -> None:
+        self._drafts = drafts
+
+    def execute(self, token: str, preview_only: bool = False) -> None:
+        if preview_only:
+            self._drafts.discard_preview(token)
+        else:
+            self._drafts.discard(token)
+
+
+class CommitImport:
+    """Saves a pending import as a dataset, optionally overriding column types; the draft goes away on success."""
+
+    def __init__(self, drafts: ImportDraftStore, datasets: DatasetRepository) -> None:
+        self._drafts = drafts
         self._datasets = datasets
 
     def execute(self, token: str, name: str | None, column_kinds: dict[str, str] | None = None) -> DatasetInfo:
-        staged = self._staging.take(token)
+        staged = self._drafts.take(token)
         frame = staged.frame
         for column, kind in (column_kinds or {}).items():
             if column not in frame.columns:
                 raise InvalidInputError(f"La columna «{column}» no existe.")
             frame[column], _ = convert_column(frame[column], kind)
-        return self._datasets.add(
+        info = self._datasets.add(
             clean_dataset_name(name, staged.suggested_name), frame, staged.source_type, staged.source_meta
         )
+        self._drafts.discard(token)  # only after the dataset exists: a name clash leaves the draft to retry
+        return info
 
 
 class ListDatasets:

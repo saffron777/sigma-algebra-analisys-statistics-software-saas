@@ -18,6 +18,7 @@ WORKSPACE_MODULES = (
     "resultados",
 )
 MAX_WORKSPACE_BYTES = 16 * 1024 * 1024
+IMPORT_MODULE = "datos"  # its workspace also holds the pending imports (uploaded file + preview)
 
 
 class _Unset:
