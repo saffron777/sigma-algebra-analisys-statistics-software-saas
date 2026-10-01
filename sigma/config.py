@@ -7,6 +7,8 @@ import secrets
 from dataclasses import dataclass
 from pathlib import Path
 
+from sigma.infrastructure.persistence.database_settings import DatabaseSettings, load_settings
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -39,7 +41,8 @@ class Config:
     port: int = 5000
     secret_key: str = ""
     instance_dir: Path = PROJECT_ROOT / "instance"
-    db_path: Path = PROJECT_ROOT / "instance" / "sigma.db"
+    db_path: Path = PROJECT_ROOT / "instance" / "sigma.db"  # the SQLite file used when no other database is chosen
+    database: DatabaseSettings | None = None  # which database to persist to (None = SQLite at db_path)
     notebooks_dir: Path = PROJECT_ROOT / "instance" / "notebooks"
     sample_dir: Path = PROJECT_ROOT / "sample_data"
     max_upload_bytes: int = 100 * 1024 * 1024
@@ -80,6 +83,12 @@ class Config:
         if extra_hosts:
             values["allowed_hosts"] = (*cls.allowed_hosts, *extra_hosts)
         values.update(overrides)
+        if values.get("database") is None:
+            values["database"] = (
+                DatabaseSettings.sqlite(values["db_path"])
+                if values.get("testing")  # tests never read the developer's environment or instance/database.json
+                else load_settings(values["instance_dir"], values["db_path"])
+            )
         secret = values.pop("secret_key", None) or os.environ.get("SIGMA_SECRET_KEY") or ""
         if not secret:
             secret = secrets.token_hex(32) if values.get("testing") else _load_or_create_secret(values["instance_dir"])

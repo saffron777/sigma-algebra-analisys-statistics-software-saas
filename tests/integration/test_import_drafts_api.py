@@ -8,6 +8,7 @@ from openpyxl import Workbook
 from sigma.app_factory import create_app
 from sigma.config import Config
 from tests.integration.conftest import ApiClient, import_frame
+from tests.support import fetch_all, scalar, table_names
 
 CSV = b"nombre;edad\nAna;30\nLuis;41\nMarta;28\n"
 
@@ -173,9 +174,9 @@ def test_deleting_an_account_removes_its_pending_imports(app, api, make_client):
     preview(other, draft["id"], delimiter="semicolon")
     luis = other.get("/api/auth/me").parsed["user"]["id"]
     assert api.delete(f"/api/users/{luis}").status_code == 200
-    with app.extensions["sigma"].database.connection() as conn:
-        assert conn.execute("SELECT COUNT(*) FROM import_drafts").fetchone()[0] == 0
-        assert [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE name LIKE 'stg_%'")] == []
+    db = app.extensions["sigma"].database
+    assert scalar(db, "SELECT COUNT(*) FROM import_drafts") == 0
+    assert table_names(db, "stg_") == []
 
 
 @pytest.mark.parametrize("source", ["sqlserver", "json_api"])
@@ -188,13 +189,13 @@ def test_connection_secrets_never_reach_the_database(app, api, source):
         "url": "http://127.0.0.1:9/x?t=NO-GUARDAR",
     }
     api.post("/api/datasets/import/preview", {"source_type": source, "options": options})
-    with app.extensions["sigma"].database.connection() as conn:
-        dump = " ".join(
-            str(v)
-            for table in ("import_drafts", "workspace")
-            for row in conn.execute(f"SELECT * FROM {table}")
-            for v in tuple(row)
-        )
+    db = app.extensions["sigma"].database
+    dump = " ".join(
+        str(v)
+        for table in ("import_drafts", "workspace")
+        for row in fetch_all(db, f"SELECT * FROM {table}")
+        for v in row
+    )
     assert "NO-GUARDAR" not in dump
 
 

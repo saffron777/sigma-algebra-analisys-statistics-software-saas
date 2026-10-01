@@ -18,9 +18,9 @@ from sigma.infrastructure.importers.json_api_importer import JsonApiImporter, pa
 from sigma.infrastructure.importers.registry import DefaultImporterRegistry
 from sigma.infrastructure.importers.sql_guard import build_table_query, validate_readonly_query
 from sigma.infrastructure.importers.sqlserver_importer import SqlServerImporter, _odbc_value, sqlserver_engine
-from sigma.infrastructure.persistence.sqlite.database import Database
-from sigma.infrastructure.persistence.sqlite.dataset_repository import SqliteDatasetRepository
-from sigma.infrastructure.persistence.sqlite.import_draft_store import SqliteImportDraftStore
+from sigma.infrastructure.persistence.sql.dataset_repository import SqlDatasetRepository
+from sigma.infrastructure.persistence.sql.engine import Database
+from sigma.infrastructure.persistence.sql.import_draft_store import SqlImportDraftStore
 from tests.support import add_user
 
 
@@ -30,14 +30,14 @@ def req(source, content=None, name=None, **options):
 
 def make_repository(path):
     database = Database(path)
-    return SqliteDatasetRepository(database, add_user(database))
+    return SqlDatasetRepository(database, add_user(database))
 
 
 def make_workspace(path):
     """A dataset repository and the draft store of the same account."""
     database = Database(path)
     user = add_user(database)
-    return SqliteDatasetRepository(database, user), SqliteImportDraftStore(database, user)
+    return SqlDatasetRepository(database, user), SqlImportDraftStore(database, user)
 
 
 # ------------------------------------------------------------------------- CSV / text

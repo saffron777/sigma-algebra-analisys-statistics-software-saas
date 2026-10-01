@@ -7,8 +7,8 @@ from sigma.domain.errors import AiUnavailableError, InvalidInputError, RateLimit
 from sigma.domain.interpretation import Prompt
 from sigma.infrastructure.ai.anthropic_gateway import FALLBACK_BETA, FALLBACK_MODEL, AnthropicGateway
 from sigma.infrastructure.ai.settings import DEFAULT_MODEL, AiSettings
-from sigma.infrastructure.persistence.sqlite.ai_repositories import SqliteAiUsageRepository, SqliteSettingsRepository
-from sigma.infrastructure.persistence.sqlite.database import Database
+from sigma.infrastructure.persistence.sql.ai_repositories import SqlAiUsageRepository, SqlSettingsRepository
+from sigma.infrastructure.persistence.sql.engine import Database
 from tests.support import add_user
 
 try:  # recent SDKs ship their own HTTP client package
@@ -22,7 +22,7 @@ PROMPT = Prompt(system="sistema", user="usuario")
 
 def settings(tmp_path, environ=None, name="s.db"):
     return AiSettings(
-        SqliteSettingsRepository(Database(tmp_path / name)), tmp_path, environ if environ is not None else {}
+        SqlSettingsRepository(Database(tmp_path / name)), tmp_path, environ if environ is not None else {}
     )
 
 
@@ -65,7 +65,7 @@ def test_model_and_switch_are_persisted(tmp_path):
 def test_usage_log_counts_per_user_and_window(tmp_path):
     db = Database(tmp_path / "u.db")
     a, b = add_user(db, "ana"), add_user(db, "luis")
-    usage = SqliteAiUsageRepository(db)
+    usage = SqlAiUsageRepository(db)
     for _ in range(3):
         usage.add(a, "regression", "claude-opus-5-5", 1000, 400)
     usage.add(b, "anova", "claude-opus-5-5", 10, 5)
@@ -230,6 +230,6 @@ def test_real_call_when_a_key_is_available(tmp_path):
 
     if not os.environ.get("ANTHROPIC_API_KEY"):
         pytest.skip("ANTHROPIC_API_KEY no está definido")
-    ai = AiSettings(SqliteSettingsRepository(Database(tmp_path / "live.db")), tmp_path)
+    ai = AiSettings(SqlSettingsRepository(Database(tmp_path / "live.db")), tmp_path)
     output = AnthropicGateway(ai).test_connection()
     assert output.text and output.output_tokens > 0

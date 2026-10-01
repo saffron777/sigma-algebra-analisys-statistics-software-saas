@@ -171,7 +171,7 @@ def test_the_first_administrator_inherits_the_pre_accounts_data(tmp_path):
 
     from sigma.app_factory import create_app
     from sigma.config import Config
-    from sigma.infrastructure.persistence.sqlite.migrations import V1_BASE
+    from sigma.infrastructure.persistence.sql.legacy_sqlite import V1_BASE
     from tests.integration.conftest import PASSWORD
 
     db = tmp_path / "sigma.db"

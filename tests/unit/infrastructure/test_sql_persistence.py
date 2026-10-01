@@ -15,11 +15,11 @@ from sigma.application.use_cases.results import (
     UpdateResult,
 )
 from sigma.domain.errors import DatasetNotFoundError, InvalidInputError, ResultNotFoundError
-from sigma.infrastructure.persistence.sqlite.database import Database
-from sigma.infrastructure.persistence.sqlite.dataset_repository import SqliteDatasetRepository
-from sigma.infrastructure.persistence.sqlite.migrations import MIGRATIONS
-from sigma.infrastructure.persistence.sqlite.result_repository import SqliteResultRepository
-from tests.support import add_user
+from sigma.infrastructure.persistence.sql.dataset_repository import SqlDatasetRepository
+from sigma.infrastructure.persistence.sql.engine import Database
+from sigma.infrastructure.persistence.sql.result_repository import SqlResultRepository
+from sigma.infrastructure.persistence.sql.schema import SCHEMA_VERSION
+from tests.support import add_user, scalar, table_names
 
 
 @pytest.fixture
@@ -34,12 +34,12 @@ def user_id(db):
 
 @pytest.fixture
 def datasets(db, user_id):
-    return SqliteDatasetRepository(db, user_id)
+    return SqlDatasetRepository(db, user_id)
 
 
 @pytest.fixture
 def results(db, user_id):
-    return SqliteResultRepository(db, user_id)
+    return SqlResultRepository(db, user_id)
 
 
 def mixed_frame() -> pd.DataFrame:
@@ -59,10 +59,9 @@ def mixed_frame() -> pd.DataFrame:
 
 
 def test_schema_version_and_wal(db):
-    with db.connection() as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == len(MIGRATIONS)
-        assert conn.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
-        assert conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+    assert scalar(db, "SELECT version FROM sigma_schema") == SCHEMA_VERSION
+    assert scalar(db, "PRAGMA journal_mode") == "wal"
+    assert scalar(db, "PRAGMA foreign_keys") == 1
 
 
 def test_dataset_roundtrip_preserves_dtypes_and_values(datasets):
@@ -94,9 +93,9 @@ def test_data_survives_a_new_connection(tmp_path):
     path = tmp_path / "persist.db"
     database = Database(path)
     owner = add_user(database)
-    first = SqliteDatasetRepository(database, owner)
+    first = SqlDatasetRepository(database, owner)
     created = first.add("persistente", pd.DataFrame({"a": [1, 2, 3]}), "csv", {})
-    second = SqliteDatasetRepository(Database(path), owner)  # simulates restarting the app
+    second = SqlDatasetRepository(Database(path), owner)  # simulates restarting the app
     assert second.get_by_name("PERSISTENTE").data["a"].tolist() == [1, 2, 3]
     assert [d.id for d in second.list()] == [created.id]
 
@@ -122,10 +121,10 @@ def test_preview_pagination_and_replace(datasets):
 
 def test_delete_drops_the_data_table(datasets, db):
     info = datasets.add("temporal", pd.DataFrame({"a": [1]}), "csv", {})
+    physical = scalar(db, "SELECT table_name FROM datasets WHERE id = :i", i=info.id)
+    assert physical in table_names(db, "ds_")
     datasets.delete(info.id)
-    with db.connection() as conn:
-        tables = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")]
-    assert f"ds_{info.id}" not in tables
+    assert physical not in table_names(db)
     with pytest.raises(DatasetNotFoundError):
         datasets.get(info.id)
     with pytest.raises(DatasetNotFoundError):
@@ -236,13 +235,12 @@ def test_save_validation(save):
 def test_sql_injection_in_search_is_inert(save, results, db):
     save.execute(command())
     ListResults(results).execute(search="'; DROP TABLE saved_results; --")
-    with db.connection() as conn:
-        assert conn.execute("SELECT COUNT(*) FROM saved_results").fetchone()[0] == 1
+    assert scalar(db, "SELECT COUNT(*) FROM saved_results") == 1
 
 
 def test_concurrent_connections_can_read_while_writing(db, datasets):
     datasets.add("a", pd.DataFrame({"x": [1]}), "csv", {})
-    writer = sqlite3.connect(db.path)
+    writer = sqlite3.connect(db.settings.path)
     writer.execute("BEGIN IMMEDIATE")
     try:
         assert len(datasets.list()) == 1  # WAL: readers are not blocked by an open writer

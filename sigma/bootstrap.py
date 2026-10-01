@@ -107,19 +107,7 @@ from sigma.infrastructure.exporters.xlsx_exporter import XlsxExporter
 from sigma.infrastructure.imaging import PillowImageProcessor
 from sigma.infrastructure.importers.registry import DefaultImporterRegistry
 from sigma.infrastructure.kernel.jupyter_executor import JupyterKernelPool
-from sigma.infrastructure.persistence.file_notebook_store import FileNotebookStore
-from sigma.infrastructure.persistence.sqlite.ai_repositories import SqliteAiUsageRepository, SqliteSettingsRepository
-from sigma.infrastructure.persistence.sqlite.database import Database
-from sigma.infrastructure.persistence.sqlite.dataset_repository import SqliteDatasetRepository
-from sigma.infrastructure.persistence.sqlite.import_draft_store import SqliteImportDraftStore, purge_stale_drafts
-from sigma.infrastructure.persistence.sqlite.result_repository import SqliteResultRepository
-from sigma.infrastructure.persistence.sqlite.template_repository import SqliteTemplateRepository
-from sigma.infrastructure.persistence.sqlite.user_repository import SqliteUserRepository
-from sigma.infrastructure.persistence.sqlite.workspace_repository import (
-    SqliteSyncRepository,
-    SqliteWorkspaceRepository,
-)
-from sigma.infrastructure.persistence.user_data import SqliteLegacyDataAdopter, UserDataPurger
+from sigma.infrastructure.persistence.backend import create_backend
 from sigma.infrastructure.security.login_throttle import InMemoryLoginThrottle
 from sigma.infrastructure.security.password_hasher import WerkzeugPasswordHasher
 
@@ -214,31 +202,33 @@ class Container:
 
     def __init__(self, config: Config) -> None:
         self.config = config
-        self.database = Database(config.db_path)
+        self.database_settings = config.database
+        self.backend = create_backend(config.database)
+        self.database = getattr(self.backend, "database", None)  # the SQL handle (None for MongoDB)
         self.importers = DefaultImporterRegistry()
         self.exporters = ExporterRegistry([PdfExporter(), DocxExporter(), XlsxExporter()])
         self.images = PillowImageProcessor()
         self.default_logo = _read_default_logo()
-        purge_stale_drafts(self.database, config.draft_retention_days)  # pending imports nobody touched for weeks
+        self.backend.purge_stale_drafts(config.draft_retention_days)  # pending imports nobody touched for weeks
         self.kernels = JupyterKernelPool(
             project_root=PROJECT_ROOT,
-            db_path=config.db_path,
+            database_url=config.database.to_url(),
             work_dir=config.notebooks_dir,
             idle_minutes=config.kernel_idle_minutes,
             max_per_owner=config.max_kernels_per_user,
             max_total=config.max_kernels_total,
         )
-        self.users = SqliteUserRepository(self.database)
-        self.ai_settings = AiSettings(SqliteSettingsRepository(self.database), config.instance_dir)
-        self.ai_usage = SqliteAiUsageRepository(self.database)
+        self.users = self.backend.users()
+        self.ai_settings = AiSettings(self.backend.settings_store(), config.instance_dir)
+        self.ai_usage = self.backend.ai_usage()
         self.ai_gateway = AnthropicGateway(self.ai_settings)
         self.get_ai_admin = GetAiAdmin(self.ai_settings, self.ai_usage, config.ai_requests_per_hour)
         self.update_ai_settings = UpdateAiSettings(self.ai_settings)
         self.test_ai_connection = TestAiConnection(self.ai_gateway, self.ai_settings)
         hasher = WerkzeugPasswordHasher()
         throttle = InMemoryLoginThrottle()
-        adopter = SqliteLegacyDataAdopter(self.database, config.notebooks_dir)
-        purger = UserDataPurger(self.database, config.notebooks_dir, self.kernels)
+        adopter = self.backend.adopter(config.notebooks_dir)
+        purger = self.backend.purger(config.notebooks_dir, self.kernels)
         self.get_setup_state = GetSetupState(self.users)
         self.create_first_admin = CreateFirstAdmin(self.users, hasher, adopter)
         self.authenticate = Authenticate(self.users, hasher, throttle)
@@ -250,15 +240,20 @@ class Container:
         self.delete_user = DeleteUser(self.users, purger)
         self._hasher = hasher
 
+    def close(self) -> None:
+        """Stop the kernels and release the database connections (before another container takes over)."""
+        self.kernels.shutdown_all()
+        self.backend.close()
+
     def for_user(self, user: User) -> UserServices:
         owner = str(user.id)
-        datasets = SqliteDatasetRepository(self.database, user.id)
-        results = SqliteResultRepository(self.database, user.id)
-        notebooks = FileNotebookStore(self.config.notebooks_dir / owner)
-        drafts = SqliteImportDraftStore(self.database, user.id)
-        workspace = SqliteWorkspaceRepository(self.database, user.id)
-        sync = SqliteSyncRepository(self.database, user.id)
-        templates = SqliteTemplateRepository(self.database, user.id)
+        datasets = self.backend.datasets(user.id)
+        results = self.backend.results(user.id)
+        notebooks = self.backend.notebooks(user.id, self.config.notebooks_dir)
+        drafts = self.backend.drafts(user.id)
+        workspace = self.backend.workspace(user.id)
+        sync = self.backend.sync(user.id)
+        templates = self.backend.templates(user.id)
         return UserServices(
             user=user,
             inspect_source=InspectSource(self.importers, drafts),

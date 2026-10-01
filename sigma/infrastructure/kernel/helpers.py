@@ -11,23 +11,24 @@ import os
 
 import pandas as pd
 
+from sigma.application.ports import DatasetRepository
 from sigma.domain.datasets import normalize_columns
 from sigma.domain.errors import DatasetNotFoundError, InvalidInputError
-from sigma.infrastructure.persistence.sqlite.database import Database
-from sigma.infrastructure.persistence.sqlite.dataset_repository import SqliteDatasetRepository
+from sigma.infrastructure.persistence.backend import create_backend
+from sigma.infrastructure.persistence.database_settings import DatabaseSettings
 
 
 class SigmaHelper:
     def __init__(self) -> None:
-        self._repository: SqliteDatasetRepository | None = None
+        self._repository: DatasetRepository | None = None
 
     @property
-    def _repo(self) -> SqliteDatasetRepository:
+    def _repo(self) -> DatasetRepository:
         if self._repository is None:
-            path, user = os.environ.get("SIGMA_DB_PATH"), os.environ.get("SIGMA_USER_ID")
-            if not path or not user:
+            url, user = os.environ.get("SIGMA_DATABASE_URL"), os.environ.get("SIGMA_USER_ID")
+            if not url or not user:
                 raise RuntimeError("Este kernel no está conectado a una cuenta de Sigma.")
-            self._repository = SqliteDatasetRepository(Database(path), int(user))
+            self._repository = create_backend(DatabaseSettings.from_url(url)).datasets(int(user))
         return self._repository
 
     def datasets(self) -> pd.DataFrame:

@@ -8,9 +8,9 @@ from sigma.application.ports import ImportRequest, StagedImport
 from sigma.application.use_cases.datasets import PreviewImport, safe_options
 from sigma.domain.errors import InvalidInputError
 from sigma.infrastructure.importers.registry import DefaultImporterRegistry
-from sigma.infrastructure.persistence.sqlite.database import Database
-from sigma.infrastructure.persistence.sqlite.import_draft_store import SqliteImportDraftStore, purge_stale_drafts
-from tests.support import add_user
+from sigma.infrastructure.persistence.sql.engine import Database
+from sigma.infrastructure.persistence.sql.import_draft_store import SqlImportDraftStore, purge_stale_drafts
+from tests.support import add_user, execute, fetch_all, scalar, table_names
 
 
 @pytest.fixture
@@ -20,7 +20,7 @@ def db(tmp_path):
 
 @pytest.fixture
 def drafts(db):
-    return SqliteImportDraftStore(db, add_user(db))
+    return SqlImportDraftStore(db, add_user(db))
 
 
 def staged(frame=None, source="csv", name="datos"):
@@ -29,8 +29,7 @@ def staged(frame=None, source="csv", name="datos"):
 
 
 def tables(db):
-    with db.connection() as conn:
-        return [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE name LIKE 'stg_%'")]
+    return table_names(db, "stg_")
 
 
 # ------------------------------------------------------------------ file
@@ -94,7 +93,7 @@ def test_discarding(db, drafts):
 
 # ------------------------------------------------------------------ ownership and bad ids
 def test_somebody_elses_draft_looks_expired(db, drafts):
-    other = SqliteImportDraftStore(db, add_user(db, "otro"))
+    other = SqlImportDraftStore(db, add_user(db, "otro"))
     token = drafts.put(staged(), None, {})
     for call in (
         lambda: other.take(token),
@@ -122,10 +121,10 @@ def test_stale_drafts_are_purged_everywhere(db, drafts):
     fresh = drafts.put(staged(), None, {})
     old = drafts.put(staged(source="excel"), None, {})
     stale = (datetime.now(UTC) - timedelta(days=20)).isoformat(timespec="seconds")
-    with db.connection() as conn:
-        conn.execute("UPDATE import_drafts SET updated_at = ? WHERE id = ?", (stale, old))
+    execute(db, "UPDATE import_drafts SET updated_at = :s WHERE id = :i", s=stale, i=old)
     assert purge_stale_drafts(db, 14) == 1
-    assert [d.id for d in drafts.list()] == [fresh] and tables(db) == [f"stg_{fresh}"]
+    assert [d.id for d in drafts.list()] == [fresh]
+    assert tables(db) == [scalar(db, "SELECT staged_table FROM import_drafts WHERE id = :i", i=fresh)]
 
 
 def test_purge_removes_every_draft_and_table_of_a_user(db, drafts):
@@ -136,14 +135,10 @@ def test_purge_removes_every_draft_and_table_of_a_user(db, drafts):
 
 def test_drafts_bump_the_sync_revision(db):
     user = add_user(db)
-    store = SqliteImportDraftStore(db, user)
+    store = SqlImportDraftStore(db, user)
 
     def revision():
-        with db.connection() as conn:
-            row = conn.execute(
-                "SELECT revision FROM sync_state WHERE user_id = ? AND scope = 'drafts'", (user,)
-            ).fetchone()
-        return row[0] if row else 0
+        return scalar(db, "SELECT revision FROM sync_state WHERE user_id = :u AND scope = 'drafts'", u=user) or 0
 
     assert revision() == 0
     token = store.attach_file("csv", "a.csv", b"a\n1").id
@@ -183,6 +178,5 @@ def test_preview_import_stores_only_safe_options(db, drafts):
     preview = PreviewImport(Registry(), drafts).execute(ImportRequest("json_api", options))
     stored = drafts.info(preview.token).options
     assert stored == {"url": "https://x.com/v1", "records_path": "data"}
-    with db.connection() as conn:
-        dump = " ".join(str(v) for row in conn.execute("SELECT * FROM import_drafts") for v in tuple(row))
+    dump = " ".join(str(v) for row in fetch_all(db, "SELECT * FROM import_drafts") for v in row)
     assert "TOKEN" not in dump and "ZZZ" not in dump

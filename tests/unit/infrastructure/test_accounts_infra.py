@@ -4,13 +4,15 @@ import pandas as pd
 import pytest
 
 from sigma.domain.errors import DatasetNotFoundError, InvalidInputError, RateLimitedError, UserNotFoundError
-from sigma.infrastructure.persistence.sqlite.database import Database
-from sigma.infrastructure.persistence.sqlite.dataset_repository import SqliteDatasetRepository
-from sigma.infrastructure.persistence.sqlite.migrations import MIGRATIONS, V1_BASE
-from sigma.infrastructure.persistence.sqlite.user_repository import SqliteUserRepository
-from sigma.infrastructure.persistence.user_data import SqliteLegacyDataAdopter
+from sigma.infrastructure.persistence.sql.dataset_repository import SqlDatasetRepository
+from sigma.infrastructure.persistence.sql.engine import Database
+from sigma.infrastructure.persistence.sql.legacy_sqlite import V1_BASE
+from sigma.infrastructure.persistence.sql.schema import SCHEMA_VERSION
+from sigma.infrastructure.persistence.sql.user_data import SqlLegacyDataAdopter
+from sigma.infrastructure.persistence.sql.user_repository import SqlUserRepository
 from sigma.infrastructure.security.login_throttle import InMemoryLoginThrottle
 from sigma.infrastructure.security.password_hasher import WerkzeugPasswordHasher
+from tests.support import fetch_all, scalar
 
 
 # ------------------------------------------------------------------------------ migration v1 → v2
@@ -39,15 +41,16 @@ def legacy_db(tmp_path):
 
 def test_migration_keeps_legacy_rows_unowned_until_adopted(legacy_db, tmp_path):
     database = Database(legacy_db)
-    with database.connection() as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == len(MIGRATIONS)
-        assert conn.execute("SELECT user_id FROM datasets").fetchone()[0] is None
-        assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
-    owner = SqliteUserRepository(database).add("ana", "Ana", "x", "admin", True, True).id
-    assert SqliteDatasetRepository(database, owner).list() == []  # invisible to everyone until adopted
-    adopted = SqliteLegacyDataAdopter(database, tmp_path / "nb").adopt(owner)
+    assert scalar(database, "SELECT version FROM sigma_schema") == SCHEMA_VERSION
+    assert scalar(database, "PRAGMA user_version") == 7  # the file keeps its own marker in step
+    assert scalar(database, "SELECT user_id FROM datasets") is None
+    assert fetch_all(database, "PRAGMA foreign_key_check") == []
+    assert scalar(database, "SELECT table_name FROM datasets") == "ds_" + "a" * 32  # old name kept; col_map stays NULL
+    owner = SqlUserRepository(database).add("ana", "Ana", "x", "admin", True, True).id
+    assert SqlDatasetRepository(database, owner).list() == []  # invisible to everyone until adopted
+    adopted = SqlLegacyDataAdopter(database, tmp_path / "nb").adopt(owner)
     assert adopted["datasets"] == 1 and adopted["results"] == 1
-    repo = SqliteDatasetRepository(database, owner)
+    repo = SqlDatasetRepository(database, owner)
     assert [d.name for d in repo.list()] == ["ventas"] and repo.get(repo.list()[0].id).data["x"].tolist() == [1, 2]
 
 
@@ -56,28 +59,28 @@ def test_adoption_moves_legacy_notebooks_into_the_users_folder(legacy_db, tmp_pa
     notebooks.mkdir()
     (notebooks / ("b" * 32 + ".ipynb")).write_text("{}", encoding="utf-8")
     database = Database(legacy_db)
-    owner = SqliteUserRepository(database).add("ana", "Ana", "x", "admin", True, True).id
-    assert SqliteLegacyDataAdopter(database, notebooks).adopt(owner)["notebooks"] == 1
+    owner = SqlUserRepository(database).add("ana", "Ana", "x", "admin", True, True).id
+    assert SqlLegacyDataAdopter(database, notebooks).adopt(owner)["notebooks"] == 1
     assert (notebooks / str(owner) / ("b" * 32 + ".ipynb")).is_file() and not list(notebooks.glob("*.ipynb"))
 
 
 def test_dataset_names_are_unique_per_user_not_globally(tmp_path):
     database = Database(tmp_path / "s.db")
-    users = SqliteUserRepository(database)
+    users = SqlUserRepository(database)
     a, b = (users.add(name, name, "x", "user", False, False).id for name in ("ana", "luis"))
     frame = pd.DataFrame({"x": [1]})
-    SqliteDatasetRepository(database, a).add("ventas", frame, "csv", {})
-    SqliteDatasetRepository(database, b).add("VENTAS", frame, "csv", {})  # same name, other owner: allowed
+    SqlDatasetRepository(database, a).add("ventas", frame, "csv", {})
+    SqlDatasetRepository(database, b).add("VENTAS", frame, "csv", {})  # same name, other owner: allowed
     with pytest.raises(InvalidInputError):
-        SqliteDatasetRepository(database, a).add("ventas", frame, "csv", {})
+        SqlDatasetRepository(database, a).add("ventas", frame, "csv", {})
 
 
 def test_a_foreign_dataset_id_behaves_like_a_missing_one(tmp_path):
     database = Database(tmp_path / "s.db")
-    users = SqliteUserRepository(database)
+    users = SqlUserRepository(database)
     a, b = (users.add(name, name, "x", "user", False, False).id for name in ("ana", "luis"))
-    info = SqliteDatasetRepository(database, a).add("privado", pd.DataFrame({"x": [1]}), "csv", {})
-    intruder = SqliteDatasetRepository(database, b)
+    info = SqlDatasetRepository(database, a).add("privado", pd.DataFrame({"x": [1]}), "csv", {})
+    intruder = SqlDatasetRepository(database, b)
     for call in (
         lambda: intruder.get_info(info.id),
         lambda: intruder.get(info.id),
@@ -90,20 +93,18 @@ def test_a_foreign_dataset_id_behaves_like_a_missing_one(tmp_path):
         with pytest.raises(DatasetNotFoundError):
             call()
     assert intruder.list() == []
-    assert SqliteDatasetRepository(database, a).get(info.id).data["x"].tolist() == [1]
+    assert SqlDatasetRepository(database, a).get(info.id).data["x"].tolist() == [1]
 
 
-def test_sync_revisions_are_bumped_by_triggers(tmp_path):
+def test_sync_revisions_are_bumped_by_the_repositories(tmp_path):
     database = Database(tmp_path / "s.db")
-    owner = SqliteUserRepository(database).add("ana", "Ana", "x", "user", False, False).id
-    repo = SqliteDatasetRepository(database, owner)
+    owner = SqlUserRepository(database).add("ana", "Ana", "x", "user", False, False).id
+    repo = SqlDatasetRepository(database, owner)
 
     def revision():
-        with database.connection() as conn:
-            row = conn.execute(
-                "SELECT revision FROM sync_state WHERE user_id = ? AND scope = 'datasets'", (owner,)
-            ).fetchone()
-        return row[0] if row else 0
+        return (
+            scalar(database, "SELECT revision FROM sync_state WHERE user_id = :u AND scope = 'datasets'", u=owner) or 0
+        )
 
     assert revision() == 0
     info = repo.add("uno", pd.DataFrame({"x": [1]}), "csv", {})
@@ -116,18 +117,17 @@ def test_sync_revisions_are_bumped_by_triggers(tmp_path):
 
 def test_deleting_a_user_cascades_to_their_rows(tmp_path):
     database = Database(tmp_path / "s.db")
-    users = SqliteUserRepository(database)
+    users = SqlUserRepository(database)
     owner = users.add("ana", "Ana", "x", "user", False, False).id
-    SqliteDatasetRepository(database, owner).add("uno", pd.DataFrame({"x": [1]}), "csv", {})
+    SqlDatasetRepository(database, owner).add("uno", pd.DataFrame({"x": [1]}), "csv", {})
     users.delete(owner)
-    with database.connection() as conn:
-        assert conn.execute("SELECT COUNT(*) FROM datasets").fetchone()[0] == 0
-        assert conn.execute("SELECT COUNT(*) FROM sync_state").fetchone()[0] == 0
+    assert scalar(database, "SELECT COUNT(*) FROM datasets") == 0
+    assert scalar(database, "SELECT COUNT(*) FROM sync_state") == 0
 
 
 # ------------------------------------------------------------------------------ users repository
 def test_user_repository_crud_and_epoch(tmp_path):
-    users = SqliteUserRepository(Database(tmp_path / "u.db"))
+    users = SqlUserRepository(Database(tmp_path / "u.db"))
     created = users.add("Ana", "Ana", "hash1", "admin", True, True)
     assert users.find_with_hash("ana")[1] == "hash1"  # case-insensitive login
     with pytest.raises(InvalidInputError):

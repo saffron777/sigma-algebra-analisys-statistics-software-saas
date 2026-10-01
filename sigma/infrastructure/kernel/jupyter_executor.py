@@ -50,14 +50,14 @@ class JupyterKernelPool:
     def __init__(
         self,
         project_root: Path,
-        db_path: Path,
+        database_url: str,
         work_dir: Path,
         idle_minutes: float = 30,
         max_per_owner: int = 3,
         max_total: int = 8,
     ) -> None:
         self._project_root = Path(project_root)
-        self._db_path = Path(db_path)
+        self._database_url = database_url
         self._work_dir = Path(work_dir)
         self._idle_seconds = idle_minutes * 60
         self._max_per_owner = max_per_owner
@@ -163,7 +163,7 @@ class JupyterKernelPool:
         env = {
             **os.environ,
             "PYTHONPATH": os.pathsep.join(p for p in (str(self._project_root), os.environ.get("PYTHONPATH", "")) if p),
-            "SIGMA_DB_PATH": str(self._db_path),
+            "SIGMA_DATABASE_URL": self._database_url,
             "SIGMA_USER_ID": owner,
             "PYTHONIOENCODING": "utf-8",
             "MPLBACKEND": "module://matplotlib_inline.backend_inline",

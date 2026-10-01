@@ -12,8 +12,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from sigma.application.ports import SettingsRepository
 from sigma.domain.errors import InvalidInputError
-from sigma.infrastructure.persistence.sqlite.ai_repositories import SqliteSettingsRepository
 
 DEFAULT_MODEL = "claude-opus-5-5"
 _MODEL_PATTERN = re.compile(r"^claude-[a-z0-9][a-z0-9.-]{2,60}$")
@@ -22,7 +22,7 @@ _KEY_PATTERN = re.compile(r"^sk-ant-[A-Za-z0-9_\-]{16,}$")
 
 class AiSettings:
     def __init__(
-        self, settings: SqliteSettingsRepository, instance_dir: Path, environ: Mapping[str, str] | None = None
+        self, settings: SettingsRepository, instance_dir: Path, environ: Mapping[str, str] | None = None
     ) -> None:
         self._settings = settings
         self._key_file = Path(instance_dir) / "ai_key.txt"

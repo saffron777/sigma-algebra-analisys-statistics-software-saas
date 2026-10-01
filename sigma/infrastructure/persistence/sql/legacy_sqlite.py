@@ -1,10 +1,14 @@
-"""Schema migrations, applied in order and tracked with ``PRAGMA user_version``.
+"""The SQLite-only schema history (v1–v6) and the step that lifts such a file to the portable baseline (v7).
 
-Each entry is one SQL script run atomically (``BEGIN … COMMIT``) with foreign keys disabled, which
-SQLite requires to rebuild a table. Never edit a released migration: append a new one.
+New databases — on any engine, SQLite included — are created from ``schema.py`` and never run these scripts. They
+exist so that a ``sigma.db`` written by an earlier Sigma keeps working: ``upgrade_legacy_sqlite`` replays what is
+missing (tracked with ``PRAGMA user_version``) and then applies :data:`V7_SCRIPT`. Never edit a released script.
 """
 
 from __future__ import annotations
+
+import re
+import sqlite3
 
 
 def _bump_trigger(table: str, scope: str) -> str:
@@ -182,3 +186,76 @@ CREATE INDEX idx_ai_usage_user_time ON ai_usage(user_id, created_at);
 """
 
 MIGRATIONS: tuple[str, ...] = (V1_BASE, V2_ACCOUNTS, V3_WORKSPACE, V4_IMPORT_DRAFTS, V5_REPORT_TEMPLATES, V6_AI)
+
+# ---------------------------------------------------------------- v7: the portable baseline
+_TRIGGER_NAMES = [
+    f"trg_{table}_{event}"
+    for table in ("datasets", "saved_results", "import_drafts", "report_templates")
+    for event in ("insert", "update", "delete")
+]
+
+_DROP_TRIGGERS = "\n".join(f"DROP TRIGGER IF EXISTS {name};" for name in _TRIGGER_NAMES)
+
+V7_SCRIPT = f"""
+ALTER TABLE users ADD COLUMN username_key TEXT;
+UPDATE users SET username_key = lower(username);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username_key ON users(username_key);
+
+ALTER TABLE datasets ADD COLUMN name_key TEXT;
+ALTER TABLE datasets ADD COLUMN table_name TEXT;
+ALTER TABLE datasets ADD COLUMN col_map TEXT;
+UPDATE datasets SET name_key = lower(name), table_name = 'ds_' || id;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_datasets_user_name ON datasets(user_id, name_key);
+
+ALTER TABLE report_templates ADD COLUMN name_key TEXT;
+UPDATE report_templates SET name_key = lower(name);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_templates_user_name ON report_templates(user_id, name_key);
+
+ALTER TABLE import_drafts ADD COLUMN col_map TEXT;
+CREATE TABLE IF NOT EXISTS import_draft_files (
+    draft_id TEXT NOT NULL REFERENCES import_drafts(id) ON DELETE CASCADE,
+    seq      INTEGER NOT NULL,
+    data     BLOB NOT NULL,
+    PRIMARY KEY (draft_id, seq)
+);
+INSERT INTO import_draft_files (draft_id, seq, data)
+    SELECT id, 0, file_blob FROM import_drafts WHERE file_blob IS NOT NULL;
+UPDATE import_drafts SET file_blob = NULL;
+
+{_DROP_TRIGGERS}
+"""
+
+_STAGED_TABLE = re.compile(r"^stg_[0-9a-f]{32}$")
+
+
+def upgrade_legacy_sqlite(conn: sqlite3.Connection) -> None:
+    """Lift a SQLite file written by an earlier Sigma (``user_version`` 0–6) to the portable v7 baseline."""
+    version = conn.execute("PRAGMA user_version").fetchone()[0]
+    conn.execute("PRAGMA foreign_keys = OFF")  # rebuilding a table requires it
+    for target, script in enumerate(MIGRATIONS, start=1):
+        if target > version:
+            _run(conn, script, target)
+    _run(conn, V7_SCRIPT, 7)
+    # the parsed previews of pending imports were stored under the old naming; they are cheap to rebuild from the
+    # file, which is kept, so drop them instead of teaching the new code a second layout
+    rows = conn.execute("SELECT id, staged_table FROM import_drafts WHERE staged_table IS NOT NULL").fetchall()
+    for _draft_id, table in rows:
+        if _STAGED_TABLE.match(table or ""):
+            conn.execute(f'DROP TABLE IF EXISTS "{table}"')
+    conn.execute(
+        "UPDATE import_drafts SET staged_table = NULL, n_rows = NULL, n_cols = NULL, dtypes = NULL,"
+        " columns_info = NULL, detected = '{}', suggested_name = NULL WHERE staged_table IS NOT NULL"
+    )
+    conn.commit()
+    violations = conn.execute("PRAGMA foreign_key_check").fetchall()
+    if violations:
+        raise sqlite3.IntegrityError(f"La actualización dejó {len(violations)} referencias huérfanas.")
+
+
+def _run(conn: sqlite3.Connection, script: str, target: int) -> None:
+    try:
+        conn.executescript(f"BEGIN;\n{script}\nPRAGMA user_version = {target};\nCOMMIT;")
+    except sqlite3.Error:
+        if conn.in_transaction:
+            conn.execute("ROLLBACK")
+        raise

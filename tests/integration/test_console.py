@@ -11,9 +11,10 @@ import pytest
 from sigma.config import PROJECT_ROOT
 from sigma.domain.errors import ImportFailedError, InvalidInputError, NotebookNotFoundError
 from sigma.infrastructure.kernel.jupyter_executor import JupyterKernelPool
+from sigma.infrastructure.persistence.database_settings import DatabaseSettings
 from sigma.infrastructure.persistence.file_notebook_store import FileNotebookStore
-from sigma.infrastructure.persistence.sqlite.database import Database
-from sigma.infrastructure.persistence.sqlite.dataset_repository import SqliteDatasetRepository
+from sigma.infrastructure.persistence.sql.dataset_repository import SqlDatasetRepository
+from sigma.infrastructure.persistence.sql.engine import Database
 from tests.support import add_user
 
 
@@ -24,9 +25,9 @@ def env(tmp_path_factory):
     database = Database(db_path)
     owner_id = add_user(database)
     assert str(owner_id) == OWNER
-    repo = SqliteDatasetRepository(database, owner_id)
+    repo = SqlDatasetRepository(database, owner_id)
     repo.add("ventas", pd.DataFrame({"x": [1, 2, 3], "y": [2.0, 4.0, 6.5]}), "csv", {})
-    pool = JupyterKernelPool(PROJECT_ROOT, db_path, root / "work", idle_minutes=30)
+    pool = JupyterKernelPool(PROJECT_ROOT, DatabaseSettings.sqlite(db_path).to_url(), root / "work", idle_minutes=30)
     yield pool, repo
     pool.shutdown_all()
 

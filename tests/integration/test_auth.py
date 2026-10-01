@@ -2,6 +2,7 @@ import pytest
 
 from sigma.presentation.web.auth import safe_next
 from tests.integration.conftest import PASSWORD, ApiClient
+from tests.support import scalar, table_names
 
 PROTECTED_API = ["/api/datasets", "/api/results", "/api/distributions", "/api/hypothesis/catalog", "/api/auth/me"]
 
@@ -190,10 +191,9 @@ def test_deleting_an_account_removes_its_data_and_kernels(app, api, make_client,
     assert folder.is_dir() and (folder / f"{notebook['id']}.ipynb").is_file()
     assert api.delete(f"/api/users/{luis}").status_code == 200
     assert not folder.exists()
-    with app.extensions["sigma"].database.connection() as conn:
-        assert conn.execute("SELECT COUNT(*) FROM datasets WHERE id = ?", (dataset["id"],)).fetchone()[0] == 0
-        tables = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE name LIKE 'ds_%'")]
-    assert f"ds_{dataset['id']}" not in tables
+    db = app.extensions["sigma"].database
+    assert scalar(db, "SELECT COUNT(*) FROM datasets WHERE id = :i", i=dataset["id"]) == 0
+    assert table_names(db, "ds_") == []  # its data table went with it
     assert victim.get("/api/datasets").status_code == 401
 
 
