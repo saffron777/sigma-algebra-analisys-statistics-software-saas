@@ -82,6 +82,25 @@ ENGINES: dict[str, dict[str, Any]] = {
 }
 
 
+# URL parameters a request may set per engine (anything else is ignored): the driver is never handed free-form options
+ALLOWED_OPTIONS: dict[str, dict[str, Any]] = {
+    "mssql": {
+        "driver": None,
+        "TrustServerCertificate": {"yes", "no"},
+        "Encrypt": {"yes", "no", "strict"},
+        "trusted_connection": {"yes", "no"},
+    },
+    "mysql": {"ssl_disabled": {"true", "false"}},
+    "postgresql": {"sslmode": {"disable", "allow", "prefer", "require", "verify-ca", "verify-full"}},
+    "oracle": {},
+    "mongodb": {"tls": {"true", "false"}, "authSource": None, "replicaSet": None},
+    "sqlite": {},
+}
+_HOST = re.compile(r"^[A-Za-z0-9._\-\\[\]:]{1,255}$")
+_NAME = re.compile(r"^[\w .\-$#]{1,128}$")
+_FREE = re.compile(r"^[^\x00-\x1f\x7f]{0,256}$")
+
+
 def engine_of(drivername: str) -> str:
     base = drivername.split("+", 1)[0].lower()
     if base == "postgres":
@@ -91,6 +110,22 @@ def engine_of(drivername: str) -> str:
     if base not in ENGINES:
         raise InvalidInputError(f"Motor de base de datos no admitido: «{drivername}».")
     return base
+
+
+def _clean_options(engine: str, raw: Mapping[str, Any]) -> dict[str, str]:
+    allowed = ALLOWED_OPTIONS.get(engine, {})
+    cleaned: dict[str, str] = {}
+    for key, value in raw.items():
+        if key not in allowed or value in (None, ""):
+            continue
+        value = str(value).strip()
+        choices = allowed[key]
+        if choices is not None and value not in choices:
+            raise InvalidInputError(f"Valor no válido para «{key}».")
+        if choices is None and not _NAME.match(value.replace("(", "").replace(")", "")):
+            raise InvalidInputError(f"Valor no válido para «{key}».")
+        cleaned[key] = value
+    return cleaned
 
 
 def driver_available(engine: str) -> bool:
@@ -261,10 +296,59 @@ class DatabaseSettings:
         }
 
     def with_password_from(self, previous: DatabaseSettings | None) -> DatabaseSettings:
-        """A form that leaves the password blank keeps the stored one (the page never receives it)."""
-        if self.password or previous is None or previous.engine != self.engine or not self.username:
+        """A form that leaves the password blank keeps the stored one (the page never receives it).
+
+        Only when the target is unchanged: otherwise a new host could be handed the old server's password.
+        """
+        if (
+            self.password
+            or previous is None
+            or (previous.engine, previous.host, previous.port, previous.username)
+            != (self.engine, self.host, self.port, self.username)
+            or not self.username
+        ):
             return self
         return DatabaseSettings(**{**vars(self), "password": previous.password})
+
+    @classmethod
+    def from_request(
+        cls, data: Mapping[str, Any], sqlite_path: Path | str, previous: DatabaseSettings | None = None
+    ) -> DatabaseSettings:
+        """Settings typed into the setup wizard / administration page: strictly checked, never trusted.
+
+        SQLite always means the server's own file (the page cannot point Sigma at an arbitrary path).
+        """
+        engine = engine_of(str(data.get("engine") or ""))
+        if engine == "sqlite":
+            return cls.sqlite(sqlite_path)
+        text = {key: str(data.get(key) or "").strip() for key in ("host", "database", "schema", "username")}
+        password = str(data.get("password") or "")
+        if not _HOST.match(text["host"]):
+            raise InvalidInputError("El servidor (host) tiene caracteres no válidos o está vacío.")
+        if not _NAME.match(text["database"]):
+            raise InvalidInputError("El nombre de la base de datos tiene caracteres no válidos o está vacío.")
+        if text["username"] and not _FREE.match(text["username"]):
+            raise InvalidInputError("El usuario tiene caracteres no válidos.")
+        if not _FREE.match(password):
+            raise InvalidInputError("La contraseña tiene caracteres no válidos.")
+        raw_port = data.get("port")
+        try:
+            port = int(raw_port) if raw_port not in (None, "") else None
+        except (TypeError, ValueError):
+            raise InvalidInputError("El puerto debe ser un número.") from None
+        options = _clean_options(engine, data.get("options") or {})
+        settings = cls(
+            engine=engine,
+            host=text["host"],
+            port=port,
+            database=text["database"],
+            username=text["username"],
+            password=password,
+            options=options,
+            schema=text["schema"],
+        ).with_password_from(previous)
+        settings.validate()
+        return settings
 
     def same_target(self, other: DatabaseSettings) -> bool:
         return self.to_url() == other.to_url()

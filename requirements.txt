@@ -32,3 +32,9 @@ pillow>=10.3
 
 # Interpretación con IA (opcional)
 anthropic>=1.11
+
+# Motores de base de datos para persistir (SQLite viene con Python; instale solo los que vaya a usar)
+pymysql>=1.1          # MySQL / MariaDB
+psycopg[binary]>=3.2  # PostgreSQL
+oracledb>=2.2         # Oracle Database
+pymongo>=4.8          # MongoDB

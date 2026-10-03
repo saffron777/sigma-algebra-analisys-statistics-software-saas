@@ -20,7 +20,15 @@ from sigma.infrastructure.persistence.sql.legacy_sqlite import upgrade_legacy_sq
 _STEPS: dict[int, Callable[[Engine], None]] = {}
 
 
-def build_engine(settings: DatabaseSettings) -> Engine:
+_CONNECT_TIMEOUT_ARG = {
+    "mssql": "timeout",
+    "mysql": "connect_timeout",
+    "postgresql": "connect_timeout",
+    "oracle": "tcp_connect_timeout",
+}
+
+
+def build_engine(settings: DatabaseSettings, connect_timeout: int = 15) -> Engine:
     """An engine for a relational setting; a missing driver or an unsupported engine is explained in Spanish."""
     meta = ENGINES[settings.engine]
     if not settings.is_relational:
@@ -40,7 +48,11 @@ def build_engine(settings: DatabaseSettings) -> Engine:
             cursor.close()
 
     else:
-        options: dict = {"pool_pre_ping": True, "pool_recycle": 1800}
+        options: dict = {
+            "pool_pre_ping": True,
+            "pool_recycle": 1800,
+            "connect_args": {_CONNECT_TIMEOUT_ARG[settings.engine]: connect_timeout},  # an unreachable host fails fast
+        }
         if settings.engine == "mssql":
             options["fast_executemany"] = True  # bulk inserts of dataset rows are ~100× faster
         engine = create_engine(url, **options)

@@ -94,3 +94,15 @@ class AiUnavailableError(SigmaError):
     """The AI service cannot be used right now (disabled, no key, network or service problem)."""
 
     code = "ai_unavailable"
+
+
+class MigrationError(SigmaError):
+    """Copying the data to another database failed (the destination is left empty)."""
+
+    code = "migration_failed"
+
+
+class MaintenanceError(SigmaError):
+    """Sigma is busy with an operation that needs exclusive use of the data (e.g. a database migration)."""
+
+    code = "maintenance"

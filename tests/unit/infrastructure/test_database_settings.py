@@ -70,8 +70,12 @@ def test_validation_messages_are_in_spanish():
 
 def test_a_blank_password_keeps_the_stored_one():
     stored = DatabaseSettings(engine="mysql", host="h", database="d", username="u", password="viejo")
-    form = DatabaseSettings(engine="mysql", host="h2", database="d", username="u")
+    form = DatabaseSettings(engine="mysql", host="h", database="otra", username="u")
     assert form.with_password_from(stored).password == "viejo"
+    assert (
+        DatabaseSettings(engine="mysql", host="h2", database="d", username="u").with_password_from(stored).password
+        == ""
+    )
     assert (
         DatabaseSettings(engine="mysql", host="h", database="d", username="u", password="nuevo")
         .with_password_from(stored)
@@ -120,3 +124,71 @@ def test_engine_list_for_the_ui_names_every_engine():
     engines = {e["engine"]: e for e in ds.engines_for_ui()}
     assert set(engines) == {"sqlite", "mssql", "mysql", "postgresql", "oracle", "mongodb"}
     assert engines["sqlite"]["driver_available"] is True and engines["mongodb"]["relational"] is False
+
+
+# ------------------------------------------------------------------ settings typed into the browser
+SQLITE = Path("instance") / "sigma.db"
+
+
+def request(**fields):
+    return {"engine": "postgresql", "host": "db.interna", "port": 5432, "database": "sigma", **fields}
+
+
+def test_sqlite_from_a_request_always_means_the_servers_own_file():
+    settings = DatabaseSettings.from_request({"engine": "sqlite", "path": "C:/Windows/evil.db"}, SQLITE)
+    assert settings.is_sqlite and settings.path == str(SQLITE)
+
+
+def test_a_blank_password_is_kept_only_for_the_same_target():
+    stored = DatabaseSettings(
+        engine="postgresql", host="db.interna", port=5432, database="s", username="u", password="vieja"
+    )
+    same = DatabaseSettings.from_request(request(username="u"), SQLITE, stored)
+    assert same.password == "vieja"
+    for change in ({"host": "otro.servidor"}, {"port": 5433}, {"username": "otro"}):
+        moved = DatabaseSettings.from_request({**request(username="u"), **change}, SQLITE, stored)
+        assert moved.password == ""  # a new host is never handed the old server's password
+    assert DatabaseSettings.from_request(request(username="u", password="nueva"), SQLITE, stored).password == "nueva"
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        request(host=""),
+        request(host="a b"),
+        request(host="x;y"),
+        request(database=""),
+        request(database="a'b"),
+        request(username="u\x00"),
+        request(password="p\nq"),
+        request(port="abc"),
+        request(port=70000),
+        request(schema="mal esquema"),
+        request(options={"sslmode": "invalido"}),
+        {"engine": "nope", "host": "h", "database": "d"},
+    ],
+)
+def test_bad_requests_are_rejected(bad):
+    with pytest.raises(InvalidInputError):
+        DatabaseSettings.from_request(bad, SQLITE)
+
+
+def test_only_known_options_survive_a_request():
+    settings = DatabaseSettings.from_request(
+        request(options={"sslmode": "require", "sslrootcert": "/etc/passwd", "options": "-c x=1"}), SQLITE
+    )
+    assert dict(settings.options) == {"sslmode": "require"}
+    mssql = DatabaseSettings.from_request(
+        {
+            "engine": "mssql",
+            "host": r"srv\SQLEXPRESS",
+            "database": "sigma",
+            "options": {"driver": "ODBC Driver 18 for SQL Server", "trusted_connection": "yes"},
+        },
+        SQLITE,
+    )
+    assert mssql.host == r"srv\SQLEXPRESS" and mssql.options["driver"] == "ODBC Driver 18 for SQL Server"
+    with pytest.raises(InvalidInputError):
+        DatabaseSettings.from_request(
+            {"engine": "mssql", "host": "h", "database": "d", "options": {"driver": "x;DROP"}}, SQLITE
+        )

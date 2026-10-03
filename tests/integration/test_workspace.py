@@ -6,7 +6,7 @@ import pytest
 
 from sigma.domain.workspace import WORKSPACE_MODULES
 from tests.integration.conftest import ApiClient, import_frame
-from tests.support import scalar
+from tests.support import count
 
 
 def put(client, module, **body):
@@ -100,7 +100,7 @@ def test_deleting_an_account_removes_its_workspace(app, api, make_client):
     put(other, "anova", state={"x": 1})
     luis = other.get("/api/auth/me").parsed["user"]["id"]
     assert api.delete(f"/api/users/{luis}").status_code == 200
-    assert scalar(app.extensions["sigma"].database, "SELECT COUNT(*) FROM workspace WHERE user_id = :u", u=luis) == 0
+    assert count(app.extensions["sigma"], "workspace", user_id=luis) == 0
 
 
 # ------------------------------------------------------------------ /api/sync

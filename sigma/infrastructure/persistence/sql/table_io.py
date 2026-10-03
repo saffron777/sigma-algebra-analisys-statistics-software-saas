@@ -39,7 +39,7 @@ def _check_name(name: str) -> str:
     return name
 
 
-def _kind(series: pd.Series) -> str:
+def column_kind(series: pd.Series) -> str:
     if pdt.is_bool_dtype(series):
         return "bool"
     if pdt.is_integer_dtype(series):
@@ -52,7 +52,7 @@ def _kind(series: pd.Series) -> str:
 _SQL_TYPES = {"bool": Integer, "int": BigInteger, "float": Double, "text": LongText}
 
 
-def _to_python(series: pd.Series, kind: str) -> list[Any]:
+def column_values(series: pd.Series, kind: str) -> list[Any]:
     """Plain Python values of a column slice, ready for any driver (NaN/NA → NULL, bool → 0/1, text always ``str``)."""
     values = series.astype(object).where(series.notna(), None).tolist()
     if kind == "int":
@@ -75,7 +75,7 @@ def write_frame(conn: Connection, table_name: str, frame: pd.DataFrame) -> list[
             f"El dataset tiene {len(names)} columnas; este motor de base de datos admite hasta {limit}."
         )
     physical = [f"c{i}" for i in range(len(names))]
-    kinds = [_kind(encoded[name]) for name in names]
+    kinds = [column_kind(encoded[name]) for name in names]
     table = Table(
         table_name,
         MetaData(),
@@ -92,7 +92,7 @@ def _batches(encoded: pd.DataFrame, kinds: list[str], physical: list[str]) -> It
     total = len(encoded)
     for start in range(0, total, CHUNK_ROWS):
         chunk = encoded.iloc[start : start + CHUNK_ROWS]
-        columns = [_to_python(chunk.iloc[:, i], kinds[i]) for i in range(len(physical))]
+        columns = [column_values(chunk.iloc[:, i], kinds[i]) for i in range(len(physical))]
         yield [
             {"_row": start + offset, **{p: columns[i][offset] for i, p in enumerate(physical)}}
             for offset in range(len(chunk))

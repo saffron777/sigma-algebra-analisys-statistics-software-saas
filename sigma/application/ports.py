@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -357,6 +358,22 @@ class SettingsRepository(Protocol):
     def set(self, key: str, value: str) -> None: ...
 
 
+class DataTransfer(Protocol):
+    """Reads or fills a whole database with plain records (ids included), entity by entity, for ``MigrateData``."""
+
+    def counts(self) -> dict[str, int]: ...
+
+    def is_empty(self) -> bool: ...
+
+    def read(self, entity: str) -> Iterator[dict[str, Any]]: ...
+
+    def write(self, entity: str, records: Iterable[dict[str, Any]]) -> int: ...
+
+    def finish(self) -> None: ...
+
+    def clear(self) -> None: ...
+
+
 class Backend(Protocol):
     """Every persistence adapter of one database, chosen by the administrator (SQLite, SQL Server, MySQL, …)."""
 
@@ -388,6 +405,20 @@ class Backend(Protocol):
 
     def purge_stale_drafts(self, max_age_days: int) -> int: ...
 
+    def transfer(self, notebooks_root: Path) -> DataTransfer: ...
+
     def describe(self) -> dict[str, Any]: ...
 
     def close(self) -> None: ...
+
+
+class DatabaseAdministration(Protocol):
+    """Showing, testing and switching the database Sigma persists to (payloads are plain dictionaries)."""
+
+    def status(self) -> dict[str, Any]: ...
+
+    def test(self, payload: Mapping[str, Any]) -> dict[str, Any]: ...
+
+    def apply(self, payload: Mapping[str, Any]) -> dict[str, Any]: ...
+
+    def migration_status(self) -> dict[str, Any]: ...

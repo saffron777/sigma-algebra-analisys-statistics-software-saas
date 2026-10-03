@@ -1,0 +1,33 @@
+# Servidores desechables para la batería de conformidad (tests/conformance) y la suite de integración sobre otro motor.
+#
+#   docker compose -f docker-compose.test.yml up -d
+#   $env:SIGMA_TEST_POSTGRES_URL = "postgresql+psycopg://postgres:sigmatest@127.0.0.1:55432/sigma_test"
+#   $env:SIGMA_TEST_MYSQL_URL    = "mysql+pymysql://root:sigmatest@127.0.0.1:53306/sigma_test"      # MariaDB (53307 = MySQL 8)
+#   $env:SIGMA_TEST_ORACLE_URL   = "oracle+oracledb://sigma:sigmatest@127.0.0.1:51521/?service_name=FREEPDB1"
+#   $env:SIGMA_TEST_MONGO_URL    = "mongodb://127.0.0.1:28017/sigma_test"
+#   .\.venv\Scripts\python.exe -m pytest tests\conformance
+#
+# SQL Server: use una instancia local (Express) con una base vacía «sigma_test», por ejemplo
+#   $env:SIGMA_TEST_MSSQL_URL = "mssql+pyodbc://@localhost\SQLEXPRESS/sigma_test?driver=ODBC+Driver+18+for+SQL+Server&trusted_connection=yes&TrustServerCertificate=yes"
+#
+# Las contraseñas son de prueba: no exponga estos puertos fuera del equipo. Cada prueba empieza borrando todas las tablas de su base.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment: { POSTGRES_PASSWORD: sigmatest, POSTGRES_DB: sigma_test }
+    ports: ["127.0.0.1:55432:5432"]
+  mariadb:
+    image: mariadb:11
+    environment: { MARIADB_ROOT_PASSWORD: sigmatest, MARIADB_DATABASE: sigma_test }
+    ports: ["127.0.0.1:53306:3306"]
+  mysql:
+    image: mysql:8
+    environment: { MYSQL_ROOT_PASSWORD: sigmatest, MYSQL_DATABASE: sigma_test }
+    ports: ["127.0.0.1:53307:3306"]
+  oracle:
+    image: gvenzl/oracle-free:slim-faststart
+    environment: { ORACLE_PASSWORD: sigmatest, APP_USER: sigma, APP_USER_PASSWORD: sigmatest }
+    ports: ["127.0.0.1:51521:1521"]
+  mongo:
+    image: mongo:7
+    ports: ["127.0.0.1:28017:27017"]

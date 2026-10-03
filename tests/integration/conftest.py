@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import io
 import json
+import os
 
 import pytest
 
 from sigma.app_factory import create_app
 from sigma.config import Config
+from sigma.infrastructure.persistence.database_settings import DatabaseSettings
 
 PASSWORD = "Clave-Segura-2024!"
 
@@ -66,18 +68,39 @@ class ApiClient:
         return self._call("delete", url, **kw)
 
 
+def database_under_test() -> DatabaseSettings | None:
+    """``SIGMA_TEST_APP_ENGINE=postgresql`` (…) runs this whole suite on that engine, using its SIGMA_TEST_*_URL."""
+    engine = os.environ.get("SIGMA_TEST_APP_ENGINE")
+    if not engine:
+        return None
+    from tests.conformance.conftest import ENV
+
+    return DatabaseSettings.from_url(os.environ[ENV[engine]])
+
+
 @pytest.fixture
 def app(tmp_path):
+    external = database_under_test()
+    if external is not None:
+        from tests.conformance.conftest import wipe
+
+        wipe(external)
     config = Config.from_env(
         testing=True,
         instance_dir=tmp_path,
         db_path=tmp_path / "sigma.db",
         notebooks_dir=tmp_path / "notebooks",
         sample_dir=tmp_path / "samples",
+        database=external,
     )
     application = create_app(config)
     application.testing = True
-    return application
+    yield application
+    if external is not None:
+        from tests.conformance.conftest import wipe
+
+        application.extensions["sigma"].close()
+        wipe(external)
 
 
 @pytest.fixture

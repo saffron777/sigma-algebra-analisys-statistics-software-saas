@@ -13,6 +13,7 @@ from sqlalchemy import (
     Column,
     Double,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     LargeBinary,
@@ -30,14 +31,20 @@ LongText = UnicodeText().with_variant(mysql.LONGTEXT(), "mysql", "mariadb")
 Blob = LargeBinary().with_variant(mysql.LONGBLOB(), "mysql", "mariadb")
 Str = Unicode
 
+
+def Key(length: int):  # noqa: N802 - reads like a column type
+    """A lower-cased lookup key: compared exactly (MySQL's default collations would also ignore accents)."""
+    return Unicode(length).with_variant(Unicode(length, collation="utf8mb4_bin"), "mysql", "mariadb")
+
+
 metadata = MetaData()
 
 users = Table(
     "users",
     metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("id", Integer, Identity(), primary_key=True),
     Column("username", Str(64), nullable=False),
-    Column("username_key", Str(64), nullable=False),
+    Column("username_key", Key(64), nullable=False),
     Column("display_name", Str(120), nullable=False),
     Column("password_hash", Str(255), nullable=False),
     Column("role", Str(16), nullable=False),
@@ -49,6 +56,7 @@ users = Table(
     Column("last_login_at", Str(40)),
     UniqueConstraint("username_key", name="uq_users_username_key"),
     CheckConstraint("role IN ('admin', 'user')", name="ck_users_role"),
+    sqlite_autoincrement=True,  # an id is never reused: a deleted account's session cannot become somebody else's
 )
 
 datasets = Table(
@@ -57,7 +65,7 @@ datasets = Table(
     Column("id", Str(32), primary_key=True),
     Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE")),  # NULL only for pre-accounts data
     Column("name", Str(120), nullable=False),
-    Column("name_key", Str(120), nullable=False),
+    Column("name_key", Key(120), nullable=False),
     Column("source_type", Str(24), nullable=False),
     Column("source_meta", LongText, nullable=False),
     Column("n_rows", BigInteger, nullable=False),
@@ -79,7 +87,7 @@ saved_results = Table(
     Column("module", Str(24), nullable=False),
     Column("analysis_type", Str(80), nullable=False),
     Column("title", Str(200), nullable=False),
-    Column("notes", LongText, nullable=False),
+    Column("notes", LongText),  # nullable: Oracle stores an empty string as NULL (read back as "")
     Column("dataset_id", Str(32)),  # a plain reference: the repositories clear it when the dataset is deleted
     Column("dataset_name", Str(120)),
     Column("params", LongText, nullable=False),
@@ -151,7 +159,7 @@ report_templates = Table(
     Column("id", Str(32), primary_key=True),
     Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
     Column("name", Str(80), nullable=False),
-    Column("name_key", Str(80), nullable=False),
+    Column("name_key", Key(80), nullable=False),
     Column("organization", Str(120)),
     Column("primary_color", Str(7), nullable=False),
     Column("secondary_color", Str(7), nullable=False),
@@ -178,7 +186,7 @@ app_settings = Table(
 ai_usage = Table(
     "ai_usage",
     metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("id", Integer, Identity(), primary_key=True),
     Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
     Column("module", Str(24), nullable=False),
     Column("model", Str(80), nullable=False),
@@ -186,6 +194,7 @@ ai_usage = Table(
     Column("output_tokens", Integer, nullable=False, default=0),
     Column("created_at", Str(40), nullable=False),
     Index("ix_ai_usage_user_time", "user_id", "created_at"),
+    sqlite_autoincrement=True,
 )
 
 # notebooks live here for every engine except SQLite (which keeps plain .ipynb files, openable in Jupyter)

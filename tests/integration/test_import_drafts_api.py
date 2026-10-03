@@ -7,8 +7,8 @@ from openpyxl import Workbook
 
 from sigma.app_factory import create_app
 from sigma.config import Config
-from tests.integration.conftest import ApiClient, import_frame
-from tests.support import fetch_all, scalar, table_names
+from tests.integration.conftest import ApiClient, database_under_test, import_frame
+from tests.support import count, data_tables, dump
 
 CSV = b"nombre;edad\nAna;30\nLuis;41\nMarta;28\n"
 
@@ -158,6 +158,7 @@ def test_pending_imports_survive_a_restart_and_show_up_in_sync(app, api, tmp_pat
             db_path=tmp_path / "sigma.db",
             notebooks_dir=tmp_path / "notebooks",
             sample_dir=tmp_path / "samples",
+            database=database_under_test(),
         )
     )
     client = ApiClient(restarted.test_client())
@@ -174,9 +175,9 @@ def test_deleting_an_account_removes_its_pending_imports(app, api, make_client):
     preview(other, draft["id"], delimiter="semicolon")
     luis = other.get("/api/auth/me").parsed["user"]["id"]
     assert api.delete(f"/api/users/{luis}").status_code == 200
-    db = app.extensions["sigma"].database
-    assert scalar(db, "SELECT COUNT(*) FROM import_drafts") == 0
-    assert table_names(db, "stg_") == []
+    sigma = app.extensions["sigma"]
+    assert count(sigma, "import_drafts") == 0
+    assert data_tables(sigma, "stg_") == []
 
 
 @pytest.mark.parametrize("source", ["sqlserver", "json_api"])
@@ -189,14 +190,7 @@ def test_connection_secrets_never_reach_the_database(app, api, source):
         "url": "http://127.0.0.1:9/x?t=NO-GUARDAR",
     }
     api.post("/api/datasets/import/preview", {"source_type": source, "options": options})
-    db = app.extensions["sigma"].database
-    dump = " ".join(
-        str(v)
-        for table in ("import_drafts", "workspace")
-        for row in fetch_all(db, f"SELECT * FROM {table}")
-        for v in row
-    )
-    assert "NO-GUARDAR" not in dump
+    assert "NO-GUARDAR" not in dump(app.extensions["sigma"], ("import_drafts", "workspace"))
 
 
 def test_clearing_the_datos_workspace_also_discards_pending_imports(api):

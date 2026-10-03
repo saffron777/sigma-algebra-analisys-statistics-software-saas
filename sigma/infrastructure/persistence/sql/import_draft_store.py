@@ -26,7 +26,7 @@ from sigma.infrastructure.persistence.sql.helpers import bump_sync, now_iso, ups
 
 _ID_PATTERN = re.compile(r"^[0-9a-f]{32}$")
 EXPIRED = "La importación pendiente ya no existe (se descartó, expiró o ya fue guardada). Cargue la fuente otra vez."
-CHUNK_BYTES = 8 * 1024 * 1024  # below the default packet limit of every supported server
+CHUNK_BYTES = 1024 * 1024  # MySQL's driver sends bytes as hex (2×): stays far below any server's packet limit
 _d = schema.import_drafts
 _f = schema.import_draft_files
 

@@ -15,8 +15,10 @@ from sigma.infrastructure.persistence.sql.ai_repositories import SqlAiUsageRepos
 from sigma.infrastructure.persistence.sql.dataset_repository import SqlDatasetRepository
 from sigma.infrastructure.persistence.sql.engine import Database
 from sigma.infrastructure.persistence.sql.import_draft_store import SqlImportDraftStore, purge_stale_drafts
+from sigma.infrastructure.persistence.sql.notebook_store import SqlNotebookStore
 from sigma.infrastructure.persistence.sql.result_repository import SqlResultRepository
 from sigma.infrastructure.persistence.sql.template_repository import SqlTemplateRepository
+from sigma.infrastructure.persistence.sql.transfer import SqlTransfer
 from sigma.infrastructure.persistence.sql.user_data import SqlLegacyDataAdopter, SqlUserDataPurger
 from sigma.infrastructure.persistence.sql.user_repository import SqlUserRepository
 from sigma.infrastructure.persistence.sql.workspace_repository import SqlSyncRepository, SqlWorkspaceRepository
@@ -68,12 +70,15 @@ class SqlBackend:
 
     def notebooks(self, user_id: int, notebooks_root: Path) -> NotebookStore:
         """SQLite keeps plain ``.ipynb`` files (they open in Jupyter); other engines keep notebooks in the database."""
-        return FileNotebookStore(Path(notebooks_root) / str(user_id))
+        if self.notebook_files:
+            return FileNotebookStore(Path(notebooks_root) / str(user_id))
+        return SqlNotebookStore(self.database, user_id)
 
     # ------------------------------------------------------------------ account-level operations
     @property
     def notebook_files(self) -> bool:
-        return True
+        """Whether notebooks are ``.ipynb`` files on disk (SQLite) rather than rows of the database."""
+        return self.database.is_sqlite
 
     def adopter(self, notebooks_root: Path) -> SqlLegacyDataAdopter:
         return SqlLegacyDataAdopter(self.database, notebooks_root, self.notebook_files)
@@ -83,6 +88,9 @@ class SqlBackend:
 
     def purge_stale_drafts(self, max_age_days: int) -> int:
         return purge_stale_drafts(self.database, max_age_days)
+
+    def transfer(self, notebooks_root: Path) -> SqlTransfer:
+        return SqlTransfer(self.database, notebooks_root, self.notebook_files)
 
     # ------------------------------------------------------------------ introspection
     def describe(self) -> dict[str, Any]:

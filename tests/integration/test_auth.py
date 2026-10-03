@@ -2,7 +2,7 @@ import pytest
 
 from sigma.presentation.web.auth import safe_next
 from tests.integration.conftest import PASSWORD, ApiClient
-from tests.support import scalar, table_names
+from tests.support import count, data_tables
 
 PROTECTED_API = ["/api/datasets", "/api/results", "/api/distributions", "/api/hypothesis/catalog", "/api/auth/me"]
 
@@ -187,13 +187,17 @@ def test_deleting_an_account_removes_its_data_and_kernels(app, api, make_client,
     luis = victim.get("/api/auth/me").parsed["user"]["id"]
     dataset = import_frame(victim, sales_frame, "ventas")
     notebook = victim.post("/api/notebooks", {"name": "mio"}).parsed["notebook"]
-    folder = app.extensions["sigma"].config.notebooks_dir / str(luis)
-    assert folder.is_dir() and (folder / f"{notebook['id']}.ipynb").is_file()
+    sigma = app.extensions["sigma"]
+    folder = sigma.config.notebooks_dir / str(luis)
+    if sigma.backend.notebook_files:  # SQLite keeps notebooks as .ipynb files; other engines keep them as rows
+        assert folder.is_dir() and (folder / f"{notebook['id']}.ipynb").is_file()
+    else:
+        assert count(sigma, "notebooks", user_id=luis) == 1
     assert api.delete(f"/api/users/{luis}").status_code == 200
     assert not folder.exists()
-    db = app.extensions["sigma"].database
-    assert scalar(db, "SELECT COUNT(*) FROM datasets WHERE id = :i", i=dataset["id"]) == 0
-    assert table_names(db, "ds_") == []  # its data table went with it
+    assert count(sigma, "notebooks", user_id=luis) == 0
+    assert count(sigma, "datasets", id=dataset["id"]) == 0
+    assert data_tables(sigma, "ds_") == []  # its data table went with it
     assert victim.get("/api/datasets").status_code == 401
 
 
