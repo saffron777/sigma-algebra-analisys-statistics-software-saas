@@ -36,6 +36,7 @@ from sigma.application.use_cases.analysis import (
     RunHypothesisTest,
     RunRegression,
 )
+from sigma.application.use_cases.database import ApplyDatabase, GetDatabaseStatus, GetMigrationStatus, TestDatabase
 from sigma.application.use_cases.datasets import (
     ChangeColumnTypes,
     CommitImport,
@@ -107,7 +108,9 @@ from sigma.infrastructure.exporters.xlsx_exporter import XlsxExporter
 from sigma.infrastructure.imaging import PillowImageProcessor
 from sigma.infrastructure.importers.registry import DefaultImporterRegistry
 from sigma.infrastructure.kernel.jupyter_executor import JupyterKernelPool
+from sigma.infrastructure.persistence.administration import DatabaseAdmin
 from sigma.infrastructure.persistence.backend import create_backend
+from sigma.infrastructure.persistence.connection_tester import ConnectionTester
 from sigma.infrastructure.security.login_throttle import InMemoryLoginThrottle
 from sigma.infrastructure.security.password_hasher import WerkzeugPasswordHasher
 
@@ -224,6 +227,13 @@ class Container:
         self.ai_gateway = AnthropicGateway(self.ai_settings)
         self.get_ai_admin = GetAiAdmin(self.ai_settings, self.ai_usage, config.ai_requests_per_hour)
         self.update_ai_settings = UpdateAiSettings(self.ai_settings)
+        self.database_admin = DatabaseAdmin(
+            config.instance_dir, config.db_path, config.database, self.backend, ConnectionTester()
+        )
+        self.get_database_status = GetDatabaseStatus(self.database_admin)
+        self.test_database = TestDatabase(self.database_admin)
+        self.apply_database = ApplyDatabase(self.database_admin)
+        self.get_migration_status = GetMigrationStatus(self.database_admin)
         self.test_ai_connection = TestAiConnection(self.ai_gateway, self.ai_settings)
         hasher = WerkzeugPasswordHasher()
         throttle = InMemoryLoginThrottle()

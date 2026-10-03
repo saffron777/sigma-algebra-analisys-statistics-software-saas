@@ -17,6 +17,8 @@ from sigma.domain.errors import (
     ImportFailedError,
     InvalidInputError,
     KernelError,
+    MaintenanceError,
+    MigrationError,
     NotebookNotFoundError,
     PermissionDeniedError,
     RateLimitedError,
@@ -44,6 +46,8 @@ _STATUS = {
     PermissionDeniedError: 403,
     ConflictError: 409,
     AiUnavailableError: 503,
+    MaintenanceError: 503,
+    MigrationError: 500,
     RateLimitedError: 429,
 }
 _HTTP_MESSAGES = {

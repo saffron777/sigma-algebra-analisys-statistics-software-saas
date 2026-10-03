@@ -60,6 +60,7 @@
         <a href="{{ url_for('pages.page_cuenta') }}" class="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">{{ icon("cuenta", "size-4") }} Mi cuenta</a>
         {% if current_user.is_admin %}
         <a href="{{ url_for('pages.page_usuarios') }}" class="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">{{ icon("usuarios", "size-4") }} Usuarios</a>
+        <a href="{{ url_for('pages.page_basedatos') }}" class="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">{{ icon("datos", "size-4") }} Base de datos</a>
         {% endif %}
         <button type="button" class="flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" @click="logout()">{{ icon("logout", "size-4") }} Cerrar sesión</button>
       </div>

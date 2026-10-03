@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import icon %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/basedatos.js') }}"></script>{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+  <section class="card" x-data="databaseOverview" aria-labelledby="db-now-title">
+    <div class="card-header">
+      <h2 id="db-now-title" class="card-title flex items-center gap-2">{{ icon("datos", "size-4") }} Base de datos en uso</h2>
+      <button type="button" class="btn btn-ghost btn-sm" @click="load()" :disabled="loading">{{ icon("refresh", "size-4") }} Actualizar</button>
+    </div>
+    <div class="card-body space-y-3">
+      <p class="alert alert-danger" role="alert" x-show="error" x-cloak x-text="error"></p>
+      <dl class="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2" x-show="status" x-cloak>
+        <div><dt class="label">Motor</dt><dd x-text="status?.current.label"></dd></div>
+        <div><dt class="label">Versión del servidor</dt><dd x-text="status?.live?.server_version || 'No disponible'"></dd></div>
+        <div x-show="status?.current.engine === 'sqlite'"><dt class="label">Archivo</dt><dd class="break-all font-mono text-xs" x-text="status?.current.path"></dd></div>
+        <div x-show="status?.current.engine !== 'sqlite'"><dt class="label">Servidor</dt>
+          <dd><span x-text="status?.current.host"></span><span x-show="status?.current.port">:<span x-text="status?.current.port"></span></span></dd></div>
+        <div x-show="status?.current.engine !== 'sqlite'"><dt class="label">Base de datos</dt>
+          <dd><span x-text="status?.current.database"></span><span x-show="status?.current.schema"> · esquema <span x-text="status?.current.schema"></span></span></dd></div>
+        <div x-show="status?.current.username"><dt class="label">Usuario</dt><dd x-text="status?.current.username"></dd></div>
+        <div><dt class="label">Contenido</dt>
+          <dd><span x-text="status?.live?.counts.users ?? '—'"></span> cuenta(s) ·
+              <span x-text="status?.live?.counts.datasets ?? '—'"></span> conjunto(s) de datos ·
+              <span x-text="status?.live?.counts.results ?? '—'"></span> resultado(s)</dd></div>
+        <div class="sm:col-span-2"><dt class="label">Origen de la configuración</dt><dd class="text-slate-600 dark:text-slate-300" x-text="status?.source_note"></dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="card" x-data="databaseChooser('/api/admin/database', 'admin')" aria-labelledby="db-change-title">
+    <div class="card-header"><h2 id="db-change-title" class="card-title">Cambiar de base de datos</h2></div>
+    <div class="card-body space-y-4">
+      <p class="text-sm text-slate-600 dark:text-slate-300">
+        Todo Sigma (cuentas, conjuntos de datos, resultados, borradores, plantillas, notebooks y ajustes) se guarda en <strong>una sola</strong>
+        base de datos. Elija el motor, pruebe la conexión y aplíquela. La base actual no se borra.
+      </p>
+      {% include "partials/database_chooser.html" %}
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,4 +1,5 @@
 import { api } from "../api.js";
+import "../database-chooser.js";
 
 document.addEventListener("alpine:init", () => {
   Alpine.data("setupPage", () => ({

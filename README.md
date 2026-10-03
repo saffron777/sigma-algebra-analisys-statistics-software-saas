@@ -24,7 +24,8 @@ rechazo y el valor p sombreados.
 ## Requisitos
 
 - Windows 10/11 (también funciona en Linux/macOS), **Python 3.11+** y **Node.js 20+** (solo para compilar el CSS).
-- Para importar desde **SQL Server**: *ODBC Driver 17 o 18 for SQL Server* instalado.
+- Para importar desde **SQL Server**, o para usarlo como base de Sigma: *ODBC Driver 17 o 18 for SQL Server* instalado.
+- Para guardar en MySQL/MariaDB, PostgreSQL, Oracle o MongoDB basta el controlador de Python de `requirements.txt` (ya se instala); necesita un servidor accesible.
 
 ## Instalación
 
@@ -63,7 +64,8 @@ Variables de entorno (opcionales, también en un archivo `.env`, ver `.env.examp
 | Variable | Valor por defecto | Descripción |
 |---|---|---|
 | `SIGMA_HOST` / `SIGMA_PORT` | `127.0.0.1` / `5000` | Dirección de escucha. |
-| `SIGMA_DB_PATH` | `instance/sigma.db` | Base SQLite (cuentas, datasets, resultados). |
+| `SIGMA_DATABASE_URL` | — | Base de datos de Sigma (SQLite, SQL Server, MySQL/MariaDB, PostgreSQL, Oracle o MongoDB); ver *Base de datos*. |
+| `SIGMA_DB_PATH` | `instance/sigma.db` | Archivo SQLite que se usa cuando no se ha elegido otra base. |
 | `SIGMA_NOTEBOOKS_DIR` | `instance/notebooks` | Carpeta de los `.ipynb`. |
 | `SIGMA_MAX_UPLOAD_MB` | `100` | Tamaño máximo de los archivos subidos. |
 | `SIGMA_CELL_TIMEOUT_SECONDS` | `60` | Tiempo máximo por celda de la consola. |
@@ -176,13 +178,65 @@ Para probar la consola, importe `analisis_demo.ipynb` desde **Consola Python →
 - **API JSON**: URL, método GET/POST, cabeceras, parámetros, cuerpo y ruta a los registros (`data.items`); si la omite,
   Sigma detecta la lista de objetos. Cabeceras y tokens no se guardan. Límite de 50 MB por respuesta.
 
-## Persistencia y respaldo
+## Base de datos: elegir dónde se guarda todo
 
-Todo se guarda en `instance/sigma.db` (SQLite en modo WAL): las **cuentas**, los **datasets importados** (cada uno en
-su tabla, con sus tipos) y los **resultados guardados**. Los notebooks se guardan como archivos `.ipynb` en
-`instance/notebooks/<id de usuario>/`.
-**Respaldo:** copie la carpeta `instance/` (con la aplicación detenida, o copie `sigma.db`, `sigma.db-wal` y
-`sigma.db-shm` juntos).
+Sigma guarda en **una sola base de datos** las cuentas, los datasets importados (con sus tipos), los resultados
+guardados, el espacio de trabajo, las importaciones pendientes, las plantillas de informe, los ajustes de la IA y, con los
+motores de servidor, también los notebooks. El administrador elige el motor:
+
+| Motor | Controlador (`requirements.txt`) | Notas |
+|---|---|---|
+| **SQLite** (por defecto) | incluido en Python | Un archivo en `instance/sigma.db` (modo WAL). Los notebooks siguen siendo `.ipynb` en `instance/notebooks/<id>/`. |
+| **Microsoft SQL Server** | `pyodbc` + «ODBC Driver 17/18 for SQL Server» | Autenticación de SQL Server o de Windows. Esquema propio opcional. Hasta 280 columnas por dataset. |
+| **MySQL / MariaDB** | `pymysql` | Se crea con `utf8mb4`. Hasta 900 columnas por dataset. |
+| **PostgreSQL** | `psycopg[binary]` | Esquema propio opcional y modo SSL configurable. |
+| **Oracle Database** | `oracledb` (modo *thin*, sin cliente Oracle) | Servicio indicado como «nombre del servicio». Oracle trata `''` como `NULL`: una celda de texto vacía vuelve como valor ausente. |
+| **MongoDB** | `pymongo` | Colecciones equivalentes a las tablas; los datasets se guardan en documentos de unos miles de filas. |
+
+**Cómo se elige**
+
+1. **Primera vez:** el asistente de `/setup` tiene un paso «Base de datos» (SQLite ya está seleccionada; «Usar otra base
+   de datos…» abre el formulario, con *Probar conexión*).
+2. **Después:** *Base de datos* en el menú del administrador. *Probar conexión* comprueba el controlador, el acceso,
+   el contenido (vacía / datos de Sigma / tablas ajenas) y que se puedan crear tablas, con mensajes claros (usuario o
+   contraseña, base inexistente, servidor inalcanzable, certificado TLS…). Si la base elegida está **vacía** y la actual
+   tiene datos, la casilla **«Copiar los datos actuales»** los lleva a la nueva base (ids incluidos: **las sesiones abiertas
+   siguen válidas**); si ya contiene datos de Sigma se usan tal cual. Mientras dura la copia Sigma queda en
+   mantenimiento; la base de origen no se modifica y sirve de copia de seguridad.
+3. **Despliegues:** `SIGMA_DATABASE_URL` (tiene prioridad; entonces la interfaz solo muestra la configuración):
+
+```
+sqlite:///instance/sigma.db
+mssql+pyodbc://usuario:clave@servidor/sigma?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
+mssql+pyodbc://@servidor\SQLEXPRESS/sigma?driver=ODBC+Driver+18+for+SQL+Server&trusted_connection=yes
+mysql+pymysql://usuario:clave@servidor/sigma
+postgresql+psycopg://usuario:clave@servidor/sigma
+oracle+oracledb://usuario:clave@servidor:1521/?service_name=FREEPDB1
+mongodb://usuario:clave@servidor:27017/sigma
+```
+
+La elección hecha desde la interfaz se guarda en `instance/database.json` (incluye la contraseña de la base: trátelo como
+un secreto, igual que `secret.key`). La interfaz nunca la devuelve al navegador. Sigma crea sus propias tablas; la base
+(o el esquema) debe existir y estar vacía, y el usuario necesita permiso para crear tablas.
+
+**Migración por línea de comandos** (con Sigma detenido):
+
+```powershell
+.\.venv\Scripts\python.exe scripts\migrate_database.py --to "postgresql+psycopg://usuario:clave@servidor/sigma" --use
+```
+
+**Qué se ha probado.** La batería de conformidad (cuentas, datasets, resultados, espacio de trabajo con escrituras concurrentes,
+borradores con archivos de varios MB, plantillas, notebooks, esquemas, prueba de conexión y migración en ambos sentidos) y toda la
+API de Sigma se ejecutaron contra servidores reales: SQLite 3.50, SQL Server 2025 Express (ODBC Driver 18), MySQL 8, MariaDB 11.8,
+PostgreSQL 16, Oracle AI Database 26ai Free (23.26) y MongoDB 7. Otras versiones deberían funcionar (se usan dialectos estándar de SQLAlchemy 2),
+pero no se han probado.
+
+**Actualización de una instalación anterior:** el archivo `instance/sigma.db` de una versión previa se actualiza solo al
+arrancar; los datasets y los notebooks existentes siguen funcionando sin copiarlos.
+
+**Respaldo:** con SQLite, copie la carpeta `instance/` (con la aplicación detenida, o `sigma.db`, `sigma.db-wal` y
+`sigma.db-shm` juntos); con un motor de servidor, use las herramientas de respaldo de ese motor (más la carpeta
+`instance/` para `secret.key`, `ai_key.txt` y `database.json`).
 
 ## Consola Python y notebooks
 
@@ -209,7 +263,12 @@ La consola ejecuta código arbitrario por diseño (solo para cuentas autorizadas
   en toda petición que modifica datos.
 - Política de seguridad de contenido (CSP) restrictiva; no se carga ningún recurso externo.
 - Los resultados importados, el HTML de los notebooks y los datos se muestran saneados (DOMPurify / `textContent`).
-- Las sentencias SQLite usan parámetros y los nombres de tabla se generan desde identificadores internos.
+- Las sentencias SQL usan parámetros y los nombres de tabla se generan desde identificadores internos.
+- **Base de datos:** la página *Base de datos* es solo para administradores y el paso del asistente `/setup` solo existe
+  mientras no haya ninguna cuenta (complete el asistente nada más instalar). Lo que se escribe en el formulario se valida
+  de forma estricta (host, base, opciones permitidas), SQLite siempre es el archivo del servidor y la contraseña guardada no
+  se envía a un servidor distinto del que se configuró. El kernel de la consola recibe la URL de la base: quien tiene
+  permiso de consola puede leer su contraseña (como ya podía leer `instance/` y `.env`).
 
 ## Identidad visual
 
@@ -227,20 +286,37 @@ decisiones en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 sigma/
   domain/           estadística pura (numpy/scipy/statsmodels), entidades y errores; sin Flask ni E/S
   application/      casos de uso y puertos (interfaces)
-  infrastructure/   SQLite, importadores (CSV/Excel/texto/SQL Server/API), kernel Jupyter, almacén de notebooks
+  infrastructure/   persistencia (SQL: SQLite/SQL Server/MySQL/PostgreSQL/Oracle · MongoDB), importadores, kernel Jupyter
   presentation/web/ blueprints Flask, esquemas pydantic, reportes y gráficos, plantillas Jinja, JS y Tailwind
-tests/              unit/ (dominio, infraestructura) e integration/ (API, páginas, consola con kernel real)
+tests/              unit/ (dominio, infraestructura), conformance/ (la misma batería en cada motor de base de datos)
+                    e integration/ (API, páginas, consola con kernel real)
 ```
 
 ## Desarrollo
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest              # 509 pruebas (la consola arranca kernels reales: ~1 min)
+.\.venv\Scripts\python.exe -m pytest              # 660 pruebas con SQLite y MongoDB en memoria (la consola arranca kernels reales: ~4 min)
 .\.venv\Scripts\python.exe -m ruff check .        # lint
 .\.venv\Scripts\python.exe -m ruff format .       # formato
 npm run watch:css                                 # recompila Tailwind al editar plantillas/JS
 $env:SIGMA_DEBUG = "1"; .\.venv\Scripts\python.exe run.py   # recarga automática
 ```
+
+**Probar otros motores de base de datos.** La batería `tests/conformance/` corre siempre en SQLite y en MongoDB en memoria;
+para ejecutarla contra servidores reales levante los contenedores de prueba y defina las URL (ver
+[docker-compose.test.yml](docker-compose.test.yml)):
+
+```powershell
+docker compose -f docker-compose.test.yml up -d
+$env:SIGMA_TEST_POSTGRES_URL = "postgresql+psycopg://postgres:sigmatest@127.0.0.1:55432/sigma_test"
+$env:SIGMA_TEST_MYSQL_URL    = "mysql+pymysql://root:sigmatest@127.0.0.1:53306/sigma_test"
+$env:SIGMA_TEST_ORACLE_URL   = "oracle+oracledb://sigma:sigmatest@127.0.0.1:51521/?service_name=FREEPDB1"
+$env:SIGMA_TEST_MONGO_URL    = "mongodb://127.0.0.1:28017/sigma_test"
+.\.venv\Scripts\python.exe -m pytest tests\conformance
+$env:SIGMA_TEST_APP_ENGINE = "postgresql"; .\.venv\Scripts\python.exe -m pytest tests\integration   # toda la API sobre ese motor
+```
+
+Las bases de esas URL deben estar vacías y ser desechables: cada prueba empieza borrando sus tablas.
 
 ## Limitaciones conocidas
 
@@ -251,3 +327,8 @@ $env:SIGMA_DEBUG = "1"; .\.venv\Scripts\python.exe run.py   # recarga automátic
   reinicia (se pierden las variables en memoria).
 - La importación desde SQL Server no puede probarse automáticamente sin un servidor: las pruebas cubren la construcción
   de la conexión, la protección de solo lectura y toda la ruta de lectura contra SQLite.
+- Base de datos: Oracle no distingue `''` de `NULL` (una celda de texto vacía vuelve como ausente); cada motor limita las
+  columnas de un dataset (SQL Server 280, MySQL/Oracle/MariaDB 900, PostgreSQL 1000, SQLite 1900) y lo dice con un error claro; MongoDB
+  no tiene transacciones entre documentos, así que borrar una cuenta o un dataset es una secuencia de operaciones (con limpieza si falla).
+  Cambiar de base desde la página afecta a este proceso: si ejecuta varios procesos de Sigma, reinicie los demás. La migración copia
+  las importaciones pendientes sin su vista previa (se vuelve a generar desde el archivo).

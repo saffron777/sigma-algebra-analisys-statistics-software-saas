@@ -11,7 +11,9 @@ from sigma.presentation.web.auth import init_auth
 from sigma.presentation.web.blueprints import register_blueprints
 from sigma.presentation.web.blueprints.pages import PAGES
 from sigma.presentation.web.errors import register_error_handlers
+from sigma.presentation.web.migration import MigrationRunner, init_maintenance
 from sigma.presentation.web.security import init_security
+from sigma.presentation.web.switching import ContainerSwitcher
 
 NAV_GROUPS = (
     ("General", ("home", "datos", "resultados", "plantillas")),
@@ -30,8 +32,13 @@ def create_app(config: Config | None = None) -> Flask:
 
     container = build_container(config)
     app.extensions["sigma"] = container
+    switcher = ContainerSwitcher(app, close_delay=0 if config.testing else 2.0)
+    switcher.migrator = MigrationRunner(app, switcher)
+    container.database_admin.switcher = switcher
+    container.database_admin.migrator = switcher.migrator
     init_security(app, config)  # Host/Origin/CSRF run first…
-    init_auth(app, container)  # …then the session check
+    init_maintenance(app)  # …then the gate that closes the application while a migration copies the data
+    init_auth(app)  # …then the session check
     register_blueprints(app)
     register_error_handlers(app)
 

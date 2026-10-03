@@ -25,10 +25,15 @@ PAGES = {
     "plantillas": ("/plantillas", "Plantillas de informe", "pages/plantillas.html"),
     "cuenta": ("/cuenta", "Mi cuenta", "pages/cuenta.html"),
     "usuarios": ("/usuarios", "Usuarios", "pages/usuarios.html"),
+    "basedatos": ("/basedatos", "Base de datos", "pages/basedatos.html"),
 }
 
 # pages that need more than a valid session (the guard raises a PermissionDeniedError → 403 page)
-GUARDS: dict[str, Callable[[], None]] = {"consola": require_console, "usuarios": require_admin}
+GUARDS: dict[str, Callable[[], None]] = {
+    "consola": require_console,
+    "usuarios": require_admin,
+    "basedatos": require_admin,
+}
 
 
 def _register(key: str, path: str, title: str, template: str) -> None:

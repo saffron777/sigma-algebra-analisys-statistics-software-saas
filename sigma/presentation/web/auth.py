@@ -17,7 +17,19 @@ from sigma.domain.errors import PermissionDeniedError
 from sigma.domain.users import User
 
 PUBLIC_PATHS = frozenset(
-    {"/login", "/setup", "/health", "/api/auth/login", "/api/auth/setup", "/api/auth/status", "/api/auth/logout"}
+    {
+        "/login",
+        "/setup",
+        "/health",
+        "/api/auth/login",
+        "/api/auth/setup",
+        "/api/auth/status",
+        "/api/auth/logout",
+        # the wizard's «Base de datos» step: open only while no account exists (the endpoints check it)
+        "/api/setup/database",
+        "/api/setup/database/test",
+        "/api/setup/database/apply",
+    }
 )
 _AUTH_KEYS = ("uid", "epoch")
 
@@ -78,9 +90,10 @@ def _reject(code: str, message: str, page_target: str):
     return redirect(page_target)
 
 
-def init_auth(app: Flask, container: Container) -> None:
+def init_auth(app: Flask) -> None:
     @app.before_request
     def authenticate_request():
+        container: Container = app.extensions["sigma"]  # read per request: the administrator can switch databases
         path = request.path
         g.user, g.services = None, None
         if path.startswith("/static/") or path == "/favicon.ico" or path in PUBLIC_PATHS:

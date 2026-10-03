@@ -1,0 +1,165 @@
+{# The body of the database chooser. Include it inside an element with x-data="databaseChooser(base, mode)". #}
+<div x-show="loading" class="text-sm text-slate-500">Cargando…</div>
+<p class="alert alert-danger" role="alert" x-show="loadError" x-cloak x-text="loadError"></p>
+
+<div x-show="!loading && !loadError" x-cloak class="space-y-4">
+  <div x-show="mode === 'setup'" class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800/50">
+    <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Base de datos en uso</p>
+    <p class="mt-0.5 font-medium text-slate-900 dark:text-slate-100" x-text="summary"></p>
+    <p class="mt-0.5 text-xs text-slate-500" x-text="status?.source_note"></p>
+  </div>
+
+  <p class="alert alert-success" role="status" x-show="applied" x-cloak>
+    Sigma usará <strong x-text="applied"></strong>. Cree ahora la cuenta de administrador.
+  </p>
+
+  <template x-if="status && !status.editable">
+    <p class="alert alert-warning">La base de datos se define con la variable de entorno <code class="font-mono">SIGMA_DATABASE_URL</code>; para cambiarla edite el entorno y reinicie Sigma.</p>
+  </template>
+
+  <template x-if="mode === 'setup' && status?.editable && !open">
+    <button type="button" class="btn btn-ghost btn-sm" @click="open = true">Usar otra base de datos (SQL Server, MySQL, PostgreSQL, Oracle, MongoDB)…</button>
+  </template>
+
+  <form x-show="open && status?.editable" x-cloak class="space-y-4" @submit.prevent="test()" novalidate>
+    <div>
+      <label class="label" for="db-engine">Motor de base de datos</label>
+      <select id="db-engine" class="input" x-model="form.engine" @change="changeEngine()">
+        <template x-for="e in engines" :key="e.engine">
+          <option :value="e.engine" :disabled="!e.driver_available" x-text="e.label + (e.driver_available ? '' : ' — falta el controlador')"></option>
+        </template>
+      </select>
+      <p class="hint" x-show="meta.engine && !meta.driver_available" x-cloak>
+        Instale el controlador con <code class="font-mono" x-text="'pip install ' + meta.install_hint"></code> y reinicie Sigma.
+      </p>
+    </div>
+
+    <p class="text-sm text-slate-600 dark:text-slate-300" x-show="isSqlite" x-cloak>
+      Un archivo local (<code class="font-mono" x-text="status?.default_sqlite_path"></code>). Es lo más sencillo y no necesita servidor:
+      adecuado para un equipo o un grupo pequeño.
+    </p>
+
+    <div class="space-y-4" x-show="!isSqlite" x-cloak>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="col-span-2">
+          <label class="label" for="db-host">Servidor</label>
+          <input id="db-host" class="input" type="text" autocomplete="off" spellcheck="false" placeholder="localhost  ·  servidor\INSTANCIA"
+                 x-model="form.host" @input="edited()">
+        </div>
+        <div>
+          <label class="label" for="db-port">Puerto</label>
+          <input id="db-port" class="input" type="number" min="1" max="65535" autocomplete="off" x-model="form.port" @input="edited()">
+        </div>
+      </div>
+      <div>
+        <label class="label" for="db-name" x-text="databaseLabel"></label>
+        <input id="db-name" class="input" type="text" autocomplete="off" spellcheck="false" x-model="form.database" @input="edited()"
+               :placeholder="form.engine === 'oracle' ? 'FREEPDB1' : 'sigma'">
+        <p class="hint" x-show="form.engine !== 'mongodb'" x-cloak>Debe existir y estar vacía (o contener datos de Sigma): Sigma crea sus propias tablas, sin tocar otras.</p>
+        <p class="hint" x-show="form.engine === 'mongodb'" x-cloak>Sigma crea sus colecciones en esta base.</p>
+      </div>
+      <div x-show="supportsSchema" x-cloak>
+        <label class="label" for="db-schema">Esquema (opcional)</label>
+        <input id="db-schema" class="input" type="text" autocomplete="off" spellcheck="false" placeholder="sigma" x-model="form.schema" @input="edited()">
+        <p class="hint">Para compartir la base con otras aplicaciones: Sigma lo crea y guarda todo dentro de él.</p>
+      </div>
+
+      <label class="flex items-center gap-2 text-sm" x-show="form.engine === 'mssql'" x-cloak>
+        <input type="checkbox" class="check" x-model="form.windows" @change="edited()">
+        Autenticación de Windows (la cuenta con la que se ejecuta Sigma)
+      </label>
+      <div class="grid grid-cols-2 gap-3" x-show="usesLogin" x-cloak>
+        <div>
+          <label class="label" for="db-user">Usuario</label>
+          <input id="db-user" class="input" type="text" autocomplete="off" spellcheck="false" x-model="form.username" @input="edited()">
+        </div>
+        <div>
+          <label class="label" for="db-pass">Contraseña</label>
+          <input id="db-pass" class="input" type="password" autocomplete="new-password" x-model="form.password" @input="edited()"
+                 :placeholder="keepsPassword ? 'Sin cambios' : ''">
+        </div>
+      </div>
+
+      <div class="space-y-2" x-show="['mssql', 'postgresql', 'mysql'].includes(form.engine)" x-cloak>
+        <label class="flex items-center gap-2 text-sm" x-show="form.engine === 'mssql'">
+          <input type="checkbox" class="check" x-model="form.trustCertificate" @change="edited()">
+          Confiar en el certificado del servidor (necesario con certificados autofirmados)
+        </label>
+        <div x-show="form.engine === 'postgresql'">
+          <label class="label" for="db-ssl">Modo SSL</label>
+          <select id="db-ssl" class="input" x-model="form.sslmode" @change="edited()">
+            <option value="">Predeterminado del servidor</option>
+            <option value="disable">Sin cifrado (disable)</option>
+            <option value="prefer">Preferir cifrado (prefer)</option>
+            <option value="require">Exigir cifrado (require)</option>
+            <option value="verify-full">Exigir y verificar el servidor (verify-full)</option>
+          </select>
+        </div>
+        <label class="flex items-center gap-2 text-sm" x-show="form.engine === 'mysql'">
+          <input type="checkbox" class="check" x-model="form.noTls" @change="edited()">
+          Conexión sin cifrar (solo en redes de confianza)
+        </label>
+      </div>
+    </div>
+
+    <div class="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700" x-show="canMigrate" x-cloak>
+      <label class="flex items-start gap-2">
+        <input type="checkbox" class="check mt-0.5" x-model="migrate">
+        <span><strong>Copiar los datos actuales a la nueva base</strong> (cuentas, conjuntos de datos, resultados, notebooks y ajustes).
+          <span class="block text-xs text-slate-500">Sigma queda en mantenimiento mientras dura la copia. La base actual no se modifica.</span></span>
+      </label>
+    </div>
+    <p class="alert alert-info" x-show="report?.ok && report?.state === 'sigma'" x-cloak>
+      La base ya contiene datos de Sigma: se usarán tal como están (no se copia nada).
+    </p>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="submit" class="btn btn-secondary" :disabled="testing || !meta.driver_available">
+        <span x-text="testing ? 'Probando…' : 'Probar conexión'"></span>
+      </button>
+      <button type="button" class="btn btn-primary" :disabled="!canApply" @click="apply()">
+        <span x-text="applying ? (migrating ? 'Copiando…' : 'Aplicando…') : (isCurrent ? 'Ya en uso' : (willMigrate ? 'Copiar los datos y usar esta base' : 'Usar esta base de datos'))"></span>
+      </button>
+    </div>
+
+    <p class="alert alert-danger" role="alert" x-show="error" x-cloak x-text="error"></p>
+
+    <div x-show="report" x-cloak aria-live="polite" class="space-y-2">
+      <p class="alert" :class="report?.ok ? 'alert-success' : 'alert-danger'" role="status" x-text="report?.message"></p>
+      <ul class="space-y-1 text-sm">
+        <template x-for="step in report?.steps || []" :key="step.name">
+          <li class="flex gap-2">
+            <span :class="step.ok ? 'text-emerald-600' : 'text-red-600'" x-text="step.ok ? '✓' : '✗'" aria-hidden="true"></span>
+            <span><span class="font-medium" x-text="step.name"></span><span class="text-slate-500" x-show="step.detail"> — <span x-text="step.detail"></span></span></span>
+          </li>
+        </template>
+      </ul>
+      <p class="text-sm text-slate-600 dark:text-slate-300" x-show="report?.counts" x-cloak>
+        Contiene <span x-text="report?.counts?.users"></span> cuenta(s), <span x-text="report?.counts?.datasets"></span> conjunto(s) de datos y
+        <span x-text="report?.counts?.results"></span> resultado(s) guardado(s).
+      </p>
+    </div>
+  </form>
+
+  <section x-show="job && job.state !== 'idle'" x-cloak aria-live="polite" class="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+    <div class="flex items-center justify-between text-sm">
+      <p class="font-medium">Copiando los datos a <span x-text="job?.target"></span></p>
+      <span class="text-xs text-slate-500" x-text="progress + ' %'"></span>
+    </div>
+    <div class="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" role="progressbar" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100">
+      <div class="h-full bg-brand-600 transition-all" :style="`width: ${progress}%`"></div>
+    </div>
+    <ul class="space-y-1 text-sm">
+      <template x-for="step in job?.steps || []" :key="step.key">
+        <li class="flex items-center gap-2">
+          <span :class="step.state === 'done' ? 'text-emerald-600' : 'text-slate-400'" aria-hidden="true" x-text="step.state === 'done' ? '✓' : (step.state === 'running' ? '…' : '·')"></span>
+          <span x-text="step.label"></span>
+          <span class="text-xs text-slate-500" x-show="step.total" x-text="`${step.done} / ${step.total}`"></span>
+        </li>
+      </template>
+    </ul>
+    <p class="alert alert-success" role="status" x-show="migrated" x-cloak>
+      Migración completada. Sigma ya usa la nueva base de datos; la anterior queda intacta como copia de seguridad.
+    </p>
+  </section>
+</div>

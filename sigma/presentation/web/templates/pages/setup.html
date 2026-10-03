@@ -2,6 +2,13 @@
 {% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/setup.js') }}"></script>{% endblock %}
 
 {% block content %}
+<section class="card" x-data="databaseChooser('/api/setup/database', 'setup')" aria-labelledby="db-title">
+  <div class="card-header"><h2 id="db-title" class="card-title">Base de datos</h2></div>
+  <div class="card-body">
+    {% include "partials/database_chooser.html" %}
+  </div>
+</section>
+
 <form class="card" x-data="setupPage" @submit.prevent="submit()" novalidate>
   <div class="card-header"><h2 class="card-title">Bienvenido: cree la cuenta de administrador</h2></div>
   <div class="card-body space-y-4">

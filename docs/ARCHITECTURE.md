@@ -70,25 +70,70 @@ exportadores consumen los mismos bloques** que la pantalla.
 
 ## Persistencia
 
-SQLite (`instance/sigma.db`, modo WAL, claves foráneas activas). El esquema se versiona con migraciones SQL
-(`infrastructure/persistence/sqlite/migrations.py`, `PRAGMA user_version`; cada una se aplica de forma atómica y no
-se edita una publicada):
+Todo lo que Sigma guarda pasa por **puertos** (`application/ports.py`: `UserRepository`, `DatasetRepository`,
+`ResultRepository`, `WorkspaceRepository`, `SyncRepository`, `ImportDraftStore`, `TemplateRepository`,
+`SettingsRepository`, `AiUsageRepository`, `NotebookStore`…) y el conjunto de adaptadores de **una** base de datos es un
+`Backend` (`persistence/backend.py: create_backend(settings)`). El administrador elige el motor; `bootstrap.py` solo
+pide al backend sus repositorios (`backend.datasets(user_id)`…), así que casos de uso, API y front-end no saben qué motor hay.
 
-| Versión | Contenido |
-|---|---|
-| v1 | `datasets` y `saved_results` (versión de un solo usuario) |
-| v2 | `users`, `user_id` en datasets/resultados (nombre único **por usuario**), `sync_state` y *triggers* que suben la revisión de cada ámbito |
-| v3 | `workspace`: formulario y último resultado de cada módulo |
-| v4 | `import_drafts`: importaciones pendientes (archivo en un BLOB + tabla `stg_<id>` con la vista previa) |
-| v5 | `report_templates` (colores, textos, página, logotipo) |
-| v6 | `app_settings` (modelo e interruptor de la IA), `ai_usage`, `saved_results.interpretation` |
+| Backend | Motores | Implementación |
+|---|---|---|
+| `SqlBackend` (`persistence/sql/`) | SQLite · SQL Server · MySQL/MariaDB · PostgreSQL · Oracle | SQLAlchemy Core: el esquema es código (`schema.py`) y cada repositorio es el mismo para todos los motores |
+| `MongoBackend` (`persistence/mongo/`) | MongoDB | `pymongo`: un documento por fila del esquema SQL (mismos campos y valores) |
 
-- Los datos de cada dataset viven en su tabla `ds_<uuid>` (nombre generado desde un UUID, nunca desde texto del usuario);
-  `frame_codec.py` conserva los dtypes de pandas. Las tablas `stg_<uuid>` de los borradores usan el mismo códec.
-- Al adoptar los datos de la versión anterior (primer administrador) las filas sin dueño y los `.ipynb` pasan a esa
-  cuenta; borrar una cuenta elimina sus filas (cascada), sus tablas de datos, sus borradores y su carpeta de notebooks.
-- Notebooks: archivos `.ipynb` estándar por usuario (`instance/notebooks/<id>/`), escritura atómica y **revisión**
-  (mtime+tamaño) para detectar guardados concurrentes (`409`).
+**Qué base se usa** (`persistence/database_settings.py`): `SIGMA_DATABASE_URL` > `instance/database.json` (lo escribe el
+asistente o la página *Base de datos*; contiene la contraseña, nunca se devuelve por la API) > SQLite en
+`instance/sigma.db`. La configuración no puede vivir en la propia base, de ahí el archivo. Lo que llega del navegador
+(`DatabaseSettings.from_request`) se valida de forma estricta: SQLite siempre significa el archivo del servidor, solo
+pasan las opciones de una lista blanca por motor y una contraseña en blanco solo se conserva si no cambian motor,
+servidor, puerto y usuario (un servidor nuevo nunca recibe la contraseña del anterior).
+
+**Reglas de portabilidad del esquema SQL** (por qué funciona igual en cinco motores):
+
+- Sin *triggers*: los repositorios suben la revisión de `sync_state` dentro de la misma transacción que escribe (`helpers.bump_sync`;
+  también cuenta `sigma.save` desde un kernel, que usa los mismos repositorios).
+- Sin `COLLATE NOCASE`: la unicidad sin distinguir mayúsculas usa una columna `*_key` en minúsculas (`username_key`,
+  `name_key`; con `utf8mb4_bin` en MySQL para no confundir acentos).
+- *Upserts* atómicos sin depender de un dialecto: `ON CONFLICT` (SQLite/PostgreSQL), `ON DUPLICATE KEY` (MySQL) o
+  `UPDATE` + `INSERT` con reintento (SQL Server/Oracle) — `helpers.upsert`.
+- Sin cascadas múltiples: `ON DELETE CASCADE` solo desde `users`; el `SET NULL` de `saved_results.dataset_id` lo hace el repositorio.
+- Fechas ISO-8601 en texto, booleanos 0/1, texto largo `LongText` (`NVARCHAR(MAX)`/`LONGTEXT`/`CLOB`), binarios en trozos de 1 MiB
+  (el controlador de MySQL envía los bytes en hexadecimal: así ninguna sentencia se acerca a `max_allowed_packet`).
+- Oracle guarda `''` como `NULL`: las columnas de texto que pueden estar vacías son anulables y se leen como `""`.
+- Los ids enteros usan `IDENTITY` (y `AUTOINCREMENT` en SQLite: un id nunca se reutiliza, así la sesión de una cuenta borrada no
+  puede acabar apuntando a otra).
+
+**Datasets**: cada uno tiene su tabla con nombre generado (`ds_<24 hex>`, cabe en Oracle) guardado en `datasets.table_name`, columnas
+físicas `c0…cN` más `_row` (orden y paginación) y el mapeo nombre→columna en `datasets.col_map`; así ningún nombre de columna
+del usuario toca las reglas de identificadores del motor. `frame_codec.py` conserva los dtypes de pandas. Los datasets creados
+por versiones anteriores (`col_map` nulo, columnas con su nombre original y orden por `rowid`) se siguen leyendo sin reescribirlos.
+Límite de columnas por motor (`table_io.MAX_COLUMNS`), con un error claro. En MongoDB las filas van en documentos de unos miles
+de filas (`frame_chunks`).
+
+**Versionado del esquema**: la tabla `sigma_schema` guarda la versión (`SCHEMA_VERSION = 7`, la base portable). Una base vacía se
+crea con `create_all`; un archivo SQLite de versiones anteriores (`PRAGMA user_version` 1–6, scripts históricos en
+`sql/legacy_sqlite.py`) se actualiza en el sitio hasta la 7; una base con tablas ajenas se rechaza sin tocarla. Cambios futuros:
+una función por versión en `engine._STEPS`.
+
+**Notebooks**: con SQLite siguen siendo archivos `.ipynb` estándar (`instance/notebooks/<id>/`, revisión = mtime+tamaño); con los
+demás motores viven en la tabla `notebooks` (`SqlNotebookStore`) o en una colección (`MongoNotebookStore`) con una revisión entera y
+guardado por *compare-and-swap* (`UPDATE … WHERE revision = :base`), de modo que el `409` por guardados concurrentes funciona entre
+procesos y servidores. Las reglas de nbformat son comunes (`notebook_format.py`).
+
+**Cambiar de motor en caliente** (`presentation/web/switching.py`): se construye un `Container` nuevo sobre la base elegida, se
+guarda `database.json` y se intercambia `app.extensions["sigma"]` (la guarda de autenticación lo lee en cada petición); el
+anterior se cierra poco después. Si la nueva base no abre, la aplicación sigue como estaba.
+
+**Migración** (`application/use_cases/migration.py: MigrateData`): cada backend expone un `DataTransfer` (`counts`, `read`,
+`write`, `finish`, `clear`) con registros planos en el orden de dependencias de `MIGRATION_ENTITIES`. Se exige un destino vacío, se
+copian los registros con sus ids (por eso las sesiones siguen valiendo), se ajustan los generadores de ids del servidor, se
+verifican los recuentos y, si algo falla, el destino vuelve a quedar vacío. El origen solo se lee. La usan
+`scripts/migrate_database.py` y la página *Base de datos* (`presentation/web/migration.py`: hilo en segundo plano con progreso,
+puerta de mantenimiento que responde 503 al resto de usuarios y cierre de kernels). Las importaciones pendientes se copian sin su vista
+previa (se reconstruye desde el archivo).
+
+**Al adoptar los datos de la versión de un solo usuario** (primer administrador) las filas sin dueño y los `.ipynb` pasan a esa cuenta;
+borrar una cuenta elimina sus filas (cascada), sus tablas de datos, sus borradores y sus notebooks.
 
 ## Espacio de trabajo y sincronización
 
@@ -173,14 +218,22 @@ tamaño de favicon.
   `domain/workspace.WORKSPACE_MODULES` y en `domain/interpretation.MODULES`.
 - **Nuevo formato de exportación**: una clase con `format`, `content_type`, `extension` y `export(document)` en
   `infrastructure/exporters/`, añadida al `ExporterRegistry` de `bootstrap.py`.
-- **Cambiar la base de datos o el proveedor de IA**: implementar los puertos (`DatasetRepository`, `ResultRepository`,
-  `AiGateway`…) y cambiarlos en `bootstrap.py`.
+- **Nuevo motor de base de datos**: un `Backend` (todos los repositorios + `transfer`) y una rama en `persistence/backend.py`;
+  añadirlo a `ENGINES` (`database_settings.py`) y pasar la batería de `tests/conformance/` (se activa con su `SIGMA_TEST_*_URL`).
+  Para un motor SQL basta, normalmente, con el dialecto de SQLAlchemy y un controlador.
+- **Cambiar el proveedor de IA**: implementar `AiGateway` y cambiarlo en `bootstrap.py`.
 
 ## Pruebas
 
 - `tests/unit/domain`: cada resultado estadístico se contrasta con `scipy`/`statsmodels` o con valores de referencia;
   documentos, Markdown, notebook, ficha e interpretación.
-- `tests/unit/infrastructure`: SQLite (migraciones, aislamiento, *triggers*, borradores), importadores (con un servidor
+- `tests/conformance`: **la misma batería sobre cada motor** (cuentas, datasets con dtypes y paginación, resultados, espacio de
+  trabajo y carreras de escritura, borradores con archivos grandes, plantillas, notebooks con conflictos, esquemas, prueba de conexión y
+  migración en ambos sentidos). Siempre corre en SQLite y en MongoDB en memoria (`mongomock`); con `SIGMA_TEST_MSSQL_URL`,
+  `SIGMA_TEST_MYSQL_URL`, `SIGMA_TEST_POSTGRES_URL`, `SIGMA_TEST_ORACLE_URL` y `SIGMA_TEST_MONGO_URL` también contra servidores reales
+  (bases vacías y desechables: cada prueba empieza borrando sus tablas). `docker-compose.test.yml` levanta PostgreSQL, MariaDB,
+  MySQL, Oracle y MongoDB para ello. Con `SIGMA_TEST_APP_ENGINE=postgresql` (…) la suite de `integration/` completa corre sobre ese motor.
+- `tests/unit/infrastructure`: SQLite (actualización de archivos antiguos, aislamiento, borradores), `DatabaseSettings`, importadores (con un servidor
   HTTP local real), exportadores (PDF con `pypdf`, DOCX y XLSX reabiertos), adaptador de Anthropic con un cliente
   simulado y los activos del logotipo.
 - `tests/integration`: la API completa con el cliente de pruebas de Flask (autenticación, matriz de aislamiento entre
