@@ -38,3 +38,8 @@ pymysql>=1.1          # MySQL / MariaDB
 psycopg[binary]>=3.2  # PostgreSQL
 oracledb>=2.2         # Oracle Database
 pymongo>=4.8          # MongoDB
+
+# Análisis avanzados: aprendizaje automático y multivariado, GARCH/raíces unitarias, panel e instrumentales
+scikit-learn>=1.5
+arch>=7.0
+linearmodels>=6.0

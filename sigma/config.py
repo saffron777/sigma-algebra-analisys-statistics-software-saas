@@ -46,6 +46,8 @@ class Config:
     notebooks_dir: Path = PROJECT_ROOT / "instance" / "notebooks"
     sample_dir: Path = PROJECT_ROOT / "sample_data"
     max_upload_bytes: int = 100 * 1024 * 1024
+    analysis_timeout_seconds: int = 120  # heavy analyses (models, forests, bootstrap…) run in a process with this limit
+    analysis_max_parallel: int = 2  # heavy analyses at once
     external_db_hosts: tuple[str, ...] = ()  # servers the data page may read from (empty = any)
     cell_timeout_seconds: int = 60
     kernel_idle_minutes: int = 30
@@ -70,6 +72,8 @@ class Config:
             "db_path": Path(os.environ.get("SIGMA_DB_PATH", instance_dir / "sigma.db")),
             "notebooks_dir": Path(os.environ.get("SIGMA_NOTEBOOKS_DIR", instance_dir / "notebooks")),
             "max_upload_bytes": int(os.environ.get("SIGMA_MAX_UPLOAD_MB", "100")) * 1024 * 1024,
+            "analysis_timeout_seconds": int(os.environ.get("SIGMA_ANALYSIS_TIMEOUT_SECONDS", "120")),
+            "analysis_max_parallel": int(os.environ.get("SIGMA_ANALYSIS_MAX_PARALLEL", "2")),
             "external_db_hosts": tuple(
                 h.strip() for h in os.environ.get("SIGMA_EXTERNAL_DB_HOSTS", "").split(",") if h.strip()
             ),

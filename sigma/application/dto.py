@@ -133,3 +133,16 @@ class SaveResultCommand:
     report: dict[str, Any] = field(default_factory=dict)
     figures: list[dict[str, Any]] = field(default_factory=list)
     interpretation: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class AnalysisCommand:
+    """One run of a catalogue analysis (see ``domain/analysis``)."""
+
+    module: str
+    analysis_id: str
+    dataset_id: str | None = None
+    roles: dict[str, Any] = field(default_factory=dict)
+    params: dict[str, Any] = field(default_factory=dict)
+    save_as: dict[str, str] = field(default_factory=dict)  # output key -> name of the new dataset
+    replace: bool = False  # overwrite the dataset the analysis was run on (data transformations only)

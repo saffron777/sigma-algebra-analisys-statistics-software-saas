@@ -414,6 +414,14 @@ class Backend(Protocol):
     def close(self) -> None: ...
 
 
+class AnalysisRunner(Protocol):
+    """Runs one catalogue analysis (in this process, or in a separate one with a time limit for heavy ones)."""
+
+    def run(
+        self, module: str, analysis_id: str, frame: pd.DataFrame, roles: dict[str, Any], params: dict[str, Any]
+    ) -> Any: ...
+
+
 class DatabaseAdministration(Protocol):
     """Showing, testing and switching the database Sigma persists to (payloads are plain dictionaries)."""
 

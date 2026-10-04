@@ -7,6 +7,7 @@ from flask import Flask
 from sigma import __version__
 from sigma.bootstrap import build_container
 from sigma.config import Config
+from sigma.domain.analysis.modules import CATALOG_MODULES
 from sigma.presentation.web.auth import init_auth
 from sigma.presentation.web.blueprints import register_blueprints
 from sigma.presentation.web.blueprints.pages import PAGES
@@ -16,8 +17,11 @@ from sigma.presentation.web.security import init_security
 from sigma.presentation.web.switching import ContainerSwitcher
 
 NAV_GROUPS = (
-    ("General", ("home", "datos", "resultados", "plantillas")),
-    ("Análisis", ("descriptiva", "distribuciones", "hipotesis", "regresion", "anova", "mercados")),
+    ("Datos", ("home", "datos", "transformar", "graficos", "resultados", "plantillas")),
+    ("Estadística básica", ("descriptiva", "distribuciones", "hipotesis", "potencia", "remuestreo", "mercados")),
+    ("Modelos", ("regresion", "modelos", "anova", "anova_avanzado")),
+    ("Series y econometría", ("series", "econometria")),
+    ("Multivariado y ciencia de datos", ("multivariado", "aprendizaje")),
     ("Programación", ("consola",)),
 )
 
@@ -46,5 +50,9 @@ def create_app(config: Config | None = None) -> Flask:
         {"title": title, "items": [{"key": key, "href": PAGES[key][0], "label": PAGES[key][1]} for key in keys]}
         for title, keys in NAV_GROUPS
     ]
-    app.jinja_env.globals.update(nav_groups=nav, sigma_version=__version__)
+    app.jinja_env.globals.update(
+        nav_groups=nav,
+        sigma_version=__version__,
+        catalog_modules=[(m.key, m.label, m.description) for m in CATALOG_MODULES],
+    )
     return app

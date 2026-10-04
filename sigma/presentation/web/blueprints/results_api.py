@@ -6,6 +6,7 @@ import json
 
 from flask import Blueprint, Response, jsonify, request
 
+from sigma.domain.analysis.modules import CATALOG_MODULES
 from sigma.domain.saved_results import MODULE_LABELS
 from sigma.domain.workspace import UNSET
 from sigma.presentation.web.blueprints._helpers import container, parse_body
@@ -29,7 +30,8 @@ def list_results():
         request.args.get("limit", default=50, type=int),
         request.args.get("offset", default=0, type=int),
     )
-    return jsonify({"results": to_jsonable(items), "total": total, "modules": MODULE_LABELS})
+    pages = {m.key: m.path for m in CATALOG_MODULES}
+    return jsonify({"results": to_jsonable(items), "total": total, "modules": MODULE_LABELS, "pages": pages})
 
 
 @bp.get("/<result_id>")

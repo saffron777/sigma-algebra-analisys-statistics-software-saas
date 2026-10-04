@@ -5,7 +5,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-MODULES = ("descriptive", "distributions", "hypothesis", "regression", "anova", "markets")
+from sigma.domain.analysis.modules import CATALOG_MODULES
+
+MODULES = (
+    "descriptive",
+    "distributions",
+    "hypothesis",
+    "regression",
+    "anova",
+    "markets",
+    *(m.key for m in CATALOG_MODULES),
+)
 
 MODULE_LABELS = {
     "descriptive": "Estadística descriptiva",
@@ -14,6 +24,7 @@ MODULE_LABELS = {
     "regression": "Regresión lineal",
     "anova": "ANOVA",
     "markets": "Análisis de mercados",
+    **{m.key: m.label for m in CATALOG_MODULES},
 }
 
 

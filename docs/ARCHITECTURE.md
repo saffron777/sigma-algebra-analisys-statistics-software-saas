@@ -206,6 +206,31 @@ Seguridad (los importadores son los únicos sitios por donde el usuario hace lle
 - **Nombres**: se resuelven contra el catálogo ignorando mayúsculas (Oracle guarda en mayúsculas lo que no va entre comillas) y se citan con las
   reglas del motor; el tope de filas se pide al servidor (`LIMIT`, `ROWNUM`, `TOP`) y se vuelve a imponer al leer (`sql_fetch.py`).
 
+## Catálogo de análisis (marco común)
+
+Los módulos «de catálogo» (`/transformar`, `/graficos`, `/potencia`, `/remuestreo`, `/modelos`, `/anova-avanzado`, `/series`,
+`/econometria`, `/multivariado`, `/aprendizaje`) no tienen blueprint, esquema ni JS propios: una sola página (`catalogo.html` +
+`catalogo.js`) y una sola API (`/api/analysis/<módulo>/catalog|run|code`) los sirven a todos.
+
+- **Dominio** `domain/analysis/`: `modules.py` es el **único listado de módulos** (clave de página = clave de espacio de trabajo =
+  clave de resultado guardado = clave de interpretación); de él se derivan `saved_results.MODULES`, `workspace.WORKSPACE_MODULES`,
+  `interpretation.MODULES/_CRITERIA`, `pages.PAGES`, el menú y la portada. `spec.py` define `AnalysisSpec` (roles de columna,
+  parámetros, salidas que son datasets, función `compute`, `code` y `example`) y `prepare_inputs`, que valida lo que envía el usuario
+  con mensajes en español. `compute(frame, roles, params)` es puro y devuelve un `AnalysisOutput` de **datos planos** (`output.py`:
+  bloques `heading/tiles/table/text/alert/chart`, datasets ofrecidos y cifras para IA/guardado), sin Plotly; los gráficos se
+  describen con los constructores de `charts.py`. Un área = un módulo Python (`power.py`, `series.py`…) que llama a
+  `registry.register(...)` y se añade a `AREA_MODULES`.
+- **Aplicación**: `RunAnalysis` valida, ejecuta mediante el puerto `AnalysisRunner`, comprueba las salidas y guarda los datasets
+  pedidos (`save_as`, o `replace` para sustituir el original); `ListAnalyses` y `GetAnalysisCode` completan el catálogo.
+- **Infraestructura** `compute/process_runner.py`: los análisis `heavy=True` corren en un **proceso aparte** (`spawn`) con tiempo
+  máximo (`SIGMA_ANALYSIS_TIMEOUT_SECONDS`, 120 s) y un tope de ejecuciones simultáneas (`SIGMA_ANALYSIS_MAX_PARALLEL`, 2); los
+  errores de dominio cruzan la frontera con su tipo y las advertencias numéricas relevantes llegan como aviso. Los ligeros corren en el hilo
+  de la petición.
+- **Presentación**: `charts/render.py` convierte las descripciones de gráficos a Plotly con el tema de Sigma; `reports/analysis.py`
+  convierte la salida al contrato de bloques de informe (`ReportBuilder`: valores p, formato numérico, celdas con tono).
+- Las pruebas añaden análisis internos (ids con `_`, ocultos del catálogo) con `SIGMA_EXTRA_ANALYSIS_MODULES`, variable que también
+  heredan los procesos de cálculo.
+
 ## Consola de código
 
 `JupyterKernelPool` (puerto `CodeExecutor`) lanza **un kernel ipykernel por notebook y usuario** con `jupyter_client`:
@@ -236,7 +261,10 @@ tamaño de favicon.
   `infrastructure/importers/`, registrarla en `registry.py`, añadir su formulario en `templates/pages/datos.html`, sus opciones en
   `datos.js` (`defaultOptions`, `SECRET_FIELDS`) y sus secretos en `SECRET_OPTIONS`. Una base de datos nueva: un `ExternalSqlImporter`
   más (dialecto en `sql_scrub.py`/`sql_guard.py`, sesión de solo lectura en `external_engine`) o un importador propio como el de MongoDB.
-- **Nuevo módulo de análisis**: función de dominio + resultado → comando en `dto.py` → caso de uso → esquema pydantic →
+- **Nuevo análisis de catálogo**: un `AnalysisSpec` (con `example=`, que la prueba de todo el catálogo ejecuta, y `code=` si puede
+  mostrarse como Python) en el módulo de su área de `domain/analysis/`; el formulario, la ejecución, los datasets de salida, el guardado y
+  la interpretación salen del marco. Una **nueva página de catálogo**: una entrada en `domain/analysis/modules.py` (+ su icono en `macros.html`).
+- **Nuevo módulo de análisis a medida**: función de dominio + resultado → comando en `dto.py` → caso de uso → esquema pydantic →
   reporte/gráficos → blueprint → página (reutilizando `analysisPage(modulo, campos)` y `result_area`, que ya traen
   guardar, exportar, imprimir e interpretar) → registrar en `bootstrap.py`, en `domain/saved_results.MODULES`, en
   `domain/workspace.WORKSPACE_MODULES` y en `domain/interpretation.MODULES`.

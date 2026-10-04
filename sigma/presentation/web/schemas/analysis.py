@@ -7,6 +7,7 @@ from typing import Annotated, Any, Literal
 from pydantic import Field
 
 from sigma.application.dto import (
+    AnalysisCommand,
     AnovaCommand,
     DescriptiveCommand,
     DistributionCommand,
@@ -90,3 +91,30 @@ class DistributionRequest(RequestModel):
 
     def to_command(self) -> DistributionCommand:
         return DistributionCommand(**self.model_dump())
+
+
+class AnalysisRunRequest(RequestModel):
+    analysis_id: NonEmpty
+    dataset_id: str | None = None
+    roles: dict[str, str | list[str] | None] = {}
+    params: dict[str, Any] = {}
+    save_as: dict[str, str] = {}
+    replace: bool = False
+
+    def to_command(self, module: str) -> AnalysisCommand:
+        return AnalysisCommand(
+            module=module,
+            analysis_id=self.analysis_id,
+            dataset_id=self.dataset_id or None,
+            roles={k: v for k, v in self.roles.items() if v},
+            params={k: v for k, v in self.params.items() if v is not None},
+            save_as={k: v for k, v in self.save_as.items() if (v or "").strip()},
+            replace=self.replace,
+        )
+
+
+class AnalysisCodeRequest(RequestModel):
+    analysis_id: NonEmpty
+    dataset_id: str | None = None
+    roles: dict[str, str | list[str] | None] = {}
+    params: dict[str, Any] = {}

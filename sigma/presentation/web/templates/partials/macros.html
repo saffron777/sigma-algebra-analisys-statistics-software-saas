@@ -33,6 +33,16 @@
   "stop": "M6 6h12v12H6z",
   "arrow": "M5 12h14M13 6l6 6-6 6",
   "check": "M5 13l4 4L19 7",
+  "transformar": "M4 7h11l-3-3M15 7l-3 3M20 17H9l3 3M9 17l3-3",
+  "graficos": "M3 3v18h18M8 16h.01M12 11h.01M16 14h.01M19 8h.01",
+  "potencia": "M13 2L4 14h7l-1 8 9-12h-7z",
+  "remuestreo": "M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5",
+  "modelos": "M3 21h18M4 17l4-8 4 4 4-9 4 6",
+  "anova_avanzado": "M3 21h18M5 21V10h3v11M10.5 21V5h3v16M16 21v-8h3v8",
+  "series": "M3 12h3l3-8 4 16 3-8h5",
+  "econometria": "M3 17l5-6 4 3 7-9M15 5h4v4",
+  "multivariado": "M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5",
+  "aprendizaje": "M6 7a2 2 0 1 0 0-.01M18 7a2 2 0 1 0 0-.01M12 18a2 2 0 1 0 0-.01M7.6 8.6l3.4 8M16.4 8.6l-3.4 8M8 7h8",
   "file": "M6 3h9l4 4v14H6zM14 3v5h5"
 } -%}
 <svg class="{{ class }} shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ paths.get(name, paths['file']) }}"/></svg>
@@ -218,6 +228,22 @@
   </template>
   <template x-if="{{ f }}.kind === 'matrix'">
     <textarea class="input" rows="3" :placeholder="'20 30\n30 20'" x-model="{{ model }}[{{ f }}.name]"></textarea>
+  </template>
+  <template x-if="{{ f }}.kind === 'integer'">
+    <input class="input" type="number" step="1" inputmode="numeric" :min="{{ f }}.minimum" :max="{{ f }}.maximum" x-model="{{ model }}[{{ f }}.name]">
+  </template>
+  <template x-if="{{ f }}.kind === 'boolean'">
+    <label class="check-row !px-0"><input type="checkbox" class="check" x-model="{{ model }}[{{ f }}.name]"> Sí</label>
+  </template>
+  <template x-if="{{ f }}.kind === 'multiselect'">
+    <div class="checklist">
+      <template x-for="o in {{ f }}.options" :key="o.value">
+        <label class="check-row"><input type="checkbox" class="check" :value="o.value" x-model="{{ model }}[{{ f }}.name]"><span x-text="o.label"></span></label>
+      </template>
+    </div>
+  </template>
+  <template x-if="{{ f }}.kind === 'code'">
+    <textarea class="input font-mono" rows="3" spellcheck="false" x-model="{{ model }}[{{ f }}.name]"></textarea>
   </template>
   <p class="hint" x-show="{{ f }}.help" x-text="{{ f }}.help"></p>
 </div>

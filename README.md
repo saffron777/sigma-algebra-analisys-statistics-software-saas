@@ -15,6 +15,7 @@ Todo se ejecuta y se guarda en su propio servidor; nada sale de él.
 | **Regresión lineal** | Simple y múltiple (con variables categóricas), IC, ANOVA del modelo, VIF, supuestos (Durbin-Watson, Jarque-Bera, Breusch-Pagan), observaciones influyentes y predicción con IC/IP. |
 | **ANOVA** | Un factor (clásico y Welch) y dos factores con interacción (SC tipo I/II/III), supuestos, Tukey HSD, η²/ω², Kruskal-Wallis. |
 | **Análisis de mercados** | Encuestas y sondeos con muestreo probabilístico: tamaño de muestra, selección de muestras (simple, sistemático, estratificado, conglomerados), estimación con márgenes de error (Wald/Wilson/Agresti-Coull/Clopper-Pearson, pesos y efecto de diseño), tabulación cruzada con χ² y escalas Likert (alfa de Cronbach). |
+| **Catálogo ampliado** | Páginas generadas desde un catálogo común (formulario, resultado, datasets de salida, **código Python reproducible**, guardar/exportar/interpretar): potencia y tamaño de muestra, series de tiempo, y — en desarrollo por tandas — transformación de datos, gráficos, remuestreo, modelos, ANOVA avanzado, econometría, multivariado y aprendizaje automático. |
 | **Consola Python** | Editor de celdas con un **kernel Jupyter real** por notebook; abre, ejecuta y exporta archivos `.ipynb`. Acceso directo a sus datasets con `sigma.load()` / `sigma.save()`. |
 | **Resultados guardados** | Botón **Guardar resultado** en cada módulo: se conservan parámetros, tablas y gráficos en SQLite; se pueden buscar, reabrir, editar, exportar a JSON y reabrir en su módulo. |
 
@@ -295,6 +296,7 @@ decisiones en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 ```
 sigma/
   domain/           estadística pura (numpy/scipy/statsmodels), entidades y errores; sin Flask ni E/S
+                    (analysis/: marco del catálogo de análisis y un módulo por área)
   application/      casos de uso y puertos (interfaces)
   infrastructure/   persistencia (SQL: SQLite/SQL Server/MySQL/PostgreSQL/Oracle · MongoDB), importadores, kernel Jupyter
   presentation/web/ blueprints Flask, esquemas pydantic, reportes y gráficos, plantillas Jinja, JS y Tailwind

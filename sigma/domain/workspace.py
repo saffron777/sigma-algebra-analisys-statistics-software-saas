@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from sigma.domain.analysis.modules import CATALOG_MODULES
 from sigma.domain.errors import InvalidInputError
 
 WORKSPACE_MODULES = (
@@ -16,6 +17,7 @@ WORKSPACE_MODULES = (
     "anova",
     "mercados",
     "resultados",
+    *(m.key for m in CATALOG_MODULES),
 )
 MAX_WORKSPACE_BYTES = 16 * 1024 * 1024
 IMPORT_MODULE = "datos"  # its workspace also holds the pending imports (uploaded file + preview)

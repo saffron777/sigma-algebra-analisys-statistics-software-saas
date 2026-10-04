@@ -19,6 +19,7 @@ document.addEventListener("alpine:init", () => {
     items: [],
     total: 0,
     modules: {},
+    pages: {}, // module -> page, for the modules served by the generic catalogue
     filters: { module: "", search: "" },
     loading: false,
     error: "",
@@ -64,6 +65,7 @@ document.addEventListener("alpine:init", () => {
         this.items = reset ? data.results : [...this.items, ...data.results];
         this.total = data.total;
         this.modules = data.modules;
+        this.pages = data.pages ?? {};
       } catch (error) {
         this.error = error.message;
       } finally {
@@ -78,7 +80,7 @@ document.addEventListener("alpine:init", () => {
 
     get hasMore() { return this.items.length < this.total; },
     moduleLabel(key) { return this.modules[key] ?? key; },
-    pageFor(item) { return `${MODULE_PAGES[item.module] ?? "/"}?load=${item.id}`; },
+    pageFor(item) { return `${MODULE_PAGES[item.module] ?? this.pages[item.module] ?? "/"}?load=${item.id}`; },
     formatDate(iso) { return new Date(iso).toLocaleString("es", { dateStyle: "medium", timeStyle: "short" }); },
 
     async open(id, scroll = true) {

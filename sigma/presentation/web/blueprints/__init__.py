@@ -4,6 +4,7 @@ from flask import Flask
 
 from sigma.presentation.web.blueprints import (
     ai_api,
+    analysis_api,
     anova_api,
     auth_api,
     auth_pages,
@@ -39,6 +40,7 @@ ALL_BLUEPRINTS = (
     console_api.bp,
     ai_api.bp,
     ai_api.admin_bp,
+    analysis_api.bp,
     database_api.admin_bp,
     database_api.setup_bp,
     workspace_api.bp,

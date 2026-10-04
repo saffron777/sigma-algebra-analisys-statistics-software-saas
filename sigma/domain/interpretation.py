@@ -11,6 +11,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from sigma.domain.analysis.modules import CATALOG_MODULES
+
 MAX_REPORT_CHARS = 24_000
 MAX_FOCUS_CHARS = 400
 MAX_TABLE_ROWS = 30
@@ -20,7 +22,17 @@ MAX_CELL_CHARS = 60
 DELIMITER_OPEN = "<resultado>"
 DELIMITER_CLOSE = "</resultado>"
 
-MODULES = ("descriptive", "distributions", "hypothesis", "regression", "anova", "markets", "dataset", "console")
+MODULES = (
+    "descriptive",
+    "distributions",
+    "hypothesis",
+    "regression",
+    "anova",
+    "markets",
+    "dataset",
+    "console",
+    *(m.key for m in CATALOG_MODULES),
+)
 
 SYSTEM_PROMPT = """Eres un estadístico experto que explica resultados de análisis a personas que toman decisiones. \
 Respondes siempre en español, con claridad y sin jerga innecesaria, y defines los términos técnicos la primera vez.
@@ -57,6 +69,7 @@ _CRITERIA = {
     "sospechosos y qué limpieza o análisis sería razonable hacer a continuación.",
     "console": "Explica qué hace el código celda por celda en lenguaje llano, qué muestran las salidas y señala "
     "errores o mejoras evidentes.",
+    **{m.key: m.criteria for m in CATALOG_MODULES},
 }
 
 

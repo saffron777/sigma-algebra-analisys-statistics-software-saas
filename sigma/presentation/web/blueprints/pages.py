@@ -7,6 +7,7 @@ from collections.abc import Callable
 from flask import Blueprint, jsonify, render_template
 
 from sigma import __version__
+from sigma.domain.analysis.modules import CATALOG_MODULES
 from sigma.presentation.web.auth import require_admin, require_console
 
 bp = Blueprint("pages", __name__)
@@ -26,6 +27,7 @@ PAGES = {
     "cuenta": ("/cuenta", "Mi cuenta", "pages/cuenta.html"),
     "usuarios": ("/usuarios", "Usuarios", "pages/usuarios.html"),
     "basedatos": ("/basedatos", "Base de datos", "pages/basedatos.html"),
+    **{m.key: (m.path, m.label, "pages/catalogo.html") for m in CATALOG_MODULES},
 }
 
 # pages that need more than a valid session (the guard raises a PermissionDeniedError → 403 page)
@@ -42,7 +44,7 @@ def _register(key: str, path: str, title: str, template: str) -> None:
     def view():
         if guard:
             guard()
-        return render_template(template, active=key, page_title=title)
+        return render_template(template, active=key, page_title=title, module=key)
 
     view.__name__ = f"page_{key}"
     bp.add_url_rule(path, view_func=view)

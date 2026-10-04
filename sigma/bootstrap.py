@@ -80,6 +80,7 @@ from sigma.application.use_cases.results import (
     SaveResult,
     UpdateResult,
 )
+from sigma.application.use_cases.run_analysis import GetAnalysisCode, ListAnalyses, RunAnalysis
 from sigma.application.use_cases.survey import (
     CalculateSampleSize,
     DrawSurveySample,
@@ -103,6 +104,7 @@ from sigma.config import PROJECT_ROOT, Config
 from sigma.domain.users import User
 from sigma.infrastructure.ai.anthropic_gateway import AnthropicGateway
 from sigma.infrastructure.ai.settings import AiSettings
+from sigma.infrastructure.compute.process_runner import AnalysisRunnerImpl
 from sigma.infrastructure.exporters.docx_exporter import DocxExporter
 from sigma.infrastructure.exporters.pdf_exporter import PdfExporter
 from sigma.infrastructure.exporters.xlsx_exporter import XlsxExporter
@@ -152,6 +154,9 @@ class UserServices:
     run_regression: RunRegression
     run_anova: RunAnova
     calculate_distribution: CalculateDistribution
+    run_analysis: RunAnalysis
+    list_analyses: ListAnalyses
+    get_analysis_code: GetAnalysisCode
     # surveys
     calculate_sample_size: CalculateSampleSize
     draw_survey_sample: DrawSurveySample
@@ -211,6 +216,7 @@ class Container:
         self.backend = create_backend(config.database)
         self.database = getattr(self.backend, "database", None)  # the SQL handle (None for MongoDB)
         self.importers = DefaultImporterRegistry(allowed_hosts=config.external_db_hosts)
+        self.analysis_runner = AnalysisRunnerImpl(config.analysis_timeout_seconds, config.analysis_max_parallel)
         self.exporters = ExporterRegistry([PdfExporter(), DocxExporter(), XlsxExporter()])
         self.images = PillowImageProcessor()
         self.default_logo = _read_default_logo()
@@ -288,6 +294,9 @@ class Container:
             run_regression=RunRegression(datasets),
             run_anova=RunAnova(datasets),
             calculate_distribution=CalculateDistribution(),
+            run_analysis=RunAnalysis(datasets, self.analysis_runner),
+            list_analyses=ListAnalyses(),
+            get_analysis_code=GetAnalysisCode(datasets),
             calculate_sample_size=CalculateSampleSize(datasets),
             draw_survey_sample=DrawSurveySample(datasets),
             estimate_survey=EstimateSurvey(datasets),
