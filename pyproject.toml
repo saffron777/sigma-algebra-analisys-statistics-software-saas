@@ -21,3 +21,6 @@ ignore = ["B008"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B011"]
+# the catalogue is declarative: long descriptions, help texts and the strings of generated Python read better unbroken
+"sigma/domain/analysis/*.py" = ["E501"]
+"sigma/infrastructure/kernel/helpers.py" = ["E501"]

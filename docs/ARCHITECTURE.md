@@ -228,6 +228,13 @@ Los módulos «de catálogo» (`/transformar`, `/graficos`, `/potencia`, `/remue
   de la petición.
 - **Presentación**: `charts/render.py` convierte las descripciones de gráficos a Plotly con el tema de Sigma; `reports/analysis.py`
   convierte la salida al contrato de bloques de informe (`ReportBuilder`: valores p, formato numérico, celdas con tono).
+- **Fórmulas** (`expressions.py`): las columnas calculadas y los filtros no usan `eval`: el texto se analiza con `ast` y solo se interpretan
+  nodos y funciones de una lista blanca (sin atributos, índices, `lambda`, comprensiones ni f-strings), con tope de tamaño, profundidad,
+  textos y ventanas; la división por cero y los desbordes dan datos faltantes. `tests/unit/domain/test_expressions.py` contrasta las
+  funciones con pandas/numpy y rechaza una batería de expresiones hostiles. El mismo evaluador está en la consola como `sigma.calc(df, "…")`.
+- **Varios datasets**: un parámetro de tipo `dataset` recibe el identificador de otro dataset de la cuenta (unir, apilar); `RunAnalysis` lo carga
+  (el repositorio ya es por usuario, así que uno ajeno da 404) y `compute` lo recibe como `DataFrame` en ese parámetro. Un rol con `dataset_param`
+  toma sus columnas de ese segundo dataset.
 - Las pruebas añaden análisis internos (ids con `_`, ocultos del catálogo) con `SIGMA_EXTRA_ANALYSIS_MODULES`, variable que también
   heredan los procesos de cálculo.
 

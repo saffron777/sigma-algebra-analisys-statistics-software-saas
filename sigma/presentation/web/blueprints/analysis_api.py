@@ -21,6 +21,7 @@ def _role_json(role: RoleSpec) -> dict:
         "multiple": role.multiple,
         "optional": role.optional,
         "help": role.help,
+        "dataset_param": role.dataset_param,
     }
 
 
@@ -52,6 +53,7 @@ def _spec_json(spec: AnalysisSpec) -> dict:
         "roles": [_role_json(r) for r in spec.roles],
         "params": [_field_json(f) for f in spec.params],
         "outputs": [{"key": o.key, "label": o.label, "required": o.required} for o in spec.outputs],
+        "reference": [{"term": term, "text": text} for term, text in spec.reference],
     }
 
 

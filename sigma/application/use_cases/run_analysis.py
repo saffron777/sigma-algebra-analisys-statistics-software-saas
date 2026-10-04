@@ -13,8 +13,8 @@ from sigma.application.use_cases.datasets import clean_dataset_name
 from sigma.domain.analysis import registry
 from sigma.domain.analysis.modules import BY_KEY, ModuleDef
 from sigma.domain.analysis.output import AnalysisOutput
-from sigma.domain.analysis.spec import AnalysisSpec, prepare_inputs
-from sigma.domain.datasets import DatasetInfo
+from sigma.domain.analysis.spec import AnalysisSpec, dataset_params, prepare_inputs
+from sigma.domain.datasets import Dataset, DatasetInfo
 from sigma.domain.errors import InvalidInputError
 
 
@@ -51,11 +51,25 @@ class RunAnalysis:
                 raise InvalidInputError("Elija un dataset.")
             dataset = self._datasets.get(cmd.dataset_id)
             info, frame = dataset.info, dataset.data
-        roles, params = prepare_inputs(spec, frame, cmd.roles, cmd.params)
+        others = self._other_frames(spec, cmd.params)
+        roles, params = prepare_inputs(spec, frame, cmd.roles, cmd.params, {n: d.data for n, d in others.items()})
         self._check_outputs(spec, cmd)
-        output = self._runner.run(spec.module, spec.id, frame if frame is not None else pd.DataFrame(), roles, params)
+        data = frame if frame is not None else pd.DataFrame()
+        # compute gets the other datasets' data where the request had their ids
+        output = self._runner.run(
+            spec.module, spec.id, data, roles, {**params, **{n: d.data for n, d in others.items()}}
+        )
         created = self._save_datasets(spec, cmd, output, info)
         return AnalysisRun(output, spec, info.name if info else None, created, roles, params)
+
+    def _other_frames(self, spec: AnalysisSpec, params: dict[str, Any]) -> dict[str, Dataset]:
+        """The other datasets an analysis was pointed at (it is an error to name one that is not the account's)."""
+        found: dict[str, Dataset] = {}
+        for name in dataset_params(spec):
+            identifier = str((params or {}).get(name) or "").strip()
+            if identifier:
+                found[name] = self._datasets.get(identifier)
+        return found
 
     # ------------------------------------------------------------------ datasets left behind by the analysis
     @staticmethod
@@ -106,5 +120,8 @@ class GetAnalysisCode:
         if spec.needs_dataset and dataset_id:
             dataset = self._datasets.get(dataset_id)
             frame, name = dataset.data, dataset.info.name
-        clean_roles, clean_params = prepare_inputs(spec, frame, roles, params)
+        others = {n: self._datasets.get(str(params[n])) for n in dataset_params(spec) if (params or {}).get(n)}
+        clean_roles, clean_params = prepare_inputs(spec, frame, roles, params, {n: d.data for n, d in others.items()})
+        for parameter, other in others.items():
+            clean_params[parameter] = other.info.name  # the code refers to datasets by name, like sigma.load()
         return spec.code(clean_roles, clean_params, name)

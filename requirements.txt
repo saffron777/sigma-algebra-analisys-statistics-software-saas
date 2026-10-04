@@ -6,7 +6,7 @@ waitress>=3.0
 # Cálculo estadístico
 numpy>=2.0
 pandas>=2.2
-scipy>=1.13
+scipy>=1.17
 statsmodels>=0.14.4
 
 # Gráficos (figuras Plotly como JSON)

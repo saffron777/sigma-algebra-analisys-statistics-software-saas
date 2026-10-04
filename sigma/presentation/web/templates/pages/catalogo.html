@@ -65,8 +65,16 @@
 
       {# parameters #}
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" x-show="visibleParams.length" x-cloak>
-        <template x-for="f in visibleParams" :key="analysisId + f.name"><div>{{ dynamic_field("params") }}</div></template>
+        <template x-for="f in visibleParams" :key="analysisId + f.name"><div :class="f.kind === 'code' ? 'sm:col-span-2 lg:col-span-4' : ''">{{ dynamic_field("params") }}</div></template>
       </div>
+      <details class="rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700" x-show="spec?.reference?.length" x-cloak>
+        <summary class="cursor-pointer font-medium text-slate-700 dark:text-slate-200">Funciones y sintaxis disponibles</summary>
+        <dl class="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2">
+          <template x-for="item in spec?.reference ?? []" :key="item.term">
+            <div><dt class="font-mono text-xs text-brand-700 dark:text-brand-300" x-text="item.term"></dt><dd class="mb-1 text-xs text-slate-500 dark:text-slate-400" x-text="item.text"></dd></div>
+          </template>
+        </dl>
+      </details>
 
       {# tables the analysis can leave behind as new datasets #}
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" x-show="spec?.outputs.length" x-cloak>

@@ -19,6 +19,14 @@ function themed(layout) {
     if (/^(x|y)axis\d*$/.test(key) && typeof result[key] === "object") {
       result[key] = { ...result[key], gridcolor: colors.grid, zerolinecolor: colors.grid, linecolor: colors.line };
     }
+    if (/^scene\d*$/.test(key) && typeof result[key] === "object") {
+      // 3-D scenes: transparent walls and the same grid colours as 2-D axes
+      const scene = { ...result[key], bgcolor: "rgba(0,0,0,0)" };
+      for (const axis of ["xaxis", "yaxis", "zaxis"]) {
+        scene[axis] = { ...(scene[axis] ?? {}), gridcolor: colors.grid, zerolinecolor: colors.grid, linecolor: colors.line, showbackground: false };
+      }
+      result[key] = scene;
+    }
   }
   return result;
 }

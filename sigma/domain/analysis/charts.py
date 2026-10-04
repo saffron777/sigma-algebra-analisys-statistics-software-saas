@@ -42,15 +42,18 @@ def scatter_chart(
     series: list[dict[str, Any]],
     *,
     lines: list[dict[str, Any]] | None = None,
+    bands: list[dict[str, Any]] | None = None,
     hlines: list[dict[str, Any]] | None = None,
     vlines: list[dict[str, Any]] | None = None,
     height: int = 400,
 ) -> dict[str, Any]:
-    """``series``: ``{name, x, y, text?, size?, color?}``; ``lines`` are fitted curves ``{name, x, y, dash?}``."""
+    """``series``: ``{name, x, y, text?, size?, sizes?, color?}`` (``sizes`` = pixels per point, for bubbles);
+    ``lines`` are fitted curves ``{name, x, y, dash?}``; ``bands`` are ``{name, x, lower, upper}``."""
     return {
         **_base("scatter", title, x_title, y_title, height),
         "series": series,
         "lines": lines or [],
+        "bands": bands or [],
         "hlines": hlines or [],
         "vlines": vlines or [],
     }
@@ -79,17 +82,30 @@ def bar_chart(
     }
 
 
+_NORM_TITLES = {"density": "Densidad", "count": "Frecuencia", "percent": "Porcentaje"}
+
+
 def hist_chart(
     title: str | None,
     x_title: str | None,
-    values: Any,
+    values: Any = None,
     *,
+    groups: list[dict[str, Any]] | None = None,
     bins: int | None = None,
+    norm: str = "density",
     curves: list[dict[str, Any]] | None = None,
     height: int = 380,
 ) -> dict[str, Any]:
-    """A density histogram of ``values`` plus optional curves ``{name, x, y}`` on the same scale."""
-    return {**_base("hist", title, x_title, "Densidad", height), "values": values, "bins": bins, "curves": curves or []}
+    """A histogram of ``values`` (or of several ``groups`` ``{name, values}`` on common bins, overlaid).
+    ``norm``: density | count | percent. ``curves`` ``{name, x, y}`` are given in density units; the renderer rescales."""
+    members = groups if groups is not None else [{"name": "Datos", "values": values}]
+    return {
+        **_base("hist", title, x_title, _NORM_TITLES[norm], height),
+        "groups": members,
+        "bins": bins,
+        "norm": norm,
+        "curves": curves or [],
+    }
 
 
 def box_chart(
@@ -99,10 +115,47 @@ def box_chart(
     *,
     violin: bool = False,
     points: bool = False,
+    strip: bool = False,
     height: int = 400,
 ) -> dict[str, Any]:
-    """``groups``: ``{name, values}``."""
-    return {**_base("box", title, None, y_title, height), "groups": groups, "violin": violin, "points": points}
+    """``groups``: ``{name, values}``. ``strip`` draws only the individual values (an individual value plot)."""
+    return {
+        **_base("box", title, None, y_title, height),
+        "groups": groups,
+        "violin": violin,
+        "points": points,
+        "strip": strip,
+    }
+
+
+def pie_chart(
+    title: str | None, labels: list[Any], values: Any, *, donut: bool = False, height: int = 380
+) -> dict[str, Any]:
+    return {**_base("pie", title, None, None, height), "labels": labels, "values": values, "donut": donut}
+
+
+def interval_chart(
+    title: str | None,
+    x_title: str | None,
+    y_title: str | None,
+    groups: list[dict[str, Any]],
+    *,
+    height: int = 380,
+) -> dict[str, Any]:
+    """Point estimates with their interval, one per group: ``{name, mean, lower, upper, values?}``."""
+    return {**_base("interval", title, x_title, y_title, height), "groups": groups}
+
+
+def panels_chart(
+    title: str | None, panels: list[dict[str, Any]], *, columns: int = 2, height: int | None = None
+) -> dict[str, Any]:
+    """Several charts (any kind except another panels chart) in a grid; each panel's ``title`` heads its cell."""
+    rows = -(-len(panels) // max(columns, 1))
+    return {
+        **_base("panels", title, None, None, height or 300 * rows + 60),
+        "panels": panels,
+        "columns": max(1, min(columns, len(panels))),
+    }
 
 
 def heatmap_chart(

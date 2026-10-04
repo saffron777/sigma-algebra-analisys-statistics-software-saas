@@ -166,3 +166,33 @@ def test_the_new_pages_are_in_the_menu_and_the_home(api):
     assert api.raw.get("/series").status_code == 200 and "catalogoPage('series')" in api.raw.get("/series").get_data(
         as_text=True
     )
+
+
+def test_every_catalogue_example_runs_through_the_api(api):
+    """The whole pipeline (validation, runner, datasets, report, figures, strict JSON) for every public analysis."""
+    from sigma.domain.analysis import registry
+    from tests.analysis_data import OTHER_DATASETS
+
+    dataset = import_frame(api, standard_frame(), "catalogo")
+    ids = {key: import_frame(api, build(), key.strip("@"))["id"] for key, build in OTHER_DATASETS.items()}
+    failures = []
+    for spec in registry.all_specs():
+        example = spec.example
+        body = {
+            "analysis_id": spec.id,
+            "dataset_id": dataset["id"] if spec.needs_dataset else None,
+            "roles": example["roles"],
+            "params": {k: ids.get(v, v) if isinstance(v, str) else v for k, v in example["params"].items()},
+            "save_as": {o.key: f"{spec.module}_{spec.id}_{o.key}" for o in spec.outputs if o.required},
+        }
+        response = api.post(f"/api/analysis/{spec.module}/run", body)
+        if response.status_code != 200:
+            failures.append((spec.module, spec.id, response.status_code, response.get_data(as_text=True)[:200]))
+            continue
+        check_payload(response.parsed)
+        code = api.post(
+            f"/api/analysis/{spec.module}/code", {k: body[k] for k in ("analysis_id", "dataset_id", "roles", "params")}
+        )
+        if spec.code is not None and code.status_code != 200:
+            failures.append((spec.module, spec.id, "code", code.get_data(as_text=True)[:200]))
+    assert failures == []

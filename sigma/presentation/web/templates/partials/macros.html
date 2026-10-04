@@ -242,6 +242,12 @@
       </template>
     </div>
   </template>
+  <template x-if="{{ f }}.kind === 'dataset'">
+    <select class="input" x-model="{{ model }}[{{ f }}.name]">
+      <option value="">— Seleccione —</option>
+      <template x-for="d in $store.datasets.list" :key="d.id"><option :value="d.id" x-text="`${d.name} · ${d.n_rows} filas × ${d.n_cols} col.`"></option></template>
+    </select>
+  </template>
   <template x-if="{{ f }}.kind === 'code'">
     <textarea class="input font-mono" rows="3" spellcheck="false" x-model="{{ model }}[{{ f }}.name]"></textarea>
   </template>

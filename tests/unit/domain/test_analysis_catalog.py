@@ -7,10 +7,10 @@ import pytest
 
 from sigma.domain.analysis import registry
 from sigma.domain.analysis.output import Cell
-from sigma.domain.analysis.spec import prepare_inputs
+from sigma.domain.analysis.spec import FIELD_KINDS, prepare_inputs
 from sigma.presentation.web.reports.analysis import build_report
 from sigma.presentation.web.serializers import to_jsonable
-from tests.analysis_data import standard_frame
+from tests.analysis_data import other_frames, standard_frame
 
 SPECS = registry.all_specs()
 
@@ -33,7 +33,7 @@ def test_every_analysis_has_a_runnable_example_and_a_valid_declaration(spec):
     names = [r.name for r in spec.roles] + [f.name for f in spec.params]
     assert len(names) == len(set(names)), "role and parameter names must be unique"
     for field in spec.params:
-        assert field.kind in ("number", "integer", "select", "text", "boolean", "multiselect", "code")
+        assert field.kind in FIELD_KINDS
         if field.kind in ("select", "multiselect"):
             assert field.options, f"{field.name}: a choice needs options"
         if field.visible_if:
@@ -45,8 +45,9 @@ def test_every_analysis_has_a_runnable_example_and_a_valid_declaration(spec):
 @pytest.mark.parametrize("spec", SPECS, ids=lambda s: f"{s.module}/{s.id}")
 def test_every_example_produces_a_valid_report(spec, frame):
     data = frame if spec.needs_dataset else None
-    roles, params = prepare_inputs(spec, data, spec.example["roles"], spec.example["params"])
-    out = spec.compute(frame if spec.needs_dataset else pd.DataFrame(), roles, params)
+    others = other_frames(spec, spec.example["params"])
+    roles, params = prepare_inputs(spec, data, spec.example["roles"], spec.example["params"], others)
+    out = spec.compute(frame if spec.needs_dataset else pd.DataFrame(), roles, {**params, **others})
     assert out.title and out.blocks
     for block in out.blocks:
         assert block["type"] in ("heading", "tiles", "table", "text", "alert", "chart")
@@ -63,6 +64,7 @@ def test_every_example_produces_a_valid_report(spec, frame):
         to_jsonable({"report": report, "figures": builder.figures, "result": out.result}), allow_nan=False
     )
     assert "NaN" not in text and "Infinity" not in text
+    assert '"bdata"' not in text  # plain lists, not plotly's binary typed arrays
     for block in report["blocks"]:
         if block["type"] == "figure":
             assert 0 <= block["index"] < len(builder.figures)

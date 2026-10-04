@@ -48,8 +48,13 @@ document.addEventListener("alpine:init", () => {
     get visibleParams() {
       return (this.spec?.params ?? []).filter((f) => !f.visible_if || f.visible_if.values.includes(String(this.params[f.visible_if.param])));
     },
+    /** The columns a role can take: those of the active dataset, or of the second one chosen in a "dataset" parameter. */
     columnsFor(role) {
-      return Alpine.store("datasets").columnsOfKind(KINDS[role.kind] ?? []);
+      const store = Alpine.store("datasets");
+      if (!role.dataset_param) return store.columnsOfKind(KINDS[role.kind] ?? []);
+      const columns = store.list.find((dataset) => dataset.id === this.params[role.dataset_param])?.columns ?? [];
+      const kinds = KINDS[role.kind] ?? [];
+      return kinds.length ? columns.filter((column) => kinds.includes(column.kind)) : columns;
     },
     emptyRoles() {
       return Object.fromEntries((this.spec?.roles ?? []).map((r) => [r.name, r.multiple ? [] : ""]));

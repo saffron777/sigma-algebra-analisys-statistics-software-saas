@@ -21,7 +21,7 @@ ROLE_KINDS: dict[str, frozenset[str] | None] = {
     "any": None,
 }
 _KIND_NAMES = {"numeric": "numérica", "categorical": "categórica", "datetime": "de fecha"}
-FIELD_KINDS = ("number", "integer", "select", "text", "boolean", "multiselect", "code")
+FIELD_KINDS = ("number", "integer", "select", "text", "boolean", "multiselect", "code", "dataset")
 MAX_TEXT = 500
 MAX_CODE = 4000
 
@@ -38,11 +38,18 @@ class RoleSpec:
     min_count: int = 1  # for ``multiple`` roles
     max_count: int | None = None
     help: str = ""
+    dataset_param: str | None = (
+        None  # the columns come from the dataset chosen in that "dataset" parameter, not the main one
+    )
 
 
 @dataclass(frozen=True)
 class FieldSpec:
-    """A parameter of the analysis. ``visible_if=(other_param, (values…))`` hides it unless the other one matches."""
+    """A parameter of the analysis. ``visible_if=(other_param, (values…))`` hides it unless the other one matches.
+
+    The ``dataset`` kind holds the id of another dataset of the account (merge, append…); the use case loads it and
+    hands the frame to ``compute`` in that parameter's place.
+    """
 
     name: str
     label: str
@@ -85,19 +92,37 @@ class AnalysisSpec:
     can_replace: bool = False  # may overwrite the dataset it was run on (data transformations)
     code: CodeBuilder | None = None  # Python that reproduces the analysis: (roles, params, dataset name) -> text
     example: dict[str, Any] | None = None  # a valid call on the test dataset: {"roles": {...}, "params": {...}}
+    reference: tuple[
+        tuple[str, str], ...
+    ] = ()  # (term, explanation) pairs the page lists, e.g. the functions of a formula
 
 
 # ============================================================================ validation
+def dataset_params(spec: AnalysisSpec) -> list[str]:
+    """Names of the parameters that point to another dataset."""
+    return [field.name for field in spec.params if field.kind == "dataset"]
+
+
 def prepare_inputs(
-    spec: AnalysisSpec, frame: pd.DataFrame | None, roles: dict[str, Any], params: dict[str, Any]
+    spec: AnalysisSpec,
+    frame: pd.DataFrame | None,
+    roles: dict[str, Any],
+    params: dict[str, Any],
+    frames: dict[str, pd.DataFrame] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Check the chosen columns and parameters against the declaration; returns them cleaned and with defaults."""
-    return _clean_roles(spec, frame, roles or {}), _clean_params(spec, params or {})
+    """Check the chosen columns and parameters against the declaration; returns them cleaned and with defaults.
+
+    ``frames`` holds the data of the "dataset" parameters (by parameter name) so that roles taken from them can be checked.
+    """
+    return _clean_roles(spec, frame, roles or {}, frames or {}), _clean_params(spec, params or {})
 
 
-def _clean_roles(spec: AnalysisSpec, frame: pd.DataFrame | None, raw: dict[str, Any]) -> dict[str, Any]:
+def _clean_roles(
+    spec: AnalysisSpec, frame: pd.DataFrame | None, raw: dict[str, Any], frames: dict[str, pd.DataFrame]
+) -> dict[str, Any]:
     clean: dict[str, Any] = {}
     for role in spec.roles:
+        source = frame if role.dataset_param is None else frames.get(role.dataset_param)
         value = raw.get(role.name)
         names = (
             [value] if isinstance(value, str) and value else [v for v in (value or []) if v] if role.multiple else []
@@ -118,14 +143,19 @@ def _clean_roles(spec: AnalysisSpec, frame: pd.DataFrame | None, raw: dict[str, 
             if len(set(names)) != len(names):
                 raise InvalidInputError(f"«{role.label}» repite una columna.")
         for name in names:
-            _check_column(frame, name, role)
+            _check_column(source, name, role)
         clean[role.name] = names if role.multiple else names[0]
     return clean
 
 
 def _check_column(frame: pd.DataFrame | None, name: str, role: RoleSpec) -> None:
-    if frame is None or name not in frame.columns:
-        raise InvalidInputError(f"La columna «{name}» no existe en el dataset.")
+    if frame is None:
+        raise InvalidInputError(
+            "Elija el segundo dataset." if role.dataset_param else "Elija un dataset para tomar las columnas."
+        )
+    if name not in frame.columns:
+        where = "en el segundo dataset" if role.dataset_param else "en el dataset"
+        raise InvalidInputError(f"La columna «{name}» no existe {where}.")
     allowed = ROLE_KINDS.get(role.kind)
     if allowed is not None and classify_column(frame[name]) not in allowed:
         raise InvalidInputError(
@@ -142,7 +172,12 @@ def _clean_params(spec: AnalysisSpec, raw: dict[str, Any]) -> dict[str, Any]:
                 clean[field.name] = _default(field)
                 continue
         value = raw.get(field.name)
-        if value is None or value == "" or value == []:
+        if field.kind == "multiselect" and isinstance(value, list):
+            clean[field.name] = (
+                _coerce(field, value) if value else []
+            )  # an empty choice is a choice: the analysis decides
+            continue
+        if value is None or value == "":
             if field.default is not None or field.optional or field.kind in ("boolean", "multiselect"):
                 clean[field.name] = _default(field)
             else:
@@ -193,6 +228,11 @@ def _coerce(field: FieldSpec, value: Any) -> Any:
         if any(item not in valid for item in items):
             raise InvalidInputError(f"Valor no válido para «{label}».")
         return items
+    if field.kind == "dataset":
+        identifier = str(value).strip()
+        if not identifier or len(identifier) > 64:
+            raise InvalidInputError(f"Elija un dataset para «{label}».")
+        return identifier
     limit = MAX_CODE if field.kind == "code" else MAX_TEXT
     text = str(value).strip()
     if len(text) > limit:

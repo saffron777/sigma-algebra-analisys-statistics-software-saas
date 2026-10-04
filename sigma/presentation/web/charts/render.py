@@ -7,6 +7,8 @@ from typing import Any
 
 import numpy as np
 import plotly.graph_objects as go
+from plotly.basedatatypes import BaseTraceType
+from plotly.subplots import make_subplots
 
 from sigma.presentation.web.charts.common import GRID, PALETTE, as_list, figure_json, new_figure, thin
 
@@ -28,7 +30,7 @@ def render_chart(spec: dict[str, Any]) -> dict[str, Any]:
     if builder is None:
         raise ValueError(f"unknown chart kind {kind!r}")
     fig = new_figure(spec.get("title"), spec.get("x_title"), spec.get("y_title"), spec.get("height", 380))
-    builder(fig, spec)
+    fig = builder(fig, spec) or fig  # a builder may hand back another figure (subplots)
     return figure_json(fig)
 
 
@@ -91,6 +93,25 @@ def _line(fig: go.Figure, spec: dict[str, Any]) -> None:
 
 
 def _scatter(fig: go.Figure, spec: dict[str, Any]) -> None:
+    for band in spec.get("bands") or []:
+        x = as_list(band["x"])
+        fig.add_trace(
+            go.Scatter(
+                x=x, y=as_list(band["upper"]), mode="lines", line={"width": 0}, showlegend=False, hoverinfo="skip"
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=as_list(band["lower"]),
+                mode="lines",
+                line={"width": 0},
+                fill="tonexty",
+                fillcolor=_rgba("#ef4444", 0.16),
+                name=band.get("name"),
+                hoverinfo="skip",
+            )
+        )
     for index, series in enumerate(spec["series"]):
         x, y = np.asarray(series["x"]), np.asarray(series["y"])
         keep = thin(y)
@@ -99,6 +120,10 @@ def _scatter(fig: go.Figure, spec: dict[str, Any]) -> None:
             "color": series.get("color", _colour(index)),
             "opacity": 0.75,
         }
+        if series.get("sizes") is not None:
+            marker.update(
+                size=as_list(np.asarray(series["sizes"], dtype=float)[keep]), line={"width": 0.5, "color": "white"}
+            )
         if series.get("color_values") is not None:
             marker.update(color=as_list(np.asarray(series["color_values"])[keep]), colorscale="Viridis", showscale=True)
         text = series.get("text")
@@ -151,29 +176,51 @@ def _bar(fig: go.Figure, spec: dict[str, Any]) -> None:
 
 
 def _hist(fig: go.Figure, spec: dict[str, Any]) -> None:
-    values = np.asarray(spec["values"], dtype=float)
-    values = values[np.isfinite(values)]
-    bins = spec.get("bins")
-    fig.add_trace(
-        go.Histogram(
-            x=as_list(values[thin(values, 20000)]),
-            histnorm="probability density",
-            nbinsx=bins or None,
-            marker={"color": _rgba(PALETTE[0], 0.55), "line": {"color": PALETTE[0], "width": 1}},
-            name="Datos",
+    """Histograms on common bins (so groups are comparable), drawn as bars of known width."""
+    groups = [
+        (g.get("name"), v[np.isfinite(v)]) for g in spec["groups"] for v in [np.asarray(g["values"], dtype=float)]
+    ]
+    pooled = np.concatenate([v for _, v in groups]) if groups else np.array([])
+    if pooled.size == 0:
+        raise ValueError("a histogram needs values")
+    edges = np.histogram_bin_edges(pooled, bins=spec.get("bins") or "auto")
+    width, centres = float(edges[1] - edges[0]), (edges[:-1] + edges[1:]) / 2
+    norm = spec.get("norm", "density")
+    overlay = len(groups) > 1
+    totals = []
+    for index, (name, values) in enumerate(groups):
+        counts, _ = np.histogram(values, bins=edges)
+        total = int(counts.sum())
+        totals.append(total)
+        heights = {
+            "density": counts / (total * width) if total else counts * 0.0,
+            "count": counts,
+            "percent": 100 * counts / total if total else counts * 0.0,
+        }[norm]
+        colour = _colour(index)
+        fig.add_trace(
+            go.Bar(
+                x=as_list(centres),
+                y=as_list(heights),
+                width=width,
+                name=name,
+                opacity=0.6 if overlay else 1,
+                marker={"color": _rgba(colour, 0.55 if not overlay else 0.7), "line": {"color": colour, "width": 1}},
+                hovertemplate="%{x:.4g}: %{y:.4g}<extra>" + str(name or "") + "</extra>",
+            )
         )
-    )
+    scale = {"density": 1.0, "count": width * (totals[0] if totals else 1), "percent": 100 * width}[norm]
     for index, curve in enumerate(spec.get("curves") or []):
         fig.add_trace(
             go.Scatter(
                 x=as_list(curve["x"]),
-                y=as_list(curve["y"]),
+                y=as_list(np.asarray(curve["y"], dtype=float) * scale),
                 mode="lines",
                 name=curve.get("name"),
-                line={"color": _colour(index + 1), "width": 2.2},
+                line={"color": _colour(index + len(groups)), "width": 2.2},
             )
         )
-    fig.update_layout(bargap=0.03, showlegend=bool(spec.get("curves")))
+    fig.update_layout(barmode="overlay", bargap=0.02, showlegend=overlay or bool(spec.get("curves")))
 
 
 def _box(fig: go.Figure, spec: dict[str, Any]) -> None:
@@ -185,7 +232,19 @@ def _box(fig: go.Figure, spec: dict[str, Any]) -> None:
             "name": group.get("name"),
             "marker": {"color": _colour(index)},
         }
-        if spec.get("violin"):
+        if spec.get("strip"):
+            fig.add_trace(
+                go.Box(
+                    **{**common, "marker": {"color": _colour(index), "size": 6, "opacity": 0.7}},
+                    boxpoints="all",
+                    pointpos=0,
+                    jitter=0.45,
+                    fillcolor="rgba(0,0,0,0)",
+                    line={"width": 0},
+                    hoveron="points",
+                )
+            )
+        elif spec.get("violin"):
             fig.add_trace(
                 go.Violin(
                     **common, box_visible=True, meanline_visible=True, points="all" if spec.get("points") else False
@@ -196,6 +255,104 @@ def _box(fig: go.Figure, spec: dict[str, Any]) -> None:
                 go.Box(**common, boxmean=True, boxpoints="all" if spec.get("points") else "outliers", jitter=0.4)
             )
     fig.update_layout(showlegend=False)
+
+
+def _pie(fig: go.Figure, spec: dict[str, Any]) -> None:
+    fig.add_trace(
+        go.Pie(
+            labels=[str(label) for label in spec["labels"]],
+            values=as_list(spec["values"]),
+            hole=0.45 if spec.get("donut") else 0,
+            marker={"colors": [_colour(i) for i in range(len(spec["labels"]))], "line": {"color": "white", "width": 1}},
+            textinfo="label+percent",
+            sort=False,
+        )
+    )
+    fig.update_layout(showlegend=len(spec["labels"]) <= 12, margin={"l": 20, "r": 20, "t": 52, "b": 20})
+
+
+def _interval(fig: go.Figure, spec: dict[str, Any]) -> None:
+    for index, group in enumerate(spec["groups"]):
+        colour = _colour(index)
+        values = group.get("values")
+        if values is not None:
+            values = np.asarray(values, dtype=float)
+            values = values[np.isfinite(values)]
+            fig.add_trace(
+                go.Box(
+                    y=as_list(values[thin(values, 1500)]),
+                    x=[group["name"]] * len(values[thin(values, 1500)]),
+                    boxpoints="all",
+                    pointpos=0,
+                    jitter=0.5,
+                    fillcolor="rgba(0,0,0,0)",
+                    line={"width": 0},
+                    marker={"color": _rgba(colour, 0.35), "size": 5},
+                    hoveron="points",
+                    showlegend=False,
+                )
+            )
+        fig.add_trace(
+            go.Scatter(
+                x=[group["name"]],
+                y=[group["mean"]],
+                mode="markers",
+                name=str(group["name"]),
+                marker={"color": colour, "size": 11, "symbol": "diamond"},
+                error_y={
+                    "type": "data",
+                    "symmetric": False,
+                    "array": [group["upper"] - group["mean"]],
+                    "arrayminus": [group["mean"] - group["lower"]],
+                    "color": colour,
+                    "thickness": 2.2,
+                    "width": 9,
+                },
+                showlegend=False,
+            )
+        )
+    fig.update_layout(xaxis={"type": "category", "title": {"text": spec.get("x_title")}, "gridcolor": GRID})
+
+
+def _panels(fig: go.Figure, spec: dict[str, Any]) -> go.Figure:
+    panels = spec["panels"]
+    columns = spec["columns"]
+    rows = -(-len(panels) // columns)
+    grid = make_subplots(
+        rows=rows,
+        cols=columns,
+        subplot_titles=[str(panel.get("title") or "") for panel in panels],
+        horizontal_spacing=0.08,
+        vertical_spacing=min(0.16, 0.5 / rows),
+    )
+    for index, panel in enumerate(panels):
+        row, column = divmod(index, columns)
+        builder = _BUILDERS.get(panel["kind"])
+        if builder is None or panel["kind"] == "panels":
+            raise ValueError(f"cannot draw a {panel['kind']!r} chart inside a panel")
+        inner = new_figure()
+        inner = builder(inner, panel) or inner
+        for trace in inner.data:
+            grid.add_trace(trace, row=row + 1, col=column + 1)
+        grid.update_xaxes(title_text=panel.get("x_title"), row=row + 1, col=column + 1)
+        grid.update_yaxes(title_text=panel.get("y_title"), row=row + 1, col=column + 1)
+    for key in (
+        "title",
+        "height",
+        "margin",
+        "paper_bgcolor",
+        "plot_bgcolor",
+        "font",
+        "colorway",
+        "legend",
+        "hoverlabel",
+    ):
+        grid.layout[key] = fig.layout[key]
+    # each panel is headed by its own title, so a shared legend would only repeat the same entries
+    grid.update_layout(showlegend=any(p.get("show_legend") for p in panels))
+    grid.update_xaxes(gridcolor=GRID, zerolinecolor=GRID, automargin=True)
+    grid.update_yaxes(gridcolor=GRID, zerolinecolor=GRID, automargin=True)
+    return grid
 
 
 def _heatmap(fig: go.Figure, spec: dict[str, Any]) -> None:
@@ -260,9 +417,11 @@ def _stem(fig: go.Figure, spec: dict[str, Any]) -> None:
 
 def _raw(fig: go.Figure, spec: dict[str, Any]) -> None:
     for trace in spec["data"]:
-        fig.add_trace(trace if isinstance(trace, go.BaseTraceType) else _trace(trace))
+        fig.add_trace(trace if isinstance(trace, BaseTraceType) else _trace(trace))
     if spec.get("layout"):
-        fig.update_layout(**spec["layout"])
+        fig.update_layout(**_plain(spec["layout"]))
+    fig.update_xaxes(gridcolor=GRID, zerolinecolor=GRID)  # every axis (a splom has one per variable)
+    fig.update_yaxes(gridcolor=GRID, zerolinecolor=GRID)
 
 
 def _trace(definition: dict[str, Any]) -> Any:
@@ -277,10 +436,25 @@ def _trace(definition: dict[str, Any]) -> Any:
         "box": go.Box,
         "violin": go.Violin,
         "scatter3d": go.Scatter3d,
+        "splom": go.Splom,
+        "pie": go.Pie,
     }.get(kind)
     if cls is None:
         raise ValueError(f"unknown trace type {kind!r}")
-    return cls(**{key: value for key, value in definition.items() if key != "type"})
+    return cls(**{key: _plain(value) for key, value in definition.items() if key != "type"})
+
+
+def _plain(value: Any) -> Any:
+    """Arrays become lists so the figure carries plain JSON (plotly would otherwise ship binary typed arrays)."""
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, dict):
+        return {key: _plain(item) for key, item in value.items()}
+    if isinstance(value, list | tuple):
+        return [_plain(item) for item in value]
+    return value
 
 
 _BUILDERS = {
@@ -291,5 +465,8 @@ _BUILDERS = {
     "box": _box,
     "heatmap": _heatmap,
     "stem": _stem,
+    "pie": _pie,
+    "interval": _interval,
+    "panels": _panels,
     "raw": _raw,
 }

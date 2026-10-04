@@ -13,6 +13,10 @@ from sigma.domain.errors import InvalidInputError
 AREA_MODULES = (
     "sigma.domain.analysis.power",
     "sigma.domain.analysis.series",
+    "sigma.domain.analysis.transform",
+    "sigma.domain.analysis.datamanagement",
+    "sigma.domain.analysis.cleaning",
+    "sigma.domain.analysis.plots",
 )
 
 _SPECS: dict[str, dict[str, AnalysisSpec]] = {}

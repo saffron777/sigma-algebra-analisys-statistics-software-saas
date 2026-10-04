@@ -3,6 +3,7 @@
 sigma.datasets()                    # table of the datasets stored in Sigma
 df = sigma.load("ventas")           # a dataset as a pandas DataFrame
 sigma.save(df, "ventas_limpias")    # store a DataFrame as a new Sigma dataset
+df["total"] = sigma.calc(df, "precio * cantidad")   # the formulas of the *Calcular variable* page
 """
 
 from __future__ import annotations
@@ -12,6 +13,8 @@ import os
 import pandas as pd
 
 from sigma.application.ports import DatasetRepository
+from sigma.domain.analysis.expressions import evaluate
+from sigma.domain.analysis.recoding import recode_series
 from sigma.domain.datasets import normalize_columns
 from sigma.domain.errors import DatasetNotFoundError, InvalidInputError
 from sigma.infrastructure.persistence.backend import create_backend
@@ -72,8 +75,16 @@ class SigmaHelper:
         self._repo.replace_data(existing.info.id, tidy)
         return f"Dataset «{name}» actualizado ({len(tidy)} filas × {tidy.shape[1]} columnas)."
 
+    def calc(self, frame: pd.DataFrame, expression: str) -> pd.Series:
+        """Evaluate a column expression like the *Calcular variable* page: ``df["total"] = sigma.calc(df, "precio * cantidad")``."""
+        return evaluate(expression, frame)
+
+    def recode(self, column: pd.Series, rules: str) -> pd.Series:
+        """Recode a column with the rules of the *Recodificar valores* page: ``sigma.recode(df["edad"], "..17 -> menor\nelse -> adulto")``."""
+        return recode_series(column, rules)[0]
+
     def __repr__(self) -> str:
-        return "sigma — datasets(), load('nombre'), save(df, 'nombre', replace=False)"
+        return "sigma — datasets(), load('nombre'), save(df, 'nombre', replace=False), calc(df, 'expresión'), recode(col, 'reglas')"
 
 
 sigma = SigmaHelper()
