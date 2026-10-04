@@ -18,7 +18,10 @@ from sigma.presentation.web.switching import ContainerSwitcher
 
 NAV_GROUPS = (
     ("Datos", ("home", "datos", "transformar", "graficos", "resultados", "plantillas")),
-    ("Estadística básica", ("descriptiva", "distribuciones", "hipotesis", "potencia", "remuestreo", "mercados")),
+    (
+        "Estadística básica",
+        ("descriptiva", "distribuciones", "hipotesis", "pruebas", "potencia", "remuestreo", "mercados"),
+    ),
     ("Modelos", ("regresion", "modelos", "anova", "anova_avanzado")),
     ("Series y econometría", ("series", "econometria")),
     ("Multivariado y ciencia de datos", ("multivariado", "aprendizaje")),

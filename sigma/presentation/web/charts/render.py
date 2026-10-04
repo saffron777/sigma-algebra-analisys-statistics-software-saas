@@ -221,6 +221,7 @@ def _hist(fig: go.Figure, spec: dict[str, Any]) -> None:
             )
         )
     fig.update_layout(barmode="overlay", bargap=0.02, showlegend=overlay or bool(spec.get("curves")))
+    _guides(fig, spec)
 
 
 def _box(fig: go.Figure, spec: dict[str, Any]) -> None:

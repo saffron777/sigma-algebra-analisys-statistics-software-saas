@@ -28,6 +28,10 @@ def standard_frame(n: int = 240, seed: int = 7) -> pd.DataFrame:
     with_gaps[rng.choice(n, n // 10, replace=False)] = np.nan
     with_outliers = x1.copy()
     with_outliers[rng.choice(n, 4, replace=False)] = [30.0, 35.0, -12.0, 40.0]
+    # three raters scoring the same subjects 1-5, and three binary judgements
+    latent = 0.4 * (x1 - 10) + rng.normal(0, 0.5, n)
+    ratings = {f"r{i}": np.clip(np.round(3 + latent + rng.normal(0, 0.7, n)), 1, 5).astype(int) for i in (1, 2, 3)}
+    judgements = {f"c{i}": (latent + rng.normal(0, 0.8, n) > 0).astype(int) for i in (1, 2, 3)}
     return pd.DataFrame(
         {
             "y": y,
@@ -42,6 +46,8 @@ def standard_frame(n: int = 240, seed: int = 7) -> pd.DataFrame:
             "s": 50 + 0.15 * np.arange(n) + season + noise,
             "m": with_gaps,  # x2 with ~10 % missing values
             "o": with_outliers,  # x1 with four extreme values
+            **ratings,  # r1..r3: 1-5 scores of three raters
+            **judgements,  # c1..c3: 0/1 judgements
         }
     )
 

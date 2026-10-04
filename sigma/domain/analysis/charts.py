@@ -94,6 +94,7 @@ def hist_chart(
     bins: int | None = None,
     norm: str = "density",
     curves: list[dict[str, Any]] | None = None,
+    vlines: list[dict[str, Any]] | None = None,
     height: int = 380,
 ) -> dict[str, Any]:
     """A histogram of ``values`` (or of several ``groups`` ``{name, values}`` on common bins, overlaid).
@@ -105,6 +106,7 @@ def hist_chart(
         "bins": bins,
         "norm": norm,
         "curves": curves or [],
+        "vlines": vlines or [],
     }
 
 

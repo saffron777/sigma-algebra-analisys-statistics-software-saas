@@ -12,11 +12,14 @@ from sigma.domain.errors import InvalidInputError
 # the files that declare analyses (one per area); importing each one registers its specs
 AREA_MODULES = (
     "sigma.domain.analysis.power",
+    "sigma.domain.analysis.power_designs",
     "sigma.domain.analysis.series",
     "sigma.domain.analysis.transform",
     "sigma.domain.analysis.datamanagement",
     "sigma.domain.analysis.cleaning",
     "sigma.domain.analysis.plots",
+    "sigma.domain.analysis.pruebas",
+    "sigma.domain.analysis.remuestreo",
 )
 
 _SPECS: dict[str, dict[str, AnalysisSpec]] = {}

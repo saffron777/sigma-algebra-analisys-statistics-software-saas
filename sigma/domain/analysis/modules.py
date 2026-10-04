@@ -36,6 +36,16 @@ CATALOG_MODULES: tuple[ModuleDef, ...] = (
         "grupos, valores atípicos y patrones; no inventes valores que no se vean en el resumen.",
     ),
     ModuleDef(
+        "pruebas",
+        "Pruebas adicionales",
+        "/pruebas",
+        "Normalidad, igualdad de varianzas, pruebas no paramétricas, tasas de Poisson, equivalencia, acuerdo entre "
+        "evaluadores, odds ratio, Mantel-Haenszel, T² de Hotelling y correlación parcial.",
+        "Explica la hipótesis nula de la prueba, el estadístico y el valor p, la decisión al nivel de significancia "
+        "elegido, el tamaño del efecto o el intervalo de confianza cuando exista, y los supuestos que conviene "
+        "verificar (independencia, normalidad, tamaño de muestra, datos pareados).",
+    ),
+    ModuleDef(
         "potencia",
         "Potencia y tamaño de muestra",
         "/potencia",
