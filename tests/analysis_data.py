@@ -32,6 +32,13 @@ def standard_frame(n: int = 240, seed: int = 7) -> pd.DataFrame:
     latent = 0.4 * (x1 - 10) + rng.normal(0, 0.5, n)
     ratings = {f"r{i}": np.clip(np.round(3 + latent + rng.normal(0, 0.7, n)), 1, 5).astype(int) for i in (1, 2, 3)}
     judgements = {f"c{i}": (latent + rng.normal(0, 0.8, n) > 0).astype(int) for i in (1, 2, 3)}
+    # twelve clusters, each shifting ``yc`` (a copy of y) by its own random amount
+    cluster = rng.integers(0, 12, n)
+    shifts = rng.normal(0, 2.5, 12)
+    # four classrooms (1-4) inside each group g: a factor nested in another
+    classroom = rng.integers(1, 5, n)
+    classroom_effect = rng.normal(0, 1.5, (3, 4))
+    group_code = pd.Series(group).map({"A": 0, "B": 1, "C": 2}).to_numpy()
     return pd.DataFrame(
         {
             "y": y,
@@ -48,6 +55,10 @@ def standard_frame(n: int = 240, seed: int = 7) -> pd.DataFrame:
             "o": with_outliers,  # x1 with four extreme values
             **ratings,  # r1..r3: 1-5 scores of three raters
             **judgements,  # c1..c3: 0/1 judgements
+            "cl": [f"c{c + 1:02d}" for c in cluster],  # 12 clusters
+            "yc": y + shifts[cluster],  # y with a random cluster effect
+            "aula": [str(c) for c in classroom],  # classrooms 1-4, repeated inside every g
+            "ya": y + classroom_effect[group_code, classroom - 1],  # y with a classroom-within-group effect
         }
     )
 

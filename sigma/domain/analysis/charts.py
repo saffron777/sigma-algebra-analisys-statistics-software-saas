@@ -142,10 +142,12 @@ def interval_chart(
     y_title: str | None,
     groups: list[dict[str, Any]],
     *,
+    hlines: list[dict[str, Any]] | None = None,
     height: int = 380,
 ) -> dict[str, Any]:
-    """Point estimates with their interval, one per group: ``{name, mean, lower, upper, values?}``."""
-    return {**_base("interval", title, x_title, y_title, height), "groups": groups}
+    """Point estimates with their interval, one per group: ``{name, mean, lower, upper, values?}``;
+    ``hlines`` ``{value, label?}`` draw reference levels (a zero difference, a target)."""
+    return {**_base("interval", title, x_title, y_title, height), "groups": groups, "hlines": hlines or []}
 
 
 def panels_chart(

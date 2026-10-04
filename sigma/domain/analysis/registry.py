@@ -20,6 +20,9 @@ AREA_MODULES = (
     "sigma.domain.analysis.plots",
     "sigma.domain.analysis.pruebas",
     "sigma.domain.analysis.remuestreo",
+    "sigma.domain.analysis.models",
+    "sigma.domain.analysis.models_more",
+    "sigma.domain.analysis.anova_advanced",
 )
 
 _SPECS: dict[str, dict[str, AnalysisSpec]] = {}

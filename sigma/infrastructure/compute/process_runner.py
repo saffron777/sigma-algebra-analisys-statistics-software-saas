@@ -22,7 +22,14 @@ from sigma.domain.errors import ComputationError, SigmaError
 
 log = logging.getLogger(__name__)
 _KNOWN_ERRORS = {cls.__name__: cls for cls in SigmaError.__subclasses__()}
-_NOISE = ("divide by zero", "invalid value encountered", "overflow encountered", "Mean of empty slice")
+_NOISE = (
+    "divide by zero",
+    "invalid value encountered",
+    "overflow encountered",
+    "Mean of empty slice",
+    "covariance is singular",  # optimisers of mixed models try singular points on their way
+    "covariance matrix is singular",
+)
 _MAX_WARNINGS = 3
 
 

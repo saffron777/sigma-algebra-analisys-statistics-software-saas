@@ -313,6 +313,7 @@ def _interval(fig: go.Figure, spec: dict[str, Any]) -> None:
             )
         )
     fig.update_layout(xaxis={"type": "category", "title": {"text": spec.get("x_title")}, "gridcolor": GRID})
+    _guides(fig, spec)
 
 
 def _panels(fig: go.Figure, spec: dict[str, Any]) -> go.Figure:
