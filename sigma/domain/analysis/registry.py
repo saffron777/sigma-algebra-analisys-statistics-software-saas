@@ -24,6 +24,8 @@ AREA_MODULES = (
     "sigma.domain.analysis.remuestreo",
     "sigma.domain.analysis.models",
     "sigma.domain.analysis.models_more",
+    "sigma.domain.analysis.econ_multi",
+    "sigma.domain.analysis.econ_models",
     "sigma.domain.analysis.anova_advanced",
 )
 

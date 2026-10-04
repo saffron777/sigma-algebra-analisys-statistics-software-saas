@@ -194,3 +194,73 @@ def note_trimmed(out: Output, ts: TS) -> None:
             "info",
             "Las fechas no son regulares: el análisis usa el orden de las observaciones, sin periodo calendario.",
         )
+
+
+@dataclass
+class MultiTS:
+    """Several series observed together: ``data`` is ``n × k`` in time order with no gaps."""
+
+    names: list[str]
+    data: np.ndarray
+    labels: list[Any]
+    dated: bool
+    freq: str | None
+    period: int
+    dropped: int
+    rows: Any = None
+
+    @property
+    def n(self) -> int:
+        return len(self.data)
+
+    @property
+    def k(self) -> int:
+        return len(self.names)
+
+    def frame(self) -> pd.DataFrame:
+        return pd.DataFrame(self.data, columns=self.names)
+
+
+def load_multi(
+    frame: pd.DataFrame, roles: dict[str, Any], *, key: str = "vars", minimum: int = 20, period: int = 0
+) -> MultiTS:
+    """Several numeric columns in time order; rows incomplete at the ends are trimmed and gaps inside are refused."""
+    names = list(roles[key])
+    data = frame[names].apply(pd.to_numeric, errors="coerce").astype(float)
+    time_name = roles.get("time")
+    if time_name:
+        data["__t"] = frame[time_name]
+        data = data.dropna(subset=["__t"]).sort_values("__t", kind="stable")
+        if data["__t"].duplicated().any():
+            raise InvalidInputError(f"La columna de tiempo «{time_name}» tiene fechas repetidas.")
+    complete = data[names].notna().all(axis=1).to_numpy()
+    if not complete.any():
+        raise InvalidInputError("No hay filas con todas las series completas.")
+    first, last = int(np.argmax(complete)), len(complete) - int(np.argmax(complete[::-1]))
+    trimmed = data.iloc[first:last]
+    if trimmed[names].isna().any().any():
+        raise InvalidInputError(
+            "Alguna serie tiene faltantes dentro del periodo común. Reemplácelos antes (Transformar datos → Valores faltantes)."
+        )
+    if len(trimmed) < minimum:
+        raise InvalidInputError(f"Las series necesitan al menos {minimum} observaciones comunes (hay {len(trimmed)}).")
+    labels: list[Any] = list(range(1, len(trimmed) + 1))
+    freq, dated = None, False
+    if time_name:
+        stamps = pd.DatetimeIndex(trimmed["__t"])
+        freq = pd.infer_freq(stamps) if len(stamps) >= 3 else None
+        if freq:
+            dated = True
+            labels = [str(s.date()) if s == s.normalize() else str(s) for s in stamps]
+    seasonal = int(period) if period and int(period) > 1 else infer_period(freq)
+    return MultiTS(
+        names, trimmed[names].to_numpy(float), labels, dated, freq, seasonal, len(data) - len(trimmed), trimmed.index
+    )
+
+
+def future_labels_for(labels: list[Any], dated: bool, freq: str | None, horizon: int) -> list[Any]:
+    if dated and freq:
+        last = pd.Timestamp(labels[-1])
+        future = pd.date_range(last, periods=horizon + 1, freq=freq)[1:]
+        return [str(s.date()) if s == s.normalize() else str(s) for s in future]
+    return list(range(len(labels) + 1, len(labels) + horizon + 1))

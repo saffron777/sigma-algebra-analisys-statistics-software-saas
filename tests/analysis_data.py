@@ -39,6 +39,18 @@ def standard_frame(n: int = 240, seed: int = 7) -> pd.DataFrame:
     classroom = rng.integers(1, 5, n)
     classroom_effect = rng.normal(0, 1.5, (3, 4))
     group_code = pd.Series(group).map({"A": 0, "B": 1, "C": 2}).to_numpy()
+    # a panel (n // 12 entities observed 12 times), a GARCH(1,1) return series and a two-regime series
+    entity = np.arange(n) // 12
+    entity_effect = rng.normal(0, 2.0, entity.max() + 1)[entity]
+    returns, variance = np.zeros(n), np.full(n, 1.0)
+    for i in range(1, n):
+        variance[i] = 0.1 + 0.15 * returns[i - 1] ** 2 + 0.75 * variance[i - 1]
+        returns[i] = np.sqrt(variance[i]) * rng.standard_t(8) * np.sqrt(6 / 8)
+    regime = np.zeros(n, dtype=int)
+    for i in range(1, n):
+        stay = 0.95
+        regime[i] = regime[i - 1] if rng.uniform() < stay else 1 - regime[i - 1]
+    switching = np.where(regime == 0, 1.0, 5.0) + rng.normal(0, np.where(regime == 0, 0.7, 1.4))
     return pd.DataFrame(
         {
             "y": y,
@@ -59,6 +71,11 @@ def standard_frame(n: int = 240, seed: int = 7) -> pd.DataFrame:
             "yc": y + shifts[cluster],  # y with a random cluster effect
             "aula": [str(c) for c in classroom],  # classrooms 1-4, repeated inside every g
             "ya": y + classroom_effect[group_code, classroom - 1],  # y with a classroom-within-group effect
+            "ent": [f"E{e + 1:02d}" for e in entity],  # panel entities
+            "per": np.arange(n) % 12,  # panel periods
+            "yp": 1.5 * x1 + entity_effect + rng.normal(0, 1.0, n),  # panel response with an entity effect
+            "ret": returns,  # GARCH(1,1) returns
+            "rg": switching,  # a series with two regimes
         }
     )
 
