@@ -14,6 +14,8 @@ AREA_MODULES = (
     "sigma.domain.analysis.power",
     "sigma.domain.analysis.power_designs",
     "sigma.domain.analysis.series",
+    "sigma.domain.analysis.series_explore",
+    "sigma.domain.analysis.series_models",
     "sigma.domain.analysis.transform",
     "sigma.domain.analysis.datamanagement",
     "sigma.domain.analysis.cleaning",
