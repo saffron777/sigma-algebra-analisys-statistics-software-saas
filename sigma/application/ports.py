@@ -53,6 +53,8 @@ class ImporterRegistry(Protocol):
 
     def source_types(self) -> list[str]: ...
 
+    def external_databases(self) -> list[dict[str, Any]]: ...
+
 
 @dataclass(frozen=True)
 class DraftInfo:

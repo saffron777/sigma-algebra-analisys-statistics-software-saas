@@ -22,7 +22,7 @@
     <div class="card-header">
       <h2 id="import-title" class="card-title">Importar datos</h2>
       <div class="flex items-center gap-3">
-        <span class="hidden text-xs text-slate-500 sm:inline">Excel · CSV · texto · SQL Server · API JSON</span>
+        <span class="hidden text-xs text-slate-500 sm:inline">Excel · CSV · texto · bases de datos · API JSON</span>
         {{ clear_button("busy") }}
       </div>
     </div>
@@ -99,32 +99,127 @@
         </div>
       </div>
 
-      {# ---- SQL Server #}
-      <div x-show="source === 'sqlserver'" x-cloak class="space-y-4">
+      {# ---- external databases #}
+      <div x-show="isDatabase" x-cloak class="space-y-4">
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div><label class="label">Servidor</label><input class="input" type="text" placeholder="servidor\instancia,1433" autocomplete="off" x-model="opts.sqlserver.server"></div>
-          <div><label class="label">Base de datos</label><input class="input" type="text" autocomplete="off" x-model="opts.sqlserver.database"></div>
-          <div><label class="label">Autenticación</label>
-            <select class="input" x-model="opts.sqlserver.auth"><option value="windows">Windows (integrada)</option><option value="sql">Usuario y contraseña SQL</option></select></div>
-          <div x-show="opts.sqlserver.auth === 'sql'"><label class="label">Usuario</label><input class="input" type="text" autocomplete="off" x-model="opts.sqlserver.username"></div>
-          <div x-show="opts.sqlserver.auth === 'sql'"><label class="label">Contraseña</label><input class="input" type="password" autocomplete="new-password" x-model="opts.sqlserver.password">
-            <p class="hint">No se guarda: solo se usa para esta importación.</p></div>
-          <label class="check-row self-end"><input type="checkbox" class="check" x-model="opts.sqlserver.trust_server_certificate"> Confiar en el certificado del servidor</label>
+          <div>
+            <label class="label" for="db-engine">Motor de base de datos</label>
+            <select id="db-engine" class="input" x-model="opts.database.engine" @change="changeEngine()">
+              <template x-for="e in dbEngines" :key="e.source_type">
+                <option :value="e.source_type" :disabled="!e.driver_available" x-text="e.label + (e.driver_available ? '' : ' — falta el controlador')"></option>
+              </template>
+            </select>
+            <p class="hint" x-show="engineInfo && !engineInfo.driver_available" x-cloak>
+              Instale el controlador con <code class="font-mono" x-text="'pip install ' + engineInfo?.install_hint"></code> y reinicie Sigma.
+            </p>
+          </div>
         </div>
-        <div class="tab-bar w-fit">
-          <button type="button" class="tab" :class="opts.sqlserver.mode === 'query' && 'tab-active'" @click="opts.sqlserver.mode = 'query'">Consulta SQL</button>
-          <button type="button" class="tab" :class="opts.sqlserver.mode === 'table' && 'tab-active'" @click="opts.sqlserver.mode = 'table'">Tabla completa</button>
+
+        {# ---- SQL Server #}
+        <div x-show="opts.database.engine === 'sqlserver'" x-cloak class="space-y-4">
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div><label class="label">Servidor</label><input class="input" type="text" placeholder="servidor\instancia,1433" autocomplete="off" x-model="opts.sqlserver.server"></div>
+            <div><label class="label">Base de datos</label><input class="input" type="text" autocomplete="off" x-model="opts.sqlserver.database"></div>
+            <div><label class="label">Autenticación</label>
+              <select class="input" x-model="opts.sqlserver.auth"><option value="windows">Windows (integrada)</option><option value="sql">Usuario y contraseña SQL</option></select></div>
+            <div x-show="opts.sqlserver.auth === 'sql'"><label class="label">Usuario</label><input class="input" type="text" autocomplete="off" x-model="opts.sqlserver.username"></div>
+            <div x-show="opts.sqlserver.auth === 'sql'"><label class="label">Contraseña</label><input class="input" type="password" autocomplete="new-password" x-model="opts.sqlserver.password">
+              <p class="hint">No se guarda: solo se usa para esta importación.</p></div>
+            <label class="check-row self-end"><input type="checkbox" class="check" x-model="opts.sqlserver.trust_server_certificate"> Confiar en el certificado del servidor</label>
+          </div>
         </div>
-        <div x-show="opts.sqlserver.mode === 'query'">
-          <label class="label">Consulta (solo SELECT / WITH)</label>
-          <textarea class="input" rows="6" spellcheck="false" placeholder="SELECT TOP 1000 * FROM dbo.Ventas WHERE Fecha >= '2024-01-01'" x-model="opts.sqlserver.query"></textarea>
-          <p class="hint">La importación es de solo lectura: INSERT, UPDATE, DELETE, DROP, EXEC, SELECT … INTO y similares se rechazan.</p>
+
+        {# ---- MySQL / MariaDB, PostgreSQL, Oracle #}
+        <div x-show="['mysql', 'postgresql', 'oracle'].includes(opts.database.engine)" x-cloak class="space-y-4">
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="lg:col-span-2"><label class="label">Servidor</label><input class="input" type="text" placeholder="servidor o dirección IP" autocomplete="off" spellcheck="false" x-model="cur.host"></div>
+            <div><label class="label">Puerto</label><input class="input" type="number" min="1" max="65535" x-model.number="cur.port"></div>
+            <div><label class="label" x-text="opts.database.engine === 'oracle' ? 'Nombre del servicio' : 'Base de datos'"></label>
+              <input class="input" type="text" autocomplete="off" spellcheck="false" :placeholder="opts.database.engine === 'oracle' ? 'ORCLPDB1' : ''" x-model="cur.database"></div>
+            <div><label class="label">Usuario</label><input class="input" type="text" autocomplete="off" x-model="cur.username"></div>
+            <div><label class="label">Contraseña</label><input class="input" type="password" autocomplete="new-password" x-model="cur.password">
+              <p class="hint">No se guarda: solo se usa para esta importación.</p></div>
+            <div x-show="opts.database.engine === 'postgresql'"><label class="label">Modo SSL</label>
+              <select class="input" x-model="opts.postgresql.sslmode">
+                <option value="">Predeterminado</option><option value="disable">Sin cifrado</option><option value="prefer">Preferir cifrado</option>
+                <option value="require">Exigir cifrado</option><option value="verify-full">Exigir y verificar el servidor</option>
+              </select></div>
+            <label class="check-row self-end" x-show="opts.database.engine === 'mysql'"><input type="checkbox" class="check" x-model="opts.mysql.ssl_disabled"> Sin cifrar (red de confianza)</label>
+          </div>
+          <div class="tab-bar w-fit">
+            <button type="button" class="tab" :class="cur.mode === 'query' && 'tab-active'" @click="cur.mode = 'query'">Consulta SQL</button>
+            <button type="button" class="tab" :class="cur.mode === 'table' && 'tab-active'" @click="cur.mode = 'table'">Tabla completa</button>
+          </div>
+          <div x-show="cur.mode === 'query'">
+            <label class="label">Consulta (solo SELECT / WITH)</label>
+            <textarea class="input" rows="6" spellcheck="false" x-model="cur.query"
+                      :placeholder="opts.database.engine === 'oracle' ? 'SELECT * FROM ventas WHERE fecha >= DATE \'2024-01-01\'' : 'SELECT * FROM ventas WHERE fecha >= \'2024-01-01\' LIMIT 1000'"></textarea>
+            <p class="hint">La importación es de solo lectura: la conexión se abre en modo lectura y se rechazan INSERT, UPDATE, DELETE, DROP, CALL, SELECT … INTO, FOR UPDATE y similares.</p>
+          </div>
+          <div x-show="cur.mode === 'table'" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div x-show="opts.database.engine !== 'mysql'"><label class="label">Esquema (opcional)</label><input class="input" type="text" autocomplete="off" x-model="cur.schema"></div>
+            <div><label class="label">Tabla o vista</label><input class="input" type="text" autocomplete="off" x-model="cur.table"></div>
+          </div>
+          <div class="max-w-xs"><label class="label">Máximo de filas</label><input class="input" type="number" min="1" x-model.number="cur.max_rows"></div>
         </div>
-        <div x-show="opts.sqlserver.mode === 'table'" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div><label class="label">Esquema (opcional)</label><input class="input" type="text" placeholder="dbo" x-model="opts.sqlserver.schema"></div>
-          <div><label class="label">Tabla o vista</label><input class="input" type="text" x-model="opts.sqlserver.table"></div>
+
+        {# ---- MongoDB #}
+        <div x-show="opts.database.engine === 'mongodb'" x-cloak class="space-y-4">
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="lg:col-span-2"><label class="label">Servidor</label><input class="input" type="text" placeholder="servidor o dirección IP" autocomplete="off" spellcheck="false" x-model="opts.mongodb.host"></div>
+            <div><label class="label">Puerto</label><input class="input" type="number" min="1" max="65535" x-model.number="opts.mongodb.port"></div>
+            <div><label class="label">Base de datos</label><input class="input" type="text" autocomplete="off" x-model="opts.mongodb.database"></div>
+            <div><label class="label">Usuario</label><input class="input" type="text" autocomplete="off" x-model="opts.mongodb.username"></div>
+            <div><label class="label">Contraseña</label><input class="input" type="password" autocomplete="new-password" x-model="opts.mongodb.password">
+              <p class="hint">No se guarda: solo se usa para esta importación.</p></div>
+            <div><label class="label">Base de autenticación (opcional)</label><input class="input" type="text" placeholder="admin" autocomplete="off" x-model="opts.mongodb.auth_source"></div>
+            <label class="check-row self-end"><input type="checkbox" class="check" x-model="opts.mongodb.tls"> Conexión cifrada (TLS)</label>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div><label class="label">Colección</label><input class="input" type="text" autocomplete="off" x-model="opts.mongodb.collection"></div>
+            <div><label class="label">Campos (opcional, separados por comas)</label><input class="input" type="text" placeholder="nombre, edad, dir.ciudad" x-model="opts.mongodb.fields"></div>
+          </div>
+          <div>
+            <label class="label">Filtro (JSON, opcional)</label>
+            <textarea class="input font-mono" rows="3" spellcheck="false" placeholder='{"edad": {"$gt": 30}}' x-model="opts.mongodb.filter"></textarea>
+            <p class="hint">Solo se lee (find). Los documentos se aplanan en columnas (<code class="font-mono">dir.ciudad</code>); no se admiten $where, $function ni $expr.</p>
+          </div>
+          <div class="max-w-xs"><label class="label">Máximo de documentos</label><input class="input" type="number" min="1" x-model.number="opts.mongodb.max_rows"></div>
         </div>
-        <div class="max-w-xs"><label class="label">Máximo de filas</label><input class="input" type="number" min="1" x-model.number="opts.sqlserver.max_rows"></div>
+
+        {# ---- explorer #}
+        <div class="space-y-2">
+          <button type="button" class="btn btn-secondary btn-sm" @click="loadCatalog()" :disabled="catalogBusy || (engineInfo && !engineInfo.driver_available)">
+            <span x-text="catalogBusy ? 'Consultando…' : (opts.database.engine === 'mongodb' ? 'Ver colecciones' : 'Ver tablas')"></span>
+          </button>
+          <p class="alert alert-danger" role="alert" x-show="catalogError" x-cloak x-text="catalogError"></p>
+          <div x-show="catalog" x-cloak class="grid gap-4 lg:grid-cols-2">
+            <div class="space-y-2">
+              <div x-show="catalog?.schemas?.length > 1">
+                <label class="label">Esquema</label>
+                <select class="input" :value="catalog?.schema" @change="pickSchema($event.target.value)">
+                  <template x-for="name in catalog?.schemas || []" :key="name"><option :value="name" x-text="name"></option></template>
+                </select>
+              </div>
+              <p class="text-sm text-slate-500" x-show="catalog && !catalog.tables.length">No se encontró nada que leer (o el usuario no tiene permiso).</p>
+              <ul class="checklist" x-show="catalog?.tables?.length">
+                <template x-for="t in catalog?.tables || []" :key="t.name">
+                  <li><button type="button" class="check-row w-full justify-between text-left" :class="catalog.selected === t.name && 'bg-slate-100 dark:bg-slate-800'" @click="pickTable(t)">
+                    <span class="truncate" x-text="t.name"></span><span class="badge badge-gray" x-text="t.kind"></span></button></li>
+                </template>
+              </ul>
+              <p class="hint" x-show="catalog?.truncated">Se muestran las primeras 500; escriba el nombre directamente si no aparece.</p>
+            </div>
+            <div x-show="catalog?.columns" x-cloak>
+              <p class="label">Columnas de <span class="font-mono" x-text="catalog?.selected"></span></p>
+              <div class="flex flex-wrap gap-1">
+                <template x-for="c in catalog?.columns || []" :key="c.name">
+                  <span class="badge badge-gray" x-text="c.name + ' · ' + c.type"></span>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {# ---- JSON API #}

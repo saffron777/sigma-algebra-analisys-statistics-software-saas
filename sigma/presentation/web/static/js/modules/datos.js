@@ -1,4 +1,4 @@
-// Data page: import from CSV / Excel / text / SQL Server / JSON API, review, save, and manage datasets.
+// Data page: import from CSV / Excel / text / external databases / JSON API, review, save, and manage datasets.
 
 import { api } from "../api.js";
 import { drawInterpretation } from "../ai.js";
@@ -6,21 +6,40 @@ import { printPage } from "../export.js";
 import { workspace } from "../workspace.js";
 
 const KIND_LABELS = { numeric: "numérica", categorical: "categórica", boolean: "lógica", datetime: "fecha", text: "texto" };
-const SOURCE_LABELS = { csv: "CSV", excel: "Excel", text: "Texto", sqlserver: "SQL Server", json_api: "API JSON", sample: "Muestra" };
+const SOURCE_LABELS = {
+  csv: "CSV", excel: "Excel", text: "Texto", sqlserver: "SQL Server", mysql: "MySQL / MariaDB", postgresql: "PostgreSQL",
+  oracle: "Oracle", mongodb: "MongoDB", json_api: "API JSON", sample: "Muestra",
+};
+// the «Base de datos» tab reads from one of these; each engine is its own source type on the server
+const DB_ENGINES = ["sqlserver", "mysql", "postgresql", "oracle", "mongodb"];
+const TABS = new Set(["csv", "excel", "text", "database", "json_api"]);
 const FILE_SOURCES = new Set(["csv", "excel", "text"]);
 const PAGE_SIZE = 50;
+
+const databaseOptions = (port) => ({
+  host: "", port, database: "", username: "", password: "", mode: "query", query: "", table: "", schema: "", max_rows: 1000000,
+});
 
 const defaultOptions = () => ({
   csv: { delimiter: "auto", encoding: "auto", decimal: "auto", header: true, skip_rows: 0 },
   excel: { sheet: "", header_row: 1 },
   text: { layout: "delimited", delimiter: "auto", encoding: "auto", decimal: "auto", header: true, widths: "", skip_rows: 0 },
+  database: { engine: "sqlserver" },
   sqlserver: { server: "", database: "", auth: "windows", username: "", password: "", trust_server_certificate: false,
                mode: "query", query: "", table: "", schema: "", max_rows: 1000000 },
+  mysql: { ...databaseOptions(3306), ssl_disabled: false },
+  postgresql: { ...databaseOptions(5432), sslmode: "" },
+  oracle: databaseOptions(1521),
+  mongodb: { host: "", port: 27017, database: "", username: "", password: "", auth_source: "", tls: false,
+             collection: "", filter: "", fields: "", max_rows: 1000000 },
   json_api: { url: "", method: "GET", headers: "", params: "", body: "", records_path: "", timeout: 30 },
 });
 
 // what must never be stored in the workspace: passwords and anything that may carry a token
-const SECRET_FIELDS = { sqlserver: ["password"], json_api: ["headers", "body", "params"] };
+const SECRET_FIELDS = {
+  sqlserver: ["password"], mysql: ["password"], postgresql: ["password"], oracle: ["password"], mongodb: ["password"],
+  json_api: ["headers", "body", "params"],
+};
 
 document.addEventListener("alpine:init", () => {
   Alpine.data("datosPage", () => ({
@@ -29,9 +48,14 @@ document.addEventListener("alpine:init", () => {
     sourceLabels: SOURCE_LABELS,
     sources: [
       { key: "csv", label: "CSV" }, { key: "excel", label: "Excel" }, { key: "text", label: "Texto" },
-      { key: "sqlserver", label: "SQL Server" }, { key: "json_api", label: "API JSON" },
+      { key: "database", label: "Base de datos" }, { key: "json_api", label: "API JSON" },
     ],
     source: "csv",
+    // the engines this server can read from, with their driver status (refreshed from the server)
+    dbEngines: DB_ENGINES.map((key) => ({ source_type: key, label: SOURCE_LABELS[key], driver_available: true })),
+    catalog: null, // what «Ver tablas» found: {tables, columns, schema, schemas}
+    catalogBusy: false,
+    catalogError: "",
     opts: defaultOptions(),
     drafts: {}, // pending imports on the server, by source type
     sheets: [],
@@ -45,6 +69,7 @@ document.addEventListener("alpine:init", () => {
 
     async init() {
       await this.startWorkspace();
+      await this.loadDatabases();
       await this.loadDrafts();
       // another window uploaded, previewed, saved or removed a pending import
       Alpine.store("sync").on("drafts", () => this.loadDrafts());
@@ -62,9 +87,16 @@ document.addEventListener("alpine:init", () => {
       };
     },
     async applyWorkspace(state) {
-      this.source = state.source in this.sourceLabels ? state.source : "csv";
       const defaults = defaultOptions();
       this.opts = Object.fromEntries(Object.keys(defaults).map((key) => [key, { ...defaults[key], ...(state.opts?.[key] ?? {}) }]));
+      if (DB_ENGINES.includes(state.source)) { // saved by a version where SQL Server had a tab of its own
+        this.source = "database";
+        this.opts.database.engine = state.source;
+      } else {
+        this.source = TABS.has(state.source) ? state.source : "csv";
+      }
+      if (!DB_ENGINES.includes(this.opts.database.engine)) this.opts.database.engine = "sqlserver";
+      this.catalog = null;
       this.saveName = state.saveName ?? "";
       this.kinds = { ...(state.kinds ?? {}) };
       const dataset = Alpine.store("datasets").list.find((d) => d.id === state.viewerId);
@@ -75,6 +107,8 @@ document.addEventListener("alpine:init", () => {
     async resetWorkspace() {
       this.source = "csv";
       this.opts = defaultOptions();
+      this.catalog = null;
+      this.catalogError = "";
       this.drafts = {};
       this.sheets = [];
       this.preview = null;
@@ -87,7 +121,13 @@ document.addEventListener("alpine:init", () => {
 
     // ------------------------------------------------------------------ pending imports (kept on the server)
     get isFileSource() { return FILE_SOURCES.has(this.source); },
-    get draft() { return this.drafts[this.source] ?? null; },
+    get isDatabase() { return this.source === "database"; },
+    /** The source type the server knows: the engine chosen in the «Base de datos» tab, or the tab itself. */
+    get apiSource() { return this.isDatabase ? this.opts.database.engine : this.source; },
+    /** The option block of the source being edited. */
+    get cur() { return this.opts[this.apiSource]; },
+    get engineInfo() { return this.dbEngines.find((e) => e.source_type === this.opts.database.engine) ?? null; },
+    get draft() { return this.drafts[this.apiSource] ?? null; },
     get fileAccept() {
       return { csv: ".csv,.tsv,text/csv", excel: ".xlsx,.xlsm,.xls", text: ".txt,.tsv,.dat,.prn,text/plain" }[this.source];
     },
@@ -116,6 +156,8 @@ document.addEventListener("alpine:init", () => {
     async selectSource(key) {
       this.source = key;
       this.sheets = [];
+      this.catalog = null;
+      this.catalogError = "";
       this.error = "";
       this.preview = null;
       if (this.$refs.file) this.$refs.file.value = "";
@@ -154,7 +196,7 @@ document.addEventListener("alpine:init", () => {
         this.error = error.message;
         return;
       }
-      const { [this.source]: _removed, ...rest } = this.drafts;
+      const { [this.apiSource]: _removed, ...rest } = this.drafts;
       this.drafts = rest;
       this.preview = null;
       this.sheets = [];
@@ -162,8 +204,8 @@ document.addEventListener("alpine:init", () => {
     },
 
     buildOptions() {
-      const options = { ...this.opts[this.source] };
-      if (this.source === "sqlserver") {
+      const options = { ...this.opts[this.apiSource] };
+      if (this.isDatabase && this.apiSource !== "mongodb") { // SQL engines: either a query or a whole table
         if (options.mode === "query") { delete options.table; delete options.schema; } else { delete options.query; }
         delete options.mode;
       }
@@ -173,9 +215,63 @@ document.addEventListener("alpine:init", () => {
 
     /** The request that reads this source: a file source names its stored file (no new upload). */
     requestInit() {
-      const json = { source_type: this.source, options: this.buildOptions() };
+      const json = { source_type: this.apiSource, options: this.buildOptions() };
       if (this.isFileSource) json.draft_id = this.draft?.id;
       return { method: "POST", json };
+    },
+
+    // ------------------------------------------------------------------ external databases
+    async loadDatabases() {
+      try {
+        this.dbEngines = (await api("/api/datasets/import/databases")).databases;
+      } catch { /* the form still works; engines just are not greyed out */ }
+    },
+
+    changeEngine() {
+      this.catalog = null;
+      this.catalogError = "";
+      this.error = "";
+      this.preview = null;
+      this.showDraft();
+    },
+
+    /** «Ver tablas» / «Ver colecciones»: what the server offers (and the columns of ``name`` when given). */
+    async loadCatalog(name = "") {
+      this.catalogBusy = true;
+      this.catalogError = "";
+      try {
+        const options = this.buildOptions();
+        delete options.query;
+        delete options.max_rows;
+        delete options.filter;
+        delete options.fields;
+        const key = this.apiSource === "mongodb" ? "collection" : "table";
+        if (name) options[key] = name; else delete options[key];
+        const found = await api("/api/datasets/import/inspect", { method: "POST", json: { source_type: this.apiSource, options } });
+        this.catalog = { ...found, selected: name };
+      } catch (error) {
+        this.catalogError = error.message;
+      } finally {
+        this.catalogBusy = false;
+      }
+    },
+
+    /** Choosing from the list fills the form in; the columns are fetched so the user sees what is in there. */
+    async pickTable(table) {
+      const block = this.cur;
+      if (this.apiSource === "mongodb") {
+        block.collection = table.name;
+      } else {
+        block.table = table.name;
+        block.mode = "table";
+        if ("schema" in block && this.catalog?.schema) block.schema = this.catalog.schema;
+      }
+      await this.loadCatalog(table.name);
+    },
+
+    async pickSchema(schema) {
+      this.cur.schema = schema;
+      await this.loadCatalog();
     },
 
     async loadSheets() {
@@ -220,7 +316,7 @@ document.addEventListener("alpine:init", () => {
           method: "POST", json: { token: this.preview.token, name: this.saveName, column_kinds: kinds },
         });
         Alpine.store("toast").show(`Dataset «${dataset.name}» guardado.`, "success");
-        const { [this.source]: _saved, ...rest } = this.drafts; // the server removed the pending import
+        const { [this.apiSource]: _saved, ...rest } = this.drafts; // the server removed the pending import
         this.drafts = rest;
         this.preview = null;
         this.sheets = [];

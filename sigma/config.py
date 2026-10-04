@@ -46,6 +46,7 @@ class Config:
     notebooks_dir: Path = PROJECT_ROOT / "instance" / "notebooks"
     sample_dir: Path = PROJECT_ROOT / "sample_data"
     max_upload_bytes: int = 100 * 1024 * 1024
+    external_db_hosts: tuple[str, ...] = ()  # servers the data page may read from (empty = any)
     cell_timeout_seconds: int = 60
     kernel_idle_minutes: int = 30
     max_kernels_per_user: int = 3
@@ -69,6 +70,9 @@ class Config:
             "db_path": Path(os.environ.get("SIGMA_DB_PATH", instance_dir / "sigma.db")),
             "notebooks_dir": Path(os.environ.get("SIGMA_NOTEBOOKS_DIR", instance_dir / "notebooks")),
             "max_upload_bytes": int(os.environ.get("SIGMA_MAX_UPLOAD_MB", "100")) * 1024 * 1024,
+            "external_db_hosts": tuple(
+                h.strip() for h in os.environ.get("SIGMA_EXTERNAL_DB_HOSTS", "").split(",") if h.strip()
+            ),
             "cell_timeout_seconds": int(os.environ.get("SIGMA_CELL_TIMEOUT_SECONDS", "60")),
             "kernel_idle_minutes": int(os.environ.get("SIGMA_KERNEL_IDLE_MINUTES", "30")),
             "max_kernels_per_user": int(os.environ.get("SIGMA_MAX_KERNELS_PER_USER", "3")),

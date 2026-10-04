@@ -57,6 +57,12 @@ def inspect_source():
     return jsonify(to_jsonable(container().inspect_source.execute(_import_request(), _draft_id())))
 
 
+@bp.get("/import/databases")
+def external_databases():
+    """The database engines that can be read from (and whether this server has their driver)."""
+    return jsonify({"databases": container().list_external_databases.execute()})
+
+
 @bp.post("/import/draft")
 def upload_draft():
     """Keep an uploaded file on the server (one pending import per source type); no parsing yet."""

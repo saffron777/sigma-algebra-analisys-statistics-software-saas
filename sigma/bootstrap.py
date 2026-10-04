@@ -46,6 +46,7 @@ from sigma.application.use_cases.datasets import (
     GetImportDraft,
     InspectSource,
     ListDatasets,
+    ListExternalDatabases,
     ListImportDrafts,
     LoadSampleData,
     PreviewDataset,
@@ -131,6 +132,7 @@ class UserServices:
     user: User
     # datasets
     inspect_source: InspectSource
+    list_external_databases: ListExternalDatabases
     upload_import_file: UploadImportFile
     preview_import: PreviewImport
     list_import_drafts: ListImportDrafts
@@ -208,7 +210,7 @@ class Container:
         self.database_settings = config.database
         self.backend = create_backend(config.database)
         self.database = getattr(self.backend, "database", None)  # the SQL handle (None for MongoDB)
-        self.importers = DefaultImporterRegistry()
+        self.importers = DefaultImporterRegistry(allowed_hosts=config.external_db_hosts)
         self.exporters = ExporterRegistry([PdfExporter(), DocxExporter(), XlsxExporter()])
         self.images = PillowImageProcessor()
         self.default_logo = _read_default_logo()
@@ -267,6 +269,7 @@ class Container:
         return UserServices(
             user=user,
             inspect_source=InspectSource(self.importers, drafts),
+            list_external_databases=ListExternalDatabases(self.importers),
             upload_import_file=UploadImportFile(self.importers, drafts),
             preview_import=PreviewImport(self.importers, drafts),
             list_import_drafts=ListImportDrafts(drafts),

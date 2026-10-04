@@ -184,6 +184,28 @@ traducidos sin exponer la clave). Solo viaja el resumen del resultado: la ficha 
 omite filas y valores de columnas tipo identificador. La clave (`ANTHROPIC_API_KEY` o `instance/ai_key.txt`) nunca sale
 del servidor.
 
+## Lectura de bases de datos externas
+
+La pestaña *Base de datos* de la pantalla Datos no es una fuente más sino un selector: cada motor es su propio `source_type`
+(`sqlserver`, `mysql`, `postgresql`, `oracle`, `mongodb`), con su borrador pendiente y su bloque de opciones, y
+`GET /api/datasets/import/databases` dice cuáles tienen controlador. `/import/inspect` ya existía para las hojas de Excel: aquí es el
+**explorador** (`inspect(request)` devuelve tablas, esquemas y columnas, o colecciones y campos).
+
+Seguridad (los importadores son los únicos sitios por donde el usuario hace llegar texto a un servidor ajeno):
+
+- **Conexión**: los campos del formulario pasan por `DatabaseSettings.from_request` (caracteres estrictos, lista blanca de opciones) y la URL la
+  construye SQLAlchemy; nada se concatena. Lista blanca opcional de servidores (`SIGMA_EXTERNAL_DB_HOSTS`, `common.check_host_allowed`).
+- **Solo lectura, dos capas**. (1) `sql_scrub.py` lee el SQL como cada motor (comentarios anidados y `$tag$…$tag$` en PostgreSQL, `\` y `/*! */`
+  en MySQL, `q'[…]'` en Oracle, corchetes en SQL Server) y deja solo lo que no es texto; `sql_guard.py` exige una única sentencia
+  `SELECT/WITH` y rechaza palabras y funciones peligrosas por dialecto; una regex no basta (`SELECT $$'$$; DROP …`). (2) La sesión del servidor es de
+  solo lectura (`SET SESSION TRANSACTION READ ONLY` en MySQL, `default_transaction_read_only=on` en PostgreSQL, `SET TRANSACTION READ ONLY` en
+  Oracle) y los ajustes de los que depende el *scanner* se fuerzan (`standard_conforming_strings=on`, sin `NO_BACKSLASH_ESCAPES`/`ANSI_QUOTES`).
+  MongoDB solo usa `find` y rechaza `$where`/`$function`/`$accumulator`/`$expr`. El tiempo de consulta está acotado (120 s) y el de conexión (10 s).
+- **Secretos**: `SECRET_OPTIONS` quita la contraseña de lo que se guarda con el borrador y el espacio de trabajo no la conserva; los mensajes de
+  error de los controladores (`database_errors.py`, compartido con la prueba de conexión) la ocultan.
+- **Nombres**: se resuelven contra el catálogo ignorando mayúsculas (Oracle guarda en mayúsculas lo que no va entre comillas) y se citan con las
+  reglas del motor; el tope de filas se pide al servidor (`LIMIT`, `ROWNUM`, `TOP`) y se vuelve a imponer al leer (`sql_fetch.py`).
+
 ## Consola de código
 
 `JupyterKernelPool` (puerto `CodeExecutor`) lanza **un kernel ipykernel por notebook y usuario** con `jupyter_client`:
@@ -210,8 +232,10 @@ tamaño de favicon.
 - **Nueva prueba de hipótesis**: una entrada en `SPECS` de `domain/statistics/hypothesis.py`; el formulario se genera
   solo desde el catálogo (`/api/hypothesis/catalog`).
 - **Nueva distribución**: una entrada en `domain/distributions/registry.py`.
-- **Nueva fuente de datos**: una clase con `source_type` y `read(request)` en `infrastructure/importers/`, registrarla
-  en `registry.py` y añadir su formulario en `templates/pages/datos.html` (y sus secretos en `SECRET_OPTIONS`).
+- **Nueva fuente de datos**: una clase con `source_type` y `read(request)` (y, si ofrece un explorador, `inspect(request)`) en
+  `infrastructure/importers/`, registrarla en `registry.py`, añadir su formulario en `templates/pages/datos.html`, sus opciones en
+  `datos.js` (`defaultOptions`, `SECRET_FIELDS`) y sus secretos en `SECRET_OPTIONS`. Una base de datos nueva: un `ExternalSqlImporter`
+  más (dialecto en `sql_scrub.py`/`sql_guard.py`, sesión de solo lectura en `external_engine`) o un importador propio como el de MongoDB.
 - **Nuevo módulo de análisis**: función de dominio + resultado → comando en `dto.py` → caso de uso → esquema pydantic →
   reporte/gráficos → blueprint → página (reutilizando `analysisPage(modulo, campos)` y `result_area`, que ya traen
   guardar, exportar, imprimir e interpretar) → registrar en `bootstrap.py`, en `domain/saved_results.MODULES`, en

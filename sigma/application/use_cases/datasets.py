@@ -31,7 +31,14 @@ from sigma.domain.errors import InvalidInputError
 PREVIEW_ROWS = 50
 MAX_NAME_LENGTH = 120
 # options that must never be written to the database (a pending import is stored, a password must not be)
-SECRET_OPTIONS = {"sqlserver": ("password",), "json_api": ("headers", "body", "params")}
+SECRET_OPTIONS = {
+    "sqlserver": ("password",),
+    "mysql": ("password",),
+    "postgresql": ("password",),
+    "oracle": ("password",),
+    "mongodb": ("password",),
+    "json_api": ("headers", "body", "params"),
+}
 
 
 def safe_options(source_type: str, options: dict[str, Any]) -> dict[str, Any]:
@@ -95,7 +102,7 @@ class PreviewImport:
         suggested = clean_dataset_name(
             PurePath(request.file_name).stem
             if request.file_name
-            else request.options.get("table") or request.options.get("name"),
+            else request.options.get("table") or request.options.get("collection") or request.options.get("name"),
             fallback=f"importado_{request.source_type}",
         )
         meta = {
@@ -149,6 +156,16 @@ class InspectSource:
         importer = self._importers.get(request.source_type)
         inspect = getattr(importer, "inspect", None)
         return inspect(request) if inspect else {}
+
+
+class ListExternalDatabases:
+    """The database engines the data page can read from, with whether this server has each driver."""
+
+    def __init__(self, importers: ImporterRegistry) -> None:
+        self._importers = importers
+
+    def execute(self) -> list[dict]:
+        return self._importers.external_databases()
 
 
 class UploadImportFile:

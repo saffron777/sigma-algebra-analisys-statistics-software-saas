@@ -20,7 +20,7 @@ from sigma.infrastructure.persistence.sql.legacy_sqlite import upgrade_legacy_sq
 _STEPS: dict[int, Callable[[Engine], None]] = {}
 
 
-_CONNECT_TIMEOUT_ARG = {
+CONNECT_TIMEOUT_ARG = {
     "mssql": "timeout",
     "mysql": "connect_timeout",
     "postgresql": "connect_timeout",
@@ -51,7 +51,7 @@ def build_engine(settings: DatabaseSettings, connect_timeout: int = 15) -> Engin
         options: dict = {
             "pool_pre_ping": True,
             "pool_recycle": 1800,
-            "connect_args": {_CONNECT_TIMEOUT_ARG[settings.engine]: connect_timeout},  # an unreachable host fails fast
+            "connect_args": {CONNECT_TIMEOUT_ARG[settings.engine]: connect_timeout},  # an unreachable host fails fast
         }
         if settings.engine == "mssql":
             options["fast_executemany"] = True  # bulk inserts of dataset rows are ~100× faster

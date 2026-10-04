@@ -106,3 +106,19 @@ def read_delimited(
         frame.columns = [f"columna_{i + 1}" for i in range(frame.shape[1])]
     shown = "whitespace" if whitespace else {v: k for k, v in _DELIMITER_NAMES.items()}.get(delimiter, delimiter)
     return frame, {"delimiter": shown, "encoding": encoding, "decimal": decimal, "header": has_header}
+
+
+def check_host_allowed(host: str, allowed: tuple[str, ...]) -> None:
+    """Refuse a server missing from the administrator's list (``SIGMA_EXTERNAL_DB_HOSTS``); an empty list allows any."""
+    if not allowed:
+        return
+    name = (host or "").strip().lower()
+    name = name.split("\\", 1)[0].split(",", 1)[0]  # SQL Server: host\instance,port
+    if name.startswith("[") and "]" in name:
+        name = name[1 : name.index("]")]
+    elif name.count(":") == 1:
+        name = name.split(":", 1)[0]
+    if name not in {item.strip().lower() for item in allowed}:
+        raise InvalidInputError(
+            f"El servidor «{host}» no está en la lista de servidores permitidos por el administrador."
+        )

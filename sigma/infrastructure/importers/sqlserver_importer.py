@@ -12,11 +12,11 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from sigma.application.ports import ImportRequest
 from sigma.domain.errors import ImportFailedError, InvalidInputError
-from sigma.infrastructure.importers.common import as_bool, as_int
+from sigma.infrastructure.importers.common import as_bool, as_int, check_host_allowed
+from sigma.infrastructure.importers.sql_fetch import fetch_rows
 from sigma.infrastructure.importers.sql_guard import build_table_query, validate_readonly_query
 
 DEFAULT_MAX_ROWS = 1_000_000
-FETCH_SIZE = 50_000
 LOGIN_TIMEOUT_SECONDS = 10
 QUERY_TIMEOUT_SECONDS = 120
 PREFERRED_DRIVERS = (
@@ -87,8 +87,9 @@ class SqlServerImporter:
 
     source_type = "sqlserver"
 
-    def __init__(self, engine_factory: EngineFactory = sqlserver_engine) -> None:
+    def __init__(self, engine_factory: EngineFactory = sqlserver_engine, allowed_hosts: tuple[str, ...] = ()) -> None:
         self._engine_factory = engine_factory
+        self._allowed_hosts = allowed_hosts
 
     def read(self, request: ImportRequest) -> tuple[pd.DataFrame, dict[str, Any]]:
         options = request.options
@@ -102,9 +103,10 @@ class SqlServerImporter:
         else:
             raise InvalidInputError("Escriba una consulta SQL o indique el nombre de una tabla.")
 
+        check_host_allowed(str(options.get("server") or ""), self._allowed_hosts)
         engine = self._engine_factory(options)
         try:
-            frame, truncated = self._fetch(engine, sql, max_rows)
+            frame, truncated = fetch_rows(engine, sql, max_rows, timeout_seconds=QUERY_TIMEOUT_SECONDS)
         except SQLAlchemyError as error:
             raise ImportFailedError(self._describe(error, options)) from error
         finally:
@@ -117,27 +119,6 @@ class SqlServerImporter:
             **({"query": query[:500]} if query else {"table": table, "schema": options.get("schema") or None}),
         }
         return frame, detected
-
-    @staticmethod
-    def _fetch(engine: Engine, sql: str, max_rows: int) -> tuple[pd.DataFrame, bool]:
-        with engine.connect() as conn:
-            driver_connection = getattr(conn.connection, "driver_connection", None)
-            if driver_connection is not None and hasattr(driver_connection, "timeout"):
-                driver_connection.timeout = QUERY_TIMEOUT_SECONDS
-            try:
-                cursor = conn.exec_driver_sql(sql)
-                columns = list(cursor.keys())
-                rows: list[tuple[Any, ...]] = []
-                while len(rows) <= max_rows:
-                    batch = cursor.fetchmany(FETCH_SIZE)
-                    if not batch:
-                        break
-                    rows.extend(tuple(row) for row in batch)
-            finally:
-                conn.rollback()  # nothing is ever committed from an import
-        truncated = len(rows) > max_rows
-        frame = pd.DataFrame.from_records(rows[:max_rows], columns=columns, coerce_float=True)
-        return frame, truncated
 
     @staticmethod
     def _describe(error: SQLAlchemyError, options: dict[str, Any]) -> str:

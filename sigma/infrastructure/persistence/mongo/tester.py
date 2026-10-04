@@ -2,39 +2,15 @@
 
 from __future__ import annotations
 
-import re
 import uuid
 
 from sigma.domain.database import STATE_EMPTY, STATE_FOREIGN, STATE_SIGMA, CheckStep, ConnectionReport
+from sigma.infrastructure.database_errors import explain_driver_error
 from sigma.infrastructure.persistence.database_settings import ENGINES, DatabaseSettings, driver_available
-
-_ERRORS = [
-    (r"Authentication failed|auth failed|AuthenticationFailed", "El servidor rechazó el usuario o la contraseña."),
-    (
-        r"not authorized|Unauthorized|requires authentication",
-        "El usuario no tiene permiso (o el servidor exige autenticarse).",
-    ),
-    (
-        r"timed out|ServerSelectionTimeout|No servers found|Connection refused|actively refused",
-        "No se pudo conectar con el servidor. Revise el servidor, el puerto y que el servicio esté activo.",
-    ),
-    (
-        r"getaddrinfo|Name or service not known|nodename nor servname",
-        "No se encontró el servidor. Revise el nombre o la dirección.",
-    ),
-    (r"SSL|TLS|certificate", "Falló la conexión segura (TLS) con el servidor."),
-]
 
 
 def explain(error: BaseException, password: str) -> str:
-    raw = str(error)
-    if password:
-        raw = raw.replace(password, "***")
-    for pattern, explanation in _ERRORS:
-        if re.search(pattern, raw, re.IGNORECASE):
-            return explanation
-    first = raw.strip().splitlines()[0][:240] if raw.strip() else error.__class__.__name__
-    return f"No se pudo conectar: {first}"
+    return explain_driver_error(error, "mongodb", password)
 
 
 def test_mongo(settings: DatabaseSettings, timeout_seconds: int) -> ConnectionReport:

@@ -8,7 +8,7 @@ Todo se ejecuta y se guarda en su propio servidor; nada sale de él.
 
 | Módulo | Qué hace |
 |---|---|
-| **Datos** | Importa desde **CSV, Excel, texto, SQL Server y APIs JSON**; vista previa, tipos de columna editables; todo se guarda en SQLite. |
+| **Datos** | Importa desde **CSV, Excel, texto, bases de datos (SQL Server, MySQL/MariaDB, PostgreSQL, Oracle, MongoDB) y APIs JSON**; vista previa, tipos de columna editables; todo se guarda en la base que elija el administrador. |
 | **Estadística descriptiva** | Posición, dispersión, forma, IC de la media, frecuencias, normalidad (Shapiro, D'Agostino), ajuste de distribuciones (KS/AIC), correlaciones con valor p. |
 | **Distribuciones** | 15 distribuciones: densidad/masa, acumulada, cuantiles, probabilidad entre dos valores y **valor p con el área sombreada**. |
 | **Pruebas de hipótesis** | 16 pruebas: z, t (1 muestra, 2 muestras Welch/agrupada, pareada), proporciones, exacta binomial, χ² (varianza, independencia, bondad de ajuste), F, Fisher, correlación, Mann-Whitney, Wilcoxon, Shapiro. Desde columnas o desde estadísticos resumidos. |
@@ -24,7 +24,7 @@ rechazo y el valor p sombreados.
 ## Requisitos
 
 - Windows 10/11 (también funciona en Linux/macOS), **Python 3.11+** y **Node.js 20+** (solo para compilar el CSS).
-- Para importar desde **SQL Server**, o para usarlo como base de Sigma: *ODBC Driver 17 o 18 for SQL Server* instalado.
+- Para leer de **SQL Server**, o para usarlo como base de Sigma: *ODBC Driver 17 o 18 for SQL Server* instalado.
 - Para guardar en MySQL/MariaDB, PostgreSQL, Oracle o MongoDB basta el controlador de Python de `requirements.txt` (ya se instala); necesita un servidor accesible.
 
 ## Instalación
@@ -75,6 +75,7 @@ Variables de entorno (opcionales, también en un archivo `.env`, ver `.env.examp
 | `SIGMA_ALLOWED_HOSTS` | — | Nombres extra con los que se accede (uso en red). |
 | `SIGMA_MAX_KERNELS_PER_USER` / `SIGMA_MAX_KERNELS_TOTAL` | `3` / `8` | Límite de kernels simultáneos. |
 | `SIGMA_DRAFT_RETENTION_DAYS` | `14` | Días tras los que se descarta una importación pendiente sin tocar. |
+| `SIGMA_EXTERNAL_DB_HOSTS` | — | Servidores (separados por comas) a los que se puede conectar para importar datos; vacío = cualquiera. |
 | `SIGMA_AI_REQUESTS_PER_HOUR` | `20` | Interpretaciones con IA por persona y hora. |
 | `ANTHROPIC_API_KEY` | — | Clave de API de la IA (alternativa a guardarla desde *Usuarios*). |
 | `SIGMA_DEBUG` | — | `1` activa la recarga automática (solo desarrollo). |
@@ -155,8 +156,8 @@ El archivo que sube en **Datos** (y, una vez generada, su vista previa) se **con
 módulo, recargar, cerrar el navegador o reiniciar Sigma y la tarjeta del archivo y la vista previa siguen ahí; al
 cambiar el delimitador, la hoja o la codificación se vuelve a leer el archivo guardado sin subirlo otra vez. Hay una
 importación pendiente por tipo de fuente y cuenta; desaparece al guardarla como dataset, con **Quitar**, con
-**Limpiar** o pasados `SIGMA_DRAFT_RETENTION_DAYS` días (14) sin tocarla. De SQL Server y de las APIs solo se conserva el
-resultado de la consulta: las contraseñas, cabeceras, cuerpos y parámetros nunca se escriben en la base.
+**Limpiar** o pasados `SIGMA_DRAFT_RETENTION_DAYS` días (14) sin tocarla. De las bases de datos externas y de las APIs solo se
+conserva el resultado de la consulta: las contraseñas, cabeceras, cuerpos y parámetros nunca se escriben en la base.
 
 ## Datos de ejemplo
 
@@ -170,11 +171,19 @@ Para probar la consola, importe `analisis_demo.ipynb` desde **Consola Python →
 - **CSV / texto**: delimitador, codificación y separador decimal se detectan solos (editables). El texto admite
   columnas de ancho fijo.
 - **Excel** (`.xlsx`, `.xls`): elija la hoja y la fila de encabezados.
-- **SQL Server**: servidor, base, autenticación Windows o SQL; consulta o tabla completa. Es **solo lectura**: solo se
-  aceptan `SELECT`/`WITH` (se rechazan `INSERT`, `UPDATE`, `DELETE`, `DROP`, `EXEC`, `SELECT … INTO`, varias sentencias…),
-  se conecta con `ApplicationIntent=ReadOnly` y nada se confirma en el servidor. La contraseña **no se guarda**. Si el
-  servidor usa un certificado autofirmado marque *Confiar en el certificado del servidor*. Para mayor seguridad use una
-  cuenta con permisos solo de lectura.
+- **Base de datos externa** (pestaña *Base de datos*, con selector de motor): **SQL Server, MySQL/MariaDB, PostgreSQL,
+  Oracle y MongoDB**. Se indica servidor, puerto, base (en Oracle, el servicio), usuario y contraseña, y se trae una
+  **consulta** o una **tabla/vista completa** (en MongoDB, una colección con filtro y campos opcionales). El botón
+  **Ver tablas** (o *Ver colecciones*) lista lo que hay —con el esquema en PostgreSQL— y muestra las columnas al elegir
+  una. Los documentos de MongoDB se aplanan en columnas (`dir.ciudad`). Un motor sin su controlador de Python aparece
+  desactivado con la orden `pip install …` que falta. La importación es de **solo lectura** en dos capas: solo se
+  aceptan `SELECT`/`WITH` de una sentencia (se leen comentarios, comillas y `$$…$$`/`q'[…]'` como lo hace cada motor y
+  se rechazan `INSERT`, `UPDATE`, `DELETE`, `DROP`, `SELECT … INTO`, `FOR UPDATE`, funciones peligrosas como
+  `pg_sleep`, `LOAD_FILE` o `UTL_HTTP`, varias sentencias…; en MongoDB, `$where`, `$function` y `$expr`) **y** la sesión
+  se abre en modo lectura en el servidor (`SET TRANSACTION READ ONLY` / `default_transaction_read_only`; MongoDB solo usa
+  `find`). La contraseña **no se guarda** (ni en la base ni en el espacio de trabajo). Para mayor seguridad use una
+  cuenta con permisos solo de lectura. El administrador puede limitar a qué servidores se puede conectar con
+  `SIGMA_EXTERNAL_DB_HOSTS` (lista separada por comas; vacía = cualquiera).
 - **API JSON**: URL, método GET/POST, cabeceras, parámetros, cuerpo y ruta a los registros (`data.items`); si la omite,
   Sigma detecta la lista de objetos. Cabeceras y tokens no se guardan. Límite de 50 MB por respuesta.
 
@@ -228,8 +237,9 @@ un secreto, igual que `secret.key`). La interfaz nunca la devuelve al navegador.
 **Qué se ha probado.** La batería de conformidad (cuentas, datasets, resultados, espacio de trabajo con escrituras concurrentes,
 borradores con archivos de varios MB, plantillas, notebooks, esquemas, prueba de conexión y migración en ambos sentidos) y toda la
 API de Sigma se ejecutaron contra servidores reales: SQLite 3.50, SQL Server 2025 Express (ODBC Driver 18), MySQL 8, MariaDB 11.8,
-PostgreSQL 16, Oracle AI Database 26ai Free (23.26) y MongoDB 7. Otras versiones deberían funcionar (se usan dialectos estándar de SQLAlchemy 2),
-pero no se han probado.
+PostgreSQL 16, Oracle AI Database 26ai Free (23.26) y MongoDB 7. La *lectura* de bases externas se probó contra los mismos servidores
+(salvo SQL Server, que se cubre con pruebas sobre SQLite y con la guarda de solo lectura). Otras versiones deberían funcionar
+(se usan dialectos estándar de SQLAlchemy 2), pero no se han probado.
 
 **Actualización de una instalación anterior:** el archivo `instance/sigma.db` de una versión previa se actualiza solo al
 arrancar; los datasets y los notebooks existentes siguen funcionando sin copiarlos.
@@ -295,7 +305,7 @@ tests/              unit/ (dominio, infraestructura), conformance/ (la misma bat
 ## Desarrollo
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest              # 660 pruebas con SQLite y MongoDB en memoria (la consola arranca kernels reales: ~4 min)
+.\.venv\Scripts\python.exe -m pytest              # 771 pruebas con SQLite y MongoDB en memoria (la consola arranca kernels reales: ~5 min)
 .\.venv\Scripts\python.exe -m ruff check .        # lint
 .\.venv\Scripts\python.exe -m ruff format .       # formato
 npm run watch:css                                 # recompila Tailwind al editar plantillas/JS
@@ -327,6 +337,7 @@ Las bases de esas URL deben estar vacías y ser desechables: cada prueba empieza
   reinicia (se pierden las variables en memoria).
 - La importación desde SQL Server no puede probarse automáticamente sin un servidor: las pruebas cubren la construcción
   de la conexión, la protección de solo lectura y toda la ruta de lectura contra SQLite.
+- Fuentes de bases de datos: en Oracle una tabla creada con minúsculas entre comillas dobles no se puede elegir por nombre (use una consulta); un servidor Oracle muy antiguo (<12c) puede no listar vistas. La importación se hace en memoria: el tope por defecto es 1 000 000 de filas (se avisa si se alcanza).
 - Base de datos: Oracle no distingue `''` de `NULL` (una celda de texto vacía vuelve como ausente); cada motor limita las
   columnas de un dataset (SQL Server 280, MySQL/Oracle/MariaDB 900, PostgreSQL 1000, SQLite 1900) y lo dice con un error claro; MongoDB
   no tiene transacciones entre documentos, así que borrar una cuenta o un dataset es una secuencia de operaciones (con limpieza si falla).
