@@ -539,7 +539,7 @@ def _vecm(frame: pd.DataFrame, roles: dict[str, Any], p: dict[str, Any]):
         [
             ("Rango de cointegración", rank),
             ("Observaciones", mts.n),
-            ("Log-verosimilitud", float(result.llf)),
+            ("Log-verosimilitud", float(np.real(result.llf))),
             ("Rezagos en diferencias", lags),
         ]
     )
@@ -628,7 +628,7 @@ def _vecm(frame: pd.DataFrame, roles: dict[str, Any], p: dict[str, Any]):
             [[future[s], *(float(point[s, i]) for i in range(k))] for s in range(steps_f)],
         )
     return out.set(
-        rank=rank, llf=float(result.llf), alpha=(alpha_load * scale).tolist(), beta=(beta / scale).tolist()
+        rank=rank, llf=float(np.real(result.llf)), alpha=(alpha_load * scale).tolist(), beta=(beta / scale).tolist()
     ).build()
 
 

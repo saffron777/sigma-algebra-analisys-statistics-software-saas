@@ -29,6 +29,8 @@ AREA_MODULES = (
     "sigma.domain.analysis.multivariate",
     "sigma.domain.analysis.multivariate_groups",
     "sigma.domain.analysis.anova_advanced",
+    "sigma.domain.analysis.ml_models",
+    "sigma.domain.analysis.ml_tools",
 )
 
 _SPECS: dict[str, dict[str, AnalysisSpec]] = {}

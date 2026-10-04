@@ -51,6 +51,11 @@ def standard_frame(n: int = 240, seed: int = 7) -> pd.DataFrame:
         stay = 0.95
         regime[i] = regime[i - 1] if rng.uniform() < stay else 1 - regime[i - 1]
     switching = np.where(regime == 0, 1.0, 5.0) + rng.normal(0, np.where(regime == 0, 0.7, 1.4))
+    # a model's predictions, drawn last: ``g`` with 20 % of the labels scrambled, a score for ``b``, a guess of ``y``
+    scrambled = rng.uniform(size=n) < 0.2
+    predicted_group = np.where(scrambled, rng.choice(["A", "B", "C"], n), group)
+    score_b = np.clip(probability + rng.normal(0, 0.15, n), 0.01, 0.99)
+    predicted_y = y + rng.normal(0, 1.5, n) + 0.3
     return pd.DataFrame(
         {
             "y": y,
@@ -76,6 +81,9 @@ def standard_frame(n: int = 240, seed: int = 7) -> pd.DataFrame:
             "yp": 1.5 * x1 + entity_effect + rng.normal(0, 1.0, n),  # panel response with an entity effect
             "ret": returns,  # GARCH(1,1) returns
             "rg": switching,  # a series with two regimes
+            "ps": predicted_group,  # predicted group (≈ 87 % right)
+            "pb": score_b,  # predicted probability that b = 1
+            "py": predicted_y,  # predicted y (error sd 1.5, bias 0.3)
         }
     )
 
