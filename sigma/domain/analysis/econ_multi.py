@@ -552,8 +552,8 @@ def _vecm(frame: pd.DataFrame, roles: dict[str, Any], p: dict[str, Any]):
         ],
         note=f"Rango sugerido por la prueba: {selection.rank}" + (f"; usted indicó {rank}." if p["rank"] else "."),
     )
-    beta = np.asarray(result.beta)
-    alpha_load = np.asarray(result.alpha)
+    beta = np.real(np.asarray(result.beta))
+    alpha_load = np.real(np.asarray(result.alpha))
     scale = beta[0, :]
     out.table(
         "Relación de largo plazo (β, normalizada con la primera serie)",

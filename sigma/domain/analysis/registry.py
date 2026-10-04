@@ -26,6 +26,8 @@ AREA_MODULES = (
     "sigma.domain.analysis.models_more",
     "sigma.domain.analysis.econ_multi",
     "sigma.domain.analysis.econ_models",
+    "sigma.domain.analysis.multivariate",
+    "sigma.domain.analysis.multivariate_groups",
     "sigma.domain.analysis.anova_advanced",
 )
 
