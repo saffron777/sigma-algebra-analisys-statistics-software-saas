@@ -303,6 +303,9 @@ SVG (marca completa, variante compacta para favicons y marca con texto), PNG (51
 Arquitectura limpia: `presentation → application → domain` e `infrastructure → application/domain`. Detalle y
 decisiones en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+¿Vienes de Minitab, SPSS o EViews? [docs/EQUIVALENCIAS.md](docs/EQUIVALENCIAS.md) dice dónde está en Sigma cada análisis conocido
+(y qué falta todavía).
+
 ```
 sigma/
   domain/           estadística pura (numpy/scipy/statsmodels), entidades y errores; sin Flask ni E/S

@@ -220,6 +220,19 @@ Los módulos «de catálogo» (`/transformar`, `/graficos`, `/potencia`, `/remue
   bloques `heading/tiles/table/text/alert/chart`, datasets ofrecidos y cifras para IA/guardado), sin Plotly; los gráficos se
   describen con los constructores de `charts.py`. Un área = un módulo Python (`power.py`, `series.py`…) que llama a
   `registry.register(...)` y se añade a `AREA_MODULES`.
+- **Áreas y archivos** (`AREA_MODULES` de `registry.py`): transformar = `transform.py`, `recoding.py`, `datamanagement.py`, `cleaning.py`
+  (+ `expressions.py`, `support.py`) · gráficos = `plots.py` · pruebas = `pruebas.py` · potencia = `power.py`, `power_designs.py` · remuestreo =
+  `remuestreo.py` · modelos = `modeling.py`, `models.py`, `models_more.py` · ANOVA avanzado = `anova_advanced.py` · series = `ts_core.py`,
+  `series.py`, `series_explore.py`, `series_models.py` · econometría = `econ_multi.py`, `econ_models.py` · multivariado = `multivariate.py`,
+  `multivariate_groups.py` · aprendizaje = `ml_core.py`, `ml_algorithms.py`, `ml_models.py`, `ml_tools.py`.
+- **Motor de aprendizaje** (`ml_core.py`): todos los modelos supervisados pasan por `run_supervised`, de modo que se evalúan igual. Prepara el
+  problema (`build_problem`: tipo de tarea, variables numéricas y categóricas, filas sin objetivo para predecir), arma un `Pipeline` por
+  modelo (imputación, estandarización y codificación **dentro** de cada pliegue, sin fuga), reserva una partición de prueba, valida de forma
+  cruzada junto a una línea base con los **mismos pliegues** (`cross_validate`), y escribe el informe común (desempeño, matriz de confusión, ROC
+  con IC de DeLong, residuos, importancia por permutación, predicciones fuera de muestra). Un modelo es un `Algorithm` (`ml_algorithms.py`:
+  constructor, ajustes por omisión y espacio de búsqueda); las pantallas de cada modelo (`ml_models.py`) añaden solo lo propio (reglas y dibujo
+  del árbol, OOB, curva por iteración…), y comparar, ajustar, curva de aprendizaje y dependencia parcial (`ml_tools.py`) reutilizan los mismos
+  `Algorithm` y pliegues. `tests/unit/domain/test_learning.py` contrasta con `cross_val_score`, `GridSearchCV` y `partial_dependence`.
 - **Aplicación**: `RunAnalysis` valida, ejecuta mediante el puerto `AnalysisRunner`, comprueba las salidas y guarda los datasets
   pedidos (`save_as`, o `replace` para sustituir el original); `ListAnalyses` y `GetAnalysisCode` completan el catálogo.
 - **Infraestructura** `compute/process_runner.py`: los análisis `heavy=True` corren en un **proceso aparte** (`spawn`) con tiempo

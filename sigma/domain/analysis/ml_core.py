@@ -933,8 +933,8 @@ def importance_section(out: Output, ev: Evaluation, repeats: int = 5) -> dict[st
     out.chart(
         bar_chart(
             "Importancia por permutación",
+            f"Pérdida de {label} al desordenar la variable",
             None,
-            f"Pérdida de {label}",
             [names[i] for i in top][::-1],
             [{"name": "Importancia", "y": [float(result.importances_mean[i]) for i in top][::-1]}],
             horizontal=True,
