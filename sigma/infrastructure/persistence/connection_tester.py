@@ -18,7 +18,7 @@ from sigma.domain.database import (
 from sigma.domain.errors import InvalidInputError
 from sigma.infrastructure.database_errors import explain_driver_error
 from sigma.infrastructure.persistence.database_settings import ENGINES, DatabaseSettings, driver_available
-from sigma.infrastructure.persistence.sql.engine import build_engine
+from sigma.infrastructure.persistence.sql.engine import build_engine, ensure_database
 
 _VERSION_SQL = {
     "sqlite": "SELECT sqlite_version()",
@@ -52,6 +52,7 @@ class ConnectionTester:
         steps: list[CheckStep] = [CheckStep("Controlador", True, str(meta["package"] or "incluido en Python"))]
         engine = build_engine(dataclasses.replace(settings, schema=""), connect_timeout=self._timeout)
         try:
+            ensure_database(settings, connect_timeout=self._timeout)
             with engine.connect() as conn:
                 conn.execute(text(_PING_SQL.get(settings.engine, "SELECT 1")))
                 version = self._version(conn, settings)

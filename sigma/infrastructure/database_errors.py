@@ -7,8 +7,15 @@ import re
 # (regular expression over the driver's message, explanation) — first match wins
 _ERRORS: dict[str, list[tuple[str, str]]] = {
     "mssql": [
+        (
+            r"4060|Cannot open database|Failed to open the explicitly specified database",
+            "La base de datos no existe o el usuario no tiene acceso a ella.",
+        ),
+        (
+            r"CREATE DATABASE permission denied",
+            "El usuario no tiene permiso para crear la base de datos en este servidor.",
+        ),
         (r"18456|Login failed", "El servidor rechazó el usuario o la contraseña."),
-        (r"4060|Cannot open database", "La base de datos no existe o el usuario no tiene acceso a ella."),
         (
             r"certificate verify failed|certificate chain|SSL Provider",
             "El certificado TLS del servidor no es de confianza. "

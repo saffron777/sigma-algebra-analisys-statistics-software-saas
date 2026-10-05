@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import sqlite3
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -61,11 +62,78 @@ def build_engine(settings: DatabaseSettings, connect_timeout: int = 15) -> Engin
     return engine
 
 
+def ensure_database(settings: DatabaseSettings, connect_timeout: int = 15) -> None:
+    """Create the target database when it does not exist yet.
+
+    SQLite creates its file implicitly and MongoDB its collections, so only the
+    engines with an explicit ``CREATE DATABASE`` step need this. Oracle is left
+    out on purpose: its ``database`` is a service/PDB that a regular connection
+    cannot create.
+    """
+    if settings.engine == "mssql":
+        _ensure_mssql_database(settings, connect_timeout)
+    elif settings.engine == "mysql":
+        _ensure_mysql_database(settings, connect_timeout)
+    elif settings.engine == "postgresql":
+        _ensure_postgresql_database(settings, connect_timeout)
+
+
+def _safe_identifier(name: str) -> str:
+    """Remove the quoting characters every engine could otherwise interpret, so the name stays one identifier."""
+    return name.replace("[", "").replace("]", "").replace('"', "").replace("'", "").replace("`", "")
+
+
+def _ensure_mssql_database(settings: DatabaseSettings, connect_timeout: int) -> None:
+    """Create the SQL Server database when it is missing, connecting to ``master`` first."""
+    safe = _safe_identifier(settings.database)
+    if not safe:
+        return
+    admin = dataclasses.replace(settings, database="master", schema="")
+    engine = build_engine(admin, connect_timeout=connect_timeout)
+    try:
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            conn.execute(text(f"IF DB_ID(N'{safe}') IS NULL CREATE DATABASE [{safe}]"))
+    finally:
+        engine.dispose()
+
+
+def _ensure_mysql_database(settings: DatabaseSettings, connect_timeout: int) -> None:
+    """Create the MySQL/MariaDB database when it is missing, connecting without a default schema."""
+    safe = _safe_identifier(settings.database)
+    if not safe:
+        return
+    admin = dataclasses.replace(settings, database=None, schema="")
+    engine = build_engine(admin, connect_timeout=connect_timeout)
+    try:
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            conn.execute(text(f"CREATE DATABASE IF NOT EXISTS `{safe}` CHARACTER SET utf8mb4"))
+    finally:
+        engine.dispose()
+
+
+def _ensure_postgresql_database(settings: DatabaseSettings, connect_timeout: int) -> None:
+    """Create the PostgreSQL database when it is missing, connecting to ``postgres`` first."""
+    safe = _safe_identifier(settings.database)
+    if not safe:
+        return
+    admin = dataclasses.replace(settings, database="postgres", schema="")
+    engine = build_engine(admin, connect_timeout=connect_timeout)
+    try:
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            exists = conn.execute(text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": safe}).scalar()
+            if not exists:
+                conn.execute(text(f'CREATE DATABASE "{safe}"'))
+    finally:
+        engine.dispose()
+
+
 class Database:
     """A connection source plus the schema it carries. ``Database(path)`` is a SQLite file (handy in tests)."""
 
     def __init__(self, target: DatabaseSettings | str | Path, *, ensure: bool = True) -> None:
         self.settings = target if isinstance(target, DatabaseSettings) else DatabaseSettings.sqlite(target)
+        if ensure:
+            ensure_database(self.settings)
         self.engine = build_engine(self.settings)
         self.dialect: str = self.engine.dialect.name
         if ensure:

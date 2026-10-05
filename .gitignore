@@ -8,3 +8,7 @@ instance/
 .env
 sigma/presentation/web/static/vendor/
 sigma/presentation/web/static/css/app.css
+sample_data/ventas.csv
+sample_data/encuesta.csv
+sample_data/analisis_demo.ipynb
+sample_data/marco_muestral.csv

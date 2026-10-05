@@ -60,13 +60,46 @@ def test_a_wrong_password_is_explained(backend, tester):
     assert not report.ok and "contraseña" in report.message and "clave-incorrecta-xyz" not in report.message
 
 
-def test_a_missing_database_is_explained(backend, tester):
+_AUTO_CREATE = {"mssql", "mysql", "postgresql"}
+
+
+def test_a_missing_database_is_created_or_explained(backend, tester):
     settings = backend.settings
     if settings.is_sqlite or settings.engine == "mongodb":
         pytest.skip("not applicable")
+    if settings.engine in _AUTO_CREATE:
+        # Sigma crea la base de datos automáticamente cuando no existe.
+        name = "sigma_no_existe_xyz"
+        target = dataclasses.replace(settings, database=name)
+        report = tester.test(target)
+        assert report.ok and report.state == STATE_EMPTY
+        _drop_database(target)
+        return
     report = tester.test(dataclasses.replace(settings, database="no_existe_sigma_xyz"))
     assert not report.ok
     assert any(word in report.message.lower() for word in ("no existe", "servicio", "acceso", "rechaz"))
+
+
+def _drop_database(settings) -> None:
+    """Elimina la base de datos creada por la prueba (motores con CREATE/DROP DATABASE)."""
+    from sqlalchemy import text
+
+    from sigma.infrastructure.persistence.sql.engine import build_engine
+
+    safe = settings.database.replace("[", "").replace("]", "").replace('"', "").replace("'", "").replace("`", "")
+    admin_db = {"mssql": "master", "postgresql": "postgres"}.get(settings.engine)  # mysql -> None (sin esquema)
+    admin = dataclasses.replace(settings, database=admin_db, schema="")
+    engine = build_engine(admin)
+    try:
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            if settings.engine == "mssql":
+                conn.execute(text(f"IF DB_ID(N'{safe}') IS NOT NULL DROP DATABASE [{safe}]"))
+            elif settings.engine == "mysql":
+                conn.execute(text(f"DROP DATABASE IF EXISTS `{safe}`"))
+            elif settings.engine == "postgresql":
+                conn.execute(text(f'DROP DATABASE IF EXISTS "{safe}"'))
+    finally:
+        engine.dispose()
 
 
 def test_an_unreachable_server_is_explained(backend, tester):
