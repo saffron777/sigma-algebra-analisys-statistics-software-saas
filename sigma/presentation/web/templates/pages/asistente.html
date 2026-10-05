@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import icon %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/asistente.js') }}"></script>{% endblock %}
+
+{% block content %}
+<div x-data="assistantPage" class="mx-auto max-w-2xl space-y-5">
+  <section class="card">
+    <div class="card-header"><h2 class="card-title">¿Qué análisis debo usar?</h2></div>
+    <div class="card-body space-y-4">
+      <div>
+        <label class="label" for="asistente-goal">¿Qué quieres hacer?</label>
+        <select id="asistente-goal" class="input" x-model="goal" @change="recommend()">
+          <option value="">Elige una opción…</option>
+          <template x-for="g in goals" :key="g.id"><option :value="g.id" x-text="g.label"></option></template>
+        </select>
+      </div>
+      <div>
+        <label class="label" for="asistente-primary">Tu variable principal es…</label>
+        <select id="asistente-primary" class="input" x-model="primary" @change="recommend()">
+          <option value="">Elige una opción…</option>
+          <template x-for="k in kinds" :key="k.id"><option :value="k.id" x-text="k.label"></option></template>
+        </select>
+      </div>
+      <div x-show="goal === 'relacionar'" x-cloak>
+        <label class="label" for="asistente-secondary">La segunda variable es… (opcional)</label>
+        <select id="asistente-secondary" class="input" x-model="secondary" @change="recommend()">
+          <option value="">Elige una opción…</option>
+          <template x-for="k in kinds" :key="k.id"><option :value="k.id" x-text="k.label"></option></template>
+        </select>
+      </div>
+      <p class="text-sm text-slate-500">Responde a la pregunta y Sigma te sugiere el análisis más adecuado.</p>
+    </div>
+  </section>
+
+  <section class="card" x-show="recommendation" x-cloak aria-live="polite">
+    <div class="card-header"><h2 class="card-title">Te recomendamos</h2></div>
+    <div class="card-body space-y-3">
+      <a class="btn btn-primary" :href="recommendation.href">
+        {{ icon("arrow", "size-4") }} <span x-text="recommendation.label"></span>
+      </a>
+      <p class="text-sm text-slate-500" x-text="recommendation.reason"></p>
+    </div>
+  </section>
+</div>
+{% endblock %}

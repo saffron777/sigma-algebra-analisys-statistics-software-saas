@@ -17,12 +17,12 @@ from sigma.presentation.web.security import init_security
 from sigma.presentation.web.switching import ContainerSwitcher
 
 NAV_GROUPS = (
-    ("Datos", ("home", "datos", "transformar", "graficos", "resultados", "plantillas")),
+    ("Datos", ("home", "asistente", "datos", "transformar", "graficos", "resultados", "plantillas")),
     (
         "Estadística básica",
-        ("descriptiva", "distribuciones", "hipotesis", "pruebas", "potencia", "remuestreo", "mercados"),
+        ("descriptiva", "distribuciones", "hipotesis", "pruebas", "potencia", "remuestreo", "mercados", "encuestas", "calidad"),
     ),
-    ("Modelos", ("regresion", "modelos", "anova", "anova_avanzado")),
+    ("Modelos", ("regresion", "modelos", "anova", "anova_avanzado", "supervivencia", "sem", "doe", "optimizacion")),
     ("Series y econometría", ("series", "econometria")),
     ("Multivariado y ciencia de datos", ("multivariado", "aprendizaje")),
     ("Programación", ("consola",)),

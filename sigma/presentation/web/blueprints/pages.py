@@ -14,6 +14,7 @@ bp = Blueprint("pages", __name__)
 
 PAGES = {
     "home": ("/", "Inicio", "pages/home.html"),
+    "asistente": ("/asistente", "Asistente: ¿qué análisis usar?", "pages/asistente.html"),
     "datos": ("/datos", "Datos", "pages/datos.html"),
     "descriptiva": ("/descriptiva", "Estadística descriptiva", "pages/descriptiva.html"),
     "distribuciones": ("/distribuciones", "Distribuciones", "pages/distribuciones.html"),

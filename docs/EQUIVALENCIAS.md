@@ -1,12 +1,14 @@
-# Equivalencias: de Minitab, SPSS y EViews a Sigma
+# Equivalencias: de Minitab, SPSS, EViews y SAS a Sigma
 
 Esta guía responde «¿dónde está en Sigma lo que yo hacía en…?». Cada fila nombra la ruta del programa de origen y la página y el análisis de
 Sigma. Los análisis de las páginas de catálogo (`/transformar`, `/graficos`, `/pruebas`, `/potencia`, `/remuestreo`, `/modelos`,
-`/anova-avanzado`, `/series`, `/econometria`, `/multivariado`, `/aprendizaje`) se eligen en la lista de la izquierda de cada página; todos
-tienen el botón **Ver código** (Python equivalente, el mismo `sigma.load(...)` de la consola) y pueden guardar columnas nuevas como dataset.
+`/anova-avanzado`, `/series`, `/econometria`, `/multivariado`, `/aprendizaje`, `/supervivencia`, `/calidad`, `/encuestas`) se eligen en la
+lista de la izquierda de cada página; todos tienen el botón **Ver código** (Python equivalente, el mismo `sigma.load(...)` de la consola) y
+pueden guardar columnas nuevas como dataset.
 
 Convenciones: **M** = Minitab (menú *Stat*, *Calc*, *Graph*, *Data*), **S** = SPSS (menú *Analizar*, *Datos*, *Transformar*, *Gráficos*),
-**E** = EViews. «Página › Análisis» es la ruta dentro de Sigma. Lo que aún no existe está al final, en [Lo que falta](#lo-que-falta).
+**E** = EViews. «Página › Análisis» es la ruta dentro de Sigma. Los módulos que corresponden a SAS se listan en
+[Módulos añadidos de SAS](#modulos-anadidos-de-sas); lo que aún no existe está al final, en [Lo que falta](#lo-que-falta).
 
 ## Datos: preparar y transformar (`/transformar`)
 
@@ -140,14 +142,31 @@ Convenciones: **M** = Minitab (menú *Stat*, *Calc*, *Graph*, *Data*), **S** = S
 | Curva ROC | Stat › ROC Curve | Analizar › Curva COR | — | Modelos › Regresión logística · Aprendizaje (cada clasificador) · Evaluar predicciones existentes (con IC de DeLong) |
 | Dependencia parcial | Partial Dependence Plot | — | — | Aprendizaje › Dependencia parcial y curvas ICE |
 
+## Módulos añadidos de SAS
+
+Además de lo que ya cubren las tablas (SAS/STAT descriptivo e inferencia, `PROC GLM/REG/LOGISTIC/FACTOR/CLUSTER/ARIMA/VAR`…, y SAS
+Enterprise Miner en `/aprendizaje`), Sigma añadió estos módulos típicos de SAS:
+
+| Módulo SAS | PROC | Página de Sigma |
+|---|---|---|
+| Supervivencia y confiabilidad | `LIFETEST`, `PHREG`, `LIFEREG`, `RELIABILITY` | `/supervivencia` — Kaplan-Meier + log-rank (Wilcoxon, Tarone-Ware), Cox y paramétrico (Weibull, exponencial, log-normal, log-logística) con censura |
+| Control estadístico de procesos | `SHEWHART`, `CAPABILITY`, `CUSUM` | `/calidad` — cartas I-MR, X̄-R, X̄-S, CUSUM y EWMA; capacidad Cp/Cpk/Pp/Ppk y PPM |
+| Modelos aditivos y de reducción | `GAM`, `PLS` | `/modelos` — modelo aditivo generalizado (GAM) y mínimos cuadrados parciales (PLS) |
+| Categóricos | `CATMOD` | `/modelos` — modelo loglineal para tablas de contingencia |
+| Cópulas | `COPULA` | `/econometria` — Gaussiana, Clayton, Gumbel y Frank, con τ de Kendall y dependencia de colas |
+| Regresión de encuestas | `SURVEYREG`, `SURVEYLOGISTIC` | `/encuestas` — regresión lineal y logística con pesos muestrales |
+| Diseño de experimentos | `FACTEX`, `RSREG` | `/doe` — factoriales 2^k y superficie de respuesta (compuesto central) |
+| Optimización | `OPTMODEL`, `LP`, `MILP` | `/optimizacion` — programación lineal y entera con restricción de presupuesto |
+| Ecuaciones estructurales (rutas) | `CALIS` | `/sem` — análisis de rutas sobre variables observadas (coeficientes de ruta estandarizados) |
+
 ## Lo que falta
 
 Sigma no cubre (todavía) estas áreas de los programas de origen; están en la hoja de ruta:
 
-- **Calidad industrial (Minitab):** cartas de control (I-MR, X̄-R/S, P, NP, C, U, CUSUM, EWMA), capacidad del proceso, Gage R&R y acuerdo de atributos, muestreo de aceptación.
-- **Diseño de experimentos (Minitab):** factoriales completos y fraccionados, Plackett-Burman, superficie de respuesta, mezclas, Taguchi.
-- **Supervivencia y confiabilidad (Minitab, SPSS):** Kaplan-Meier, log-rank, Cox, Weibull y distribuciones con censura, tablas de vida.
-- **Muestras complejas y análisis de valores perdidos (SPSS):** diseños de encuesta complejos, prueba de Little, EM.
-- **Otros modelos:** mínimos cuadrados parciales (PLS), MARS, regresión ortogonal, GAM, modelos loglineales, conjoint.
-- **Econometría avanzada (EViews):** GMM, VAR bayesiano, MIDAS, proyecciones locales, DSGE, ajuste estacional X-13.
+- **Calidad industrial (Minitab/SAS-QC):** Gage R&R y acuerdo de atributos, muestreo de aceptación (cartas de control y capacidad ya están en `/calidad`).
+- **Modelos de ecuaciones estructurales SEM (SAS `PROC CALIS`, SPSS AMOS):** el análisis de rutas ya está en `/sem`; faltan el análisis factorial confirmatorio (AFC) y el SEM con variables latentes (requieren `semopy`).
+- **Muestras complejas (SPSS/SAS):** prueba de Little, EM, y la corrección de conglomerados en la varianza de la regresión de encuestas (hoy se pondera sin corregir por conglomerados).
+- **Otros modelos:** MARS, regresión ortogonal, conjoint (PLS, GAM y loglineales ya están en `/modelos`).
+- **Econometría avanzada (EViews/SAS-ETS):** GMM, VAR bayesiano, MIDAS, proyecciones locales, DSGE, ajuste estacional X-13 (cópulas ya están en `/econometria`).
+- **Geoestadística y Bayes (SAS):** `PROC KRIGE2D`, `PROC VARIOGRAM`, `PROC MCMC`.
 - **Asistente guiado** «qué prueba debo usar».

@@ -56,6 +56,11 @@ def standard_frame(n: int = 240, seed: int = 7) -> pd.DataFrame:
     predicted_group = np.where(scrambled, rng.choice(["A", "B", "C"], n), group)
     score_b = np.clip(probability + rng.normal(0, 0.15, n), 0.01, 0.99)
     predicted_y = y + rng.normal(0, 1.5, n) + 0.3
+    # survival: time-to-event (higher x1 -> longer survival) with ~censoring
+    event_time = rng.exponential(scale=np.exp(2.6 - 0.08 * x1), size=n) + 1
+    censor_time = rng.uniform(6, 45, size=n)
+    tm = np.minimum(event_time, censor_time)
+    ev = (event_time <= censor_time).astype(int)
     return pd.DataFrame(
         {
             "y": y,
@@ -84,6 +89,8 @@ def standard_frame(n: int = 240, seed: int = 7) -> pd.DataFrame:
             "ps": predicted_group,  # predicted group (≈ 87 % right)
             "pb": score_b,  # predicted probability that b = 1
             "py": predicted_y,  # predicted y (error sd 1.5, bias 0.3)
+            "tm": tm,  # survival time-to-event (with censoring)
+            "ev": ev,  # event indicator (1 = event, 0 = censored)
         }
     )
 

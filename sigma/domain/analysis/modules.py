@@ -107,6 +107,55 @@ CATALOG_MODULES: tuple[ModuleDef, ...] = (
         "tamaño de muestra).",
     ),
     ModuleDef(
+        "supervivencia",
+        "Supervivencia y confiabilidad",
+        "/supervivencia",
+        "Kaplan-Meier con comparación de grupos, regresión de Cox y modelos paramétricos con censura.",
+        "Interpreta la curva de supervivencia y su mediana, las diferencias entre grupos (log-rank), las razones de "
+        "riesgo del modelo de Cox y los parámetros del modelo paramétrico; señala la censura y los supuestos "
+        "(riesgos proporcionales).",
+    ),
+    ModuleDef(
+        "calidad",
+        "Control de calidad (SPC)",
+        "/calidad",
+        "Cartas de control de Shewhart (I-MR, X̄-R, X̄-S), CUSUM/EWMA y capacidad del proceso (Cp, Cpk, Pp, Ppk).",
+        "Interpreta si el proceso está bajo control estadístico (puntos fuera de los límites o patrones), la "
+        "capacidad frente a las especificaciones (Cp, Cpk) y la fracción esperada fuera de especificación.",
+    ),
+    ModuleDef(
+        "encuestas",
+        "Regresión de encuestas",
+        "/encuestas",
+        "Regresión lineal y logística con pesos muestrales (SURVEYREG y SURVEYLOGISTIC).",
+        "Interpreta los coeficientes (y odds ratios) del modelo ponderado, su significancia y su ajuste, señalando "
+        "el papel de los pesos muestrales y las limitaciones del diseño.",
+    ),
+    ModuleDef(
+        "doe",
+        "Diseño de experimentos",
+        "/doe",
+        "Diseños factoriales 2^k y superficie de respuesta (compuesto central), con análisis de la respuesta.",
+        "Interpreta qué factores e interacciones son significativos, la magnitud de sus efectos y la calidad del "
+        "ajuste del modelo (R²), señalando la estructura del diseño (codificación ±1, corridas centrales y axiales).",
+    ),
+    ModuleDef(
+        "optimizacion",
+        "Optimización (SAS/OR)",
+        "/optimizacion",
+        "Programación lineal y entera: asignación óptima de recursos con una restricción de presupuesto.",
+        "Interpreta el valor objetivo alcanzado, qué elementos se seleccionan y en qué cantidad, el recurso "
+        "consumido y la holgura, y contrasta la solución entera con la continua cuando aplica.",
+    ),
+    ModuleDef(
+        "sem",
+        "Ecuaciones estructurales",
+        "/sem",
+        "Análisis de rutas (path analysis) sobre variables observadas con coeficientes de ruta estandarizados.",
+        "Interpreta las relaciones directas entre variables (coeficientes de ruta β), su significancia y el R² de "
+        "cada ecuación, señalando que es un modelo recursivo sobre variables observadas (sin variables latentes).",
+    ),
+    ModuleDef(
         "aprendizaje",
         "Aprendizaje automático",
         "/aprendizaje",
