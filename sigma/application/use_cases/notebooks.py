@@ -29,8 +29,8 @@ class CreateNotebook:
     def __init__(self, store: NotebookStore) -> None:
         self._store = store
 
-    def execute(self, name: str | None) -> NotebookDocument:
-        return self._store.create(clean_notebook_name(name))
+    def execute(self, name: str | None, language: str = "python") -> NotebookDocument:
+        return self._store.create(clean_notebook_name(name), language=language)
 
 
 class ImportNotebook:
@@ -80,6 +80,15 @@ def kernel_key(owner: str, notebook_id: str) -> str:
     return f"{owner}:{notebook_id}"
 
 
+def kernel_name_for(language: str) -> str:
+    """The Jupyter kernelspec name for a notebook language."""
+    return "ir" if language == "r" else "python3"
+
+
+def notebook_language(document: NotebookDocument) -> str:
+    return (document.metadata.get("sigma") or {}).get("language", "python")
+
+
 class DeleteNotebook:
     def __init__(self, store: NotebookStore, executor: CodeExecutor, owner: str) -> None:
         self._store = store
@@ -110,13 +119,14 @@ class ExecuteCode:
         self._owner = owner
 
     def execute(self, notebook_id: str, code: str, timeout_seconds: float | None = None) -> ExecutionResult:
-        self._store.get(notebook_id)  # fails with NotebookNotFoundError for unknown ids
+        document = self._store.get(notebook_id)  # fails with NotebookNotFoundError for unknown ids
         if len(code) > MAX_CODE_LENGTH:
             raise InvalidInputError("El código supera el tamaño máximo permitido.")
         timeout = float(timeout_seconds or self._default_timeout)
         if not 1 <= timeout <= MAX_TIMEOUT_SECONDS:
             raise InvalidInputError(f"El tiempo máximo debe estar entre 1 y {MAX_TIMEOUT_SECONDS} segundos.")
-        return self._executor.execute(kernel_key(self._owner, notebook_id), code, timeout, self._owner)
+        kernel = kernel_name_for(notebook_language(document))
+        return self._executor.execute(kernel_key(self._owner, notebook_id), code, timeout, self._owner, kernel)
 
 
 class ControlKernel:
@@ -132,15 +142,18 @@ class ControlKernel:
         return kernel_key(self._owner, notebook_id)
 
     def start(self, notebook_id: str) -> KernelStatus:
-        key = self._key(notebook_id)
-        self._executor.start(key, self._owner)
+        document = self._store.get(notebook_id)
+        key = kernel_key(self._owner, notebook_id)
+        self._executor.start(key, self._owner, kernel_name_for(notebook_language(document)))
         return self._executor.status(key)
 
     def interrupt(self, notebook_id: str) -> None:
         self._executor.interrupt(self._key(notebook_id))
 
     def restart(self, notebook_id: str) -> None:
-        self._executor.restart(self._key(notebook_id), self._owner)
+        document = self._store.get(notebook_id)
+        key = kernel_key(self._owner, notebook_id)
+        self._executor.restart(key, self._owner, kernel_name_for(notebook_language(document)))
 
     def status(self, notebook_id: str) -> KernelStatus:
         return self._executor.status(self._key(notebook_id))

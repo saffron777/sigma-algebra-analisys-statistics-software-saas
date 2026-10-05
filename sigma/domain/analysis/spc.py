@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import numpy as np
@@ -21,7 +22,10 @@ GROUP_CAPABILITY = "Capacidad del proceso"
 
 MEASURE = RoleSpec("measure", "Mediciones", "numeric", help="La variable que se mide en cada observación o subgrupo.")
 SUBGROUP = RoleSpec("subgroup", "Subgrupo (opcional)", "categorical", optional=True, help="Si se elige, cada valor agrupa las mediciones de un subgrupo.")
+PART = RoleSpec("part", "Pieza (o unidad)", "categorical", help="La pieza o unidad medida (fuente de variación entre piezas).")
+OPERATOR = RoleSpec("operator", "Operador (o instrumento)", "categorical", help="Quién (o con qué) se midió: fuente de variación entre operadores.")
 ALPHA = FieldSpec("alpha", "Nivel de significancia α", "number", 0.05, minimum=0.001, maximum=0.5)
+TOLERANCE = FieldSpec("tolerance", "Tolerancia de especificación (opcional)", "number", optional=True, minimum=0.0001, help="USL − LSL; con ella se calcula el %GRR sobre la tolerancia.")
 
 _CHARTS = (
     ("imr", "Individual y rango móvil (I-MR)"),
@@ -315,6 +319,102 @@ def _capability_code(roles: dict[str, Any], p: dict[str, Any], dataset: str) -> 
     )
 
 
+# ============================================================================ gage R&R
+GROUP_MSA = "Sistema de medición"
+
+
+def _gage_rr(frame: pd.DataFrame, roles: dict[str, Any], p: dict[str, Any]):
+    data = pd.DataFrame(
+        {
+            "x": pd.to_numeric(frame[roles["measure"]], errors="coerce"),
+            "part": frame[roles["part"]].astype(str),
+            "op": frame[roles["operator"]].astype(str),
+        }
+    ).dropna()
+    if len(data) < 6:
+        raise InvalidInputError("Se necesitan al menos 6 mediciones completas.")
+    n_parts = data["part"].nunique()
+    n_ops = data["op"].nunique()
+    if n_parts < 2 or n_ops < 2:
+        raise InvalidInputError("Se necesitan al menos 2 piezas y 2 operadores.")
+    cells = data.groupby(["part", "op"])["x"]
+    sizes = cells.size()
+    r = int(round(sizes.mean()))
+    balanced = bool((sizes == r).all())
+
+    grand = float(data["x"].mean())
+    ss_part = float(sum(len(g) * (g["x"].mean() - grand) ** 2 for _, g in data.groupby("part")))
+    ss_op = float(sum(len(g) * (g["x"].mean() - grand) ** 2 for _, g in data.groupby("op")))
+    ss_cell = float(sum(len(g) * (g.mean() - grand) ** 2 for _, g in cells))
+    ss_interaction = ss_cell - ss_part - ss_op
+    ss_error = float(sum(((g - g.mean()) ** 2).sum() for _, g in cells))
+
+    df_part = n_parts - 1
+    df_op = n_ops - 1
+    df_int = df_part * df_op
+    df_error = len(data) - n_parts * n_ops
+    if df_error < 1:
+        raise InvalidInputError("Se necesitan réplicas: más de una medición por pieza y operador.")
+
+    ms_part = ss_part / df_part
+    ms_op = ss_op / df_op
+    ms_int = ss_interaction / df_int if df_int > 0 else 0.0
+    ms_error = ss_error / df_error
+    f_int = ms_int / ms_error if ms_error > 0 else float("inf")
+    p_int = float(stats.f.sf(f_int, df_int, df_error)) if ms_error > 0 else 1.0
+
+    if p_int < 0.25:  # interacción significativa (criterio AIAG)
+        var_interaction = max((ms_int - ms_error) / r, 0.0)
+        var_repeatability = ms_error
+        var_operator = max((ms_op - ms_int) / (n_parts * r), 0.0)
+    else:
+        var_interaction = 0.0
+        var_repeatability = ms_error
+        var_operator = max((ms_op - ms_error) / (n_parts * r), 0.0)
+    var_part = max((ms_part - ms_int) / (n_ops * r), 0.0)
+
+    ev = 5.15 * math.sqrt(var_repeatability)
+    av = 5.15 * math.sqrt(var_operator)
+    grr = math.sqrt(ev**2 + av**2)
+    pv = 5.15 * math.sqrt(var_part)
+    tv = math.sqrt(grr**2 + pv**2)
+    percent_grr = 100 * grr / tv if tv > 0 else 0.0
+    ndc = int(1.41 * pv / grr) if grr > 0 else 99
+
+    out = Output("Estudio R&R (sistema de medición)", f"{n_parts} piezas × {n_ops} operadores × {r} réplica(s)")
+    out.tiles(
+        [
+            ("%GRR (de la variación total)", percent_grr),
+            ("ndc (categorías distintas)", ndc),
+            ("Repetibilidad (EV)", ev),
+            ("Reproducibilidad (AV)", av),
+        ]
+    )
+    tolerance = p.get("tolerance")
+    if tolerance:
+        out.tiles([("%GRR (de la tolerancia)", 100 * grr / tolerance)])
+    verdict = "aceptable" if percent_grr < 10 else "marginal" if percent_grr <= 30 else "inaceptable"
+    out.alert(
+        "success" if percent_grr < 10 else "warning" if percent_grr <= 30 else "danger",
+        f"Sistema de medición {verdict} (%GRR = {percent_grr:.1f} %).",
+    )
+    out.table(
+        "Componentes de varianza",
+        ["Fuente", "Varianza (σ²)", "Desviación (5.15σ)", "% de la variación total"],
+        [
+            ["Repetibilidad (equipo)", var_repeatability, ev, 100 * ev / tv if tv > 0 else None],
+            ["Reproducibilidad (operadores)", var_operator, av, 100 * av / tv if tv > 0 else None],
+            ["GRR total", var_repeatability + var_operator, grr, percent_grr],
+            ["Piezas", var_part, pv, 100 * pv / tv if tv > 0 else None],
+            ["Variación total", var_repeatability + var_operator + var_part, tv, 100.0],
+        ],
+        note="5.15σ cubre el 99 % de la variación. ndc < 5 indica que el sistema no distingue bien las piezas.",
+    )
+    if not balanced:
+        out.alert("info", "Diseño no balanceado (distinto número de réplicas por celda): se usa el número medio de réplicas.")
+    return out.set(percent_grr=percent_grr, ndc=ndc, ev=ev, av=av, grr=grr, pv=pv, tv=tv).build()
+
+
 # ============================================================================ catalogue
 def _spec(id_: str, label: str, group: str, description: str, compute, **kw) -> AnalysisSpec:
     return AnalysisSpec(id_, label, group, MODULE, description, compute, **kw)
@@ -353,6 +453,16 @@ SPECS = (
         ),
         code=_capability_code,
         example={"roles": {"measure": "x1"}, "params": {"usl": 16, "lsl": 4}},
+    ),
+    _spec(
+        "gage_rr",
+        "Estudio R&R (repetibilidad y reproducibilidad)",
+        GROUP_MSA,
+        "Evalúa el sistema de medición separando repetibilidad (equipo), reproducibilidad (operadores) y la variación entre piezas (método ANOVA).",
+        _gage_rr,
+        roles=(MEASURE, PART, OPERATOR),
+        params=(TOLERANCE,),
+        example={"roles": {"measure": "yc", "part": "cl", "operator": "g"}, "params": {}},
     ),
 )
 

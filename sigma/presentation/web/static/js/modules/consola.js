@@ -182,11 +182,11 @@ document.addEventListener("alpine:init", () => {
     },
 
     // ------------------------------------------------------------------ notebook management
-    async createNotebook() {
-      const name = window.prompt("Nombre del notebook:", "Análisis nuevo");
+    async createNotebook(language = "python") {
+      const name = window.prompt("Nombre del notebook:", language === "r" ? "Análisis en R" : "Análisis nuevo");
       if (name === null) return;
       await this.guard(async () => {
-        const { notebook } = await api("/api/notebooks", { method: "POST", json: { name } });
+        const { notebook } = await api("/api/notebooks", { method: "POST", json: { name, language } });
         await this.refreshList();
         await this.open(notebook.id);
       });

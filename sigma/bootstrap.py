@@ -111,6 +111,7 @@ from sigma.infrastructure.exporters.xlsx_exporter import XlsxExporter
 from sigma.infrastructure.imaging import PillowImageProcessor
 from sigma.infrastructure.importers.registry import DefaultImporterRegistry
 from sigma.infrastructure.kernel.jupyter_executor import JupyterKernelPool
+from sigma.infrastructure.kernel.rscript_executor import RscriptExecutor
 from sigma.infrastructure.persistence.administration import DatabaseAdmin
 from sigma.infrastructure.persistence.backend import create_backend
 from sigma.infrastructure.persistence.connection_tester import ConnectionTester
@@ -228,6 +229,7 @@ class Container:
             idle_minutes=config.kernel_idle_minutes,
             max_per_owner=config.max_kernels_per_user,
             max_total=config.max_kernels_total,
+            rscript=RscriptExecutor(PROJECT_ROOT, config.database.to_url(), config.notebooks_dir),
         )
         self.users = self.backend.users()
         self.ai_settings = AiSettings(self.backend.settings_store(), config.instance_dir)

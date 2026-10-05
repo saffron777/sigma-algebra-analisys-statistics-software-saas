@@ -8,6 +8,14 @@ instance/
 .env
 sigma/presentation/web/static/vendor/
 sigma/presentation/web/static/css/app.css
+# temporales de instalación y ejecución (pip, R)
+.pip-*/
+.r-tmp/
+# temporales de pruebas (pytest, diagnóstico de permisos)
+.tmp/
+.pytest-tmp/
+pytest-cache-files-*/
+.acl-out/
 sample_data/ventas.csv
 sample_data/encuesta.csv
 sample_data/analisis_demo.ipynb

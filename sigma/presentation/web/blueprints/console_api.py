@@ -35,7 +35,7 @@ def list_notebooks():
 @bp.post("")
 def create_notebook():
     body = parse_body(CreateNotebookRequest)
-    return jsonify({"notebook": to_jsonable(container().create_notebook.execute(body.name))}), 201
+    return jsonify({"notebook": to_jsonable(container().create_notebook.execute(body.name, body.language))}), 201
 
 
 @bp.post("/import")

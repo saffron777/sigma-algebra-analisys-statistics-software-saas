@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import Field
 
@@ -11,6 +11,7 @@ from sigma.presentation.web.schemas.base import NonEmpty, RequestModel
 
 class CreateNotebookRequest(RequestModel):
     name: str | None = None
+    language: Literal["python", "r"] = "python"
 
 
 class RenameNotebookRequest(RequestModel):

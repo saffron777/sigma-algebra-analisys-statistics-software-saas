@@ -6,6 +6,11 @@ Sigma. Los análisis de las páginas de catálogo (`/transformar`, `/graficos`, 
 lista de la izquierda de cada página; todos tienen el botón **Ver código** (Python equivalente, el mismo `sigma.load(...)` de la consola) y
 pueden guardar columnas nuevas como dataset.
 
+> La **consola** (`/consola`) admite notebooks en **Python** y en **R**. En R, el objeto `sigma` (a través de reticulate) expone
+> `sigma$datasets()`, `sigma$load("nombre")` y `sigma$save(df, "nombre")` igual que en Python, y cada notebook conserva su
+> estado entre celdas. El kernel R ejecuta con `Rscript` (requiere R y el paquete `reticulate`); `IRkernel` queda instalado
+> como alternativa.
+
 Convenciones: **M** = Minitab (menú *Stat*, *Calc*, *Graph*, *Data*), **S** = SPSS (menú *Analizar*, *Datos*, *Transformar*, *Gráficos*),
 **E** = EViews. «Página › Análisis» es la ruta dentro de Sigma. Los módulos que corresponden a SAS se listan en
 [Módulos añadidos de SAS](#modulos-anadidos-de-sas); lo que aún no existe está al final, en [Lo que falta](#lo-que-falta).
@@ -157,16 +162,14 @@ Enterprise Miner en `/aprendizaje`), Sigma añadió estos módulos típicos de S
 | Regresión de encuestas | `SURVEYREG`, `SURVEYLOGISTIC` | `/encuestas` — regresión lineal y logística con pesos muestrales |
 | Diseño de experimentos | `FACTEX`, `RSREG` | `/doe` — factoriales 2^k y superficie de respuesta (compuesto central) |
 | Optimización | `OPTMODEL`, `LP`, `MILP` | `/optimizacion` — programación lineal y entera con restricción de presupuesto |
-| Ecuaciones estructurales (rutas) | `CALIS` | `/sem` — análisis de rutas sobre variables observadas (coeficientes de ruta estandarizados) |
+| Ecuaciones estructurales | `CALIS` | `/sem` — análisis de rutas, AFC y SEM con variables latentes (semopy) |
 
 ## Lo que falta
 
 Sigma no cubre (todavía) estas áreas de los programas de origen; están en la hoja de ruta:
 
-- **Calidad industrial (Minitab/SAS-QC):** Gage R&R y acuerdo de atributos, muestreo de aceptación (cartas de control y capacidad ya están en `/calidad`).
-- **Modelos de ecuaciones estructurales SEM (SAS `PROC CALIS`, SPSS AMOS):** el análisis de rutas ya está en `/sem`; faltan el análisis factorial confirmatorio (AFC) y el SEM con variables latentes (requieren `semopy`).
+- **Calidad industrial (Minitab/SAS-QC):** acuerdo de atributos y muestreo de aceptación (cartas de control, capacidad y Gage R&R ya están en `/calidad`).
 - **Muestras complejas (SPSS/SAS):** prueba de Little, EM, y la corrección de conglomerados en la varianza de la regresión de encuestas (hoy se pondera sin corregir por conglomerados).
 - **Otros modelos:** MARS, regresión ortogonal, conjoint (PLS, GAM y loglineales ya están en `/modelos`).
 - **Econometría avanzada (EViews/SAS-ETS):** GMM, VAR bayesiano, MIDAS, proyecciones locales, DSGE, ajuste estacional X-13 (cópulas ya están en `/econometria`).
 - **Geoestadística y Bayes (SAS):** `PROC KRIGE2D`, `PROC VARIOGRAM`, `PROC MCMC`.
-- **Asistente guiado** «qué prueba debo usar».

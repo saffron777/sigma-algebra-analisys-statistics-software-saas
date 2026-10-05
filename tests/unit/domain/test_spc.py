@@ -47,3 +47,15 @@ def test_cusum_detects_a_mean_shift():
     frame = pd.DataFrame({"x": x})
     out = run("calidad", "control_chart", frame, {"measure": "x"}, {"chart": "cusum", "h": 5, "k": 0.5})
     assert out.result["alarmed"] is True
+
+
+def test_gage_rr_decomposes_a_known_measurement_system():
+    rng = np.random.default_rng(0)
+    parts = np.repeat(["P1", "P2", "P3", "P4"], 6)  # 4 piezas × 3 operadores × 2 réplicas
+    ops = np.tile(np.repeat(["A", "B", "C"], 2), 4)
+    effect = {"P1": 0.0, "P2": 5.0, "P3": 10.0, "P4": 15.0}
+    x = np.array([effect[p] for p in parts]) + rng.normal(0, 0.2, len(parts))
+    frame = pd.DataFrame({"x": x, "part": parts, "op": ops})
+    out = run("calidad", "gage_rr", frame, {"measure": "x", "part": "part", "operator": "op"}, {})
+    assert out.result["percent_grr"] < 30  # la variación de piezas domina
+    assert out.result["ndc"] >= 5

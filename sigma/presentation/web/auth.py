@@ -62,7 +62,7 @@ def require_admin() -> None:
 
 def require_console() -> None:
     if not g.user.can_use_console:
-        raise PermissionDeniedError("Su cuenta no tiene permiso para usar la consola de Python.")
+        raise PermissionDeniedError("Su cuenta no tiene permiso para usar la consola.")
 
 
 def safe_next(target: str | None) -> str:

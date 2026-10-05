@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import queue
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
@@ -22,7 +23,7 @@ from jupyter_client import BlockingKernelClient, KernelManager
 
 from sigma.domain.errors import KernelError
 from sigma.domain.notebooks import EXECUTION_ERROR, EXECUTION_OK, EXECUTION_TIMEOUT, ExecutionResult, KernelStatus
-from sigma.infrastructure.kernel.bootstrap_code import BOOTSTRAP_CODE
+from sigma.infrastructure.kernel.bootstrap_code import BOOTSTRAP_CODE, R_BOOTSTRAP_CODE
 
 log = logging.getLogger(__name__)
 
@@ -55,10 +56,12 @@ class JupyterKernelPool:
         idle_minutes: float = 30,
         max_per_owner: int = 3,
         max_total: int = 8,
+        rscript: Any = None,
     ) -> None:
         self._project_root = Path(project_root)
         self._database_url = database_url
         self._work_dir = Path(work_dir)
+        self._rscript = rscript  # fallback executor for R notebooks when IRkernel/pbdZMQ is unavailable
         self._idle_seconds = idle_minutes * 60
         self._max_per_owner = max_per_owner
         self._max_total = max_total
@@ -69,11 +72,17 @@ class JupyterKernelPool:
         atexit.register(self.shutdown_all)
 
     # ------------------------------------------------------------------ public API
-    def start(self, session_id: str, owner: str = "") -> None:
-        self._ensure(session_id, owner)
+    def start(self, session_id: str, owner: str = "", kernel_name: str = "python3") -> None:
+        if kernel_name == "ir" and self._rscript is not None:
+            return self._rscript.start(session_id, owner, kernel_name)
+        self._ensure(session_id, owner, kernel_name)
 
-    def execute(self, session_id: str, code: str, timeout_seconds: float, owner: str = "") -> ExecutionResult:
-        session = self._ensure(session_id, owner)
+    def execute(
+        self, session_id: str, code: str, timeout_seconds: float, owner: str = "", kernel_name: str = "python3"
+    ) -> ExecutionResult:
+        if kernel_name == "ir" and self._rscript is not None:
+            return self._rscript.execute(session_id, code, timeout_seconds, owner, kernel_name)
+        session = self._ensure(session_id, owner, kernel_name)
         with session.lock:  # one cell at a time per notebook
             session.busy = True
             session.last_used = time.monotonic()
@@ -94,15 +103,19 @@ class JupyterKernelPool:
         if session and session.manager.is_alive():
             session.manager.interrupt_kernel()
 
-    def restart(self, session_id: str, owner: str = "") -> None:
+    def restart(self, session_id: str, owner: str = "", kernel_name: str = "python3") -> None:
+        if kernel_name == "ir" and self._rscript is not None:
+            return self._rscript.restart(session_id, owner, kernel_name)
         self.shutdown(session_id)
-        self._ensure(session_id, owner)
+        self._ensure(session_id, owner, kernel_name)
 
     def shutdown(self, session_id: str) -> None:
         with self._pool_lock:
             session = self._sessions.pop(session_id, None)
         if session:
             self._stop(session)
+        if self._rscript is not None:
+            self._rscript.shutdown(session_id)
 
     def shutdown_owner(self, owner: str) -> None:
         """Stop every kernel that belongs to ``owner`` (used when the account is deleted)."""
@@ -111,6 +124,8 @@ class JupyterKernelPool:
             sessions = [self._sessions.pop(sid) for sid in ids]
         for session in sessions:
             self._stop(session)
+        if self._rscript is not None:
+            self._rscript.shutdown_owner(owner)
 
     def shutdown_all(self) -> None:
         self._closing.set()
@@ -126,7 +141,7 @@ class JupyterKernelPool:
         return KernelStatus(running=True, busy=session.busy, execution_count=session.execution_count)
 
     # ------------------------------------------------------------------ kernel lifecycle
-    def _ensure(self, session_id: str, owner: str = "") -> _Session:
+    def _ensure(self, session_id: str, owner: str = "", kernel_name: str = "python3") -> _Session:
         with self._pool_lock:
             session = self._sessions.get(session_id)
             if session and session.manager.is_alive():
@@ -135,7 +150,7 @@ class JupyterKernelPool:
                 self._stop(session)
                 del self._sessions[session_id]
             self._make_room(owner)
-            session = self._launch(owner)
+            session = self._launch(owner, kernel_name)
             self._sessions[session_id] = session
             self._start_culler()
             return session
@@ -157,7 +172,7 @@ class JupyterKernelPool:
                 "El servidor alcanzó el máximo de kernels simultáneos. Inténtelo de nuevo en unos minutos."
             )
 
-    def _launch(self, owner: str = "") -> _Session:
+    def _launch(self, owner: str = "", kernel_name: str = "python3") -> _Session:
         work_dir = self._work_dir / owner if owner else self._work_dir
         work_dir.mkdir(parents=True, exist_ok=True)
         env = {
@@ -168,27 +183,35 @@ class JupyterKernelPool:
             "PYTHONIOENCODING": "utf-8",
             "MPLBACKEND": "module://matplotlib_inline.backend_inline",
         }
+        if kernel_name == "ir":
+            env["RETICULATE_PYTHON"] = sys.executable  # the R kernel's reticulate uses the server's venv Python
+            r_tmp = work_dir / ".r-tmp"
+            r_tmp.mkdir(parents=True, exist_ok=True)
+            # R must create its own temp dir; the sandbox/system TEMP may be read-only.
+            env["TEMP"] = env["TMP"] = env["TMPDIR"] = str(r_tmp)
         env.pop("ANTHROPIC_API_KEY", None)  # code run in a kernel must never be able to read the server's AI key
-        manager = KernelManager(kernel_name="python3")
+        manager = KernelManager(kernel_name=kernel_name)
+        label = "R" if kernel_name == "ir" else "Python"
         try:
             manager.start_kernel(env=env, cwd=str(work_dir))
         except Exception as error:  # noqa: BLE001 - jupyter_client raises many types when the kernel cannot spawn
-            raise KernelError(f"No se pudo iniciar el kernel de Python: {error}") from error
+            raise KernelError(f"No se pudo iniciar el kernel de {label}: {error}") from error
         client = manager.client()
         client.start_channels()
         session = _Session(manager, client, owner)
         try:
             client.wait_for_ready(timeout=STARTUP_TIMEOUT_SECONDS)
-            self._bootstrap(session)
+            self._bootstrap(session, kernel_name)
         except Exception as error:
             self._stop(session)
             if isinstance(error, KernelError):
                 raise
-            raise KernelError(f"El kernel de Python no respondió al iniciar: {error}") from error
+            raise KernelError(f"El kernel de {label} no respondió al iniciar: {error}") from error
         return session
 
-    def _bootstrap(self, session: _Session) -> None:
-        msg_id = session.client.execute(BOOTSTRAP_CODE, silent=True, store_history=False, allow_stdin=False)
+    def _bootstrap(self, session: _Session, kernel_name: str = "python3") -> None:
+        code = R_BOOTSTRAP_CODE if kernel_name == "ir" else BOOTSTRAP_CODE
+        msg_id = session.client.execute(code, silent=True, store_history=False, allow_stdin=False)
         failure: str | None = None
         deadline = time.monotonic() + STARTUP_TIMEOUT_SECONDS
         while time.monotonic() < deadline:

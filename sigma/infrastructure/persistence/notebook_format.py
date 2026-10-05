@@ -68,11 +68,11 @@ def normalize(notebook: Any) -> None:
         seen.add(cell_id)
 
 
-def new_notebook(name: str, cells: list[dict[str, Any]] | None = None) -> Any:
+def new_notebook(name: str, cells: list[dict[str, Any]] | None = None, language: str = "python") -> Any:
     notebook = nbformat.v4.new_notebook()
     notebook.nbformat_minor = NBFORMAT_MINOR
     notebook.cells = [nbformat.from_dict(c) for c in (cells or [blank_code_cell()])]
-    notebook.metadata["sigma"] = {"name": name, "created_at": now_iso()}
+    notebook.metadata["sigma"] = {"name": name, "created_at": now_iso(), "language": language}
     return notebook
 
 
@@ -94,7 +94,9 @@ def parse_import(file_name: str, content: bytes) -> Any:
         or PurePath(file_name or "").stem
         or "Notebook importado"
     )
-    notebook.metadata["sigma"] = {"name": str(name)[:120], "created_at": now_iso()}
+    kernelspec = notebook.metadata.get("kernelspec", {})
+    language = "r" if kernelspec.get("name") == "ir" or kernelspec.get("language") == "R" else "python"
+    notebook.metadata["sigma"] = {"name": str(name)[:120], "created_at": now_iso(), "language": language}
     return notebook
 
 
@@ -114,7 +116,8 @@ def rebuild(
     notebook.cells = [nbformat.from_dict(clean_cell(c)) for c in cells]
     kept = {k: v for k, v in (metadata or current_metadata).items() if k != "sigma"}
     notebook.metadata.update(kept)
-    notebook.metadata["sigma"] = {"name": name or current_name, "created_at": created_at}
+    language = (current_metadata or {}).get("sigma", {}).get("language", "python")
+    notebook.metadata["sigma"] = {"name": name or current_name, "created_at": created_at, "language": language}
     normalize(notebook)
     try:
         nbformat.validate(notebook)

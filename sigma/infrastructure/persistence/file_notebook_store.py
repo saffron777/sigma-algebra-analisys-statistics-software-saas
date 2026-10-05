@@ -50,6 +50,7 @@ class FileNotebookStore:
                     meta.get("created_at") or updated,
                     updated,
                     _revision(path),
+                    meta.get("language", "python"),
                 )
             )
         return sorted(summaries, key=lambda s: s.updated_at, reverse=True)
@@ -80,8 +81,8 @@ class FileNotebookStore:
         return hashlib.sha1("|".join(parts).encode(), usedforsecurity=False).hexdigest()[:16]
 
     # ------------------------------------------------------------------ writes
-    def create(self, name: str, cells: list[dict[str, Any]] | None = None) -> NotebookDocument:
-        notebook = nbf.new_notebook(name, cells)
+    def create(self, name: str, cells: list[dict[str, Any]] | None = None, language: str = "python") -> NotebookDocument:
+        notebook = nbf.new_notebook(name, cells, language)
         notebook_id = uuid.uuid4().hex
         self._write(notebook_id, notebook)
         return self.get(notebook_id)

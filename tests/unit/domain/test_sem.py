@@ -33,3 +33,14 @@ def test_path_analysis_handles_two_predictors():
     table = _coef_table(out)
     assert table["rows"][1][2] > 0  # x1 -> efecto positivo
     assert table["rows"][2][2] < 0  # x2 -> efecto negativo
+
+
+def test_cfa_recovers_a_good_fit_on_a_latent_factor():
+    rng = np.random.default_rng(2)
+    f = rng.normal(size=400)
+    x1 = 0.8 * f + rng.normal(0, 0.5, 400)
+    x2 = 0.7 * f + rng.normal(0, 0.5, 400)
+    x3 = 0.9 * f + rng.normal(0, 0.5, 400)
+    frame = pd.DataFrame({"x1": x1, "x2": x2, "x3": x3})
+    out = run("sem", "cfa", frame, {"variables": ["x1", "x2", "x3"]}, {"model": "F =~ x1 + x2 + x3"})
+    assert out.result["cfi"] is not None and out.result["cfi"] > 0.9

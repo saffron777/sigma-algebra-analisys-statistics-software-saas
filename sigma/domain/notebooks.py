@@ -21,6 +21,7 @@ class NotebookSummary:
     created_at: str
     updated_at: str
     revision: str = ""
+    language: str = "python"
 
 
 @dataclass

@@ -62,8 +62,8 @@ class SqlNotebookStore:
         return hashlib.sha1("|".join(parts).encode(), usedforsecurity=False).hexdigest()[:16]
 
     # ------------------------------------------------------------------ writes
-    def create(self, name: str, cells: list[dict[str, Any]] | None = None) -> NotebookDocument:
-        return self._insert(nbf.new_notebook(name, cells))
+    def create(self, name: str, cells: list[dict[str, Any]] | None = None, language: str = "python") -> NotebookDocument:
+        return self._insert(nbf.new_notebook(name, cells, language))
 
     def import_bytes(self, file_name: str, content: bytes) -> NotebookDocument:
         return self._insert(nbf.parse_import(file_name, content))
