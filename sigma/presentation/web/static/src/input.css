@@ -137,7 +137,28 @@
 
   /* Toolbar (below the menu bar) */
   .toolbar { @apply flex h-9 items-center gap-0.5 border-b border-slate-300 bg-slate-100 px-1.5 dark:border-slate-700 dark:bg-slate-800; }
-  .toolbar-btn { @apply inline-flex size-7 cursor-pointer items-center justify-center rounded-sm text-slate-600 hover:bg-slate-200/80 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100; }
+  .toolbar-btn { @apply relative inline-flex size-7 cursor-pointer items-center justify-center rounded-sm text-slate-600 hover:bg-slate-200/80 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100; }
+  .toolbar-btn::after {
+    content: attr(data-tip);
+    position: absolute;
+    top: calc(100% + 7px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-2px);
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: #1e293b;
+    color: #f8fafc;
+    font-size: 11px;
+    line-height: 1.25;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+    z-index: 60;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
+  }
+  .toolbar-btn:hover::after, .toolbar-btn:focus-visible::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .dark .toolbar-btn::after { background: #475569; color: #f1f5f9; }
   .toolbar-separator { @apply mx-1 h-5 w-px bg-slate-300 dark:bg-slate-700; }
 
   /* Status bar (bottom) */

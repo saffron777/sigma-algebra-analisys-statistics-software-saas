@@ -11,6 +11,8 @@
       {% if current_user %}<button type="button" class="menu-item" @click="logout()">{{ icon("logout", "size-4") }} Cerrar sesión</button>{% endif %}
     {% elif item.kind == "__about__" %}
       <div class="menu-label">Sigma v{{ sigma_version }}</div>
+    {% elif item.kind == "__help__" %}
+      <a class="menu-item" href="{{ item.href }}">{{ icon("help", "size-4") }} {{ item.label }}</a>
     {% elif item.key == "consola" and not (current_user and current_user.can_use_console) %}
     {% elif item.key in ("usuarios", "basedatos") and not (current_user and current_user.is_admin) %}
     {% else %}
@@ -41,14 +43,14 @@
 <body class="flex h-dvh flex-col overflow-hidden" x-data="shell" @keydown.escape.window="openMenu = null; menuOpen = false">
 
   {# ===================== menu bar ===================== #}
-  <nav class="menubar" aria-label="Menú principal">
+  <nav class="menubar" aria-label="Menú principal" @click.outside="openMenu = null">
     <button type="button" class="toolbar-btn lg:hidden" @click="menuOpen = true" aria-label="Abrir menú">{{ icon("menu", "size-4") }}</button>
-    <a href="{{ url_for('pages.page_home') }}" class="flex items-center gap-1.5 px-2 text-[13px] font-bold text-slate-800 dark:text-slate-100">
+    <a href="{{ url_for('pages.page_home') }}" @click="openMenu = null" class="flex items-center gap-1.5 px-2 text-[13px] font-bold text-slate-800 dark:text-slate-100">
       <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="16" height="16" class="size-4"> Sigma
     </a>
     <div class="hidden lg:flex">
       {% for group in menu %}
-      <div class="relative" @click.outside="openMenu = null">
+      <div class="relative">
         <button type="button" class="menubar-item" :aria-expanded="openMenu === '{{ group.title }}'" @click="toggleMenu('{{ group.title }}')">{{ group.title }}</button>
         <div class="menu max-h-[75vh] overflow-y-auto" x-show="openMenu === '{{ group.title }}'" x-cloak>
           {{ menu_items(group["items"]) }}
@@ -57,7 +59,7 @@
       {% endfor %}
     </div>
     <div class="ml-auto flex items-center">
-      <button type="button" class="toolbar-btn" @click="toggleTheme()" :aria-label="dark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'">
+      <button type="button" class="toolbar-btn" @click="toggleTheme(); openMenu = null" :aria-label="dark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'">
         <span x-show="!dark">{{ icon("moon", "size-4") }}</span><span x-show="dark" x-cloak>{{ icon("sun", "size-4") }}</span>
       </button>
     </div>
@@ -86,13 +88,14 @@
 
   {# ===================== toolbar ===================== #}
   <div class="toolbar" aria-label="Barra de herramientas">
-    <a class="toolbar-btn" href="{{ url_for('pages.page_datos') }}" title="Importar datos">{{ icon("upload", "size-4") }}</a>
-    <a class="toolbar-btn" href="{{ url_for('pages.page_graficos') }}" title="Gráficos">{{ icon("graficos", "size-4") }}</a>
-    <a class="toolbar-btn" href="{{ url_for('pages.page_resultados') }}" title="Resultados guardados">{{ icon("resultados", "size-4") }}</a>
-    <a class="toolbar-btn" href="{{ url_for('pages.page_asistente') }}" title="Asistente: ¿qué análisis usar?">{{ icon("asistente", "size-4") }}</a>
-    {% if current_user and current_user.can_use_console %}<a class="toolbar-btn" href="{{ url_for('pages.page_consola') }}" title="Consola (Python y R)">{{ icon("consola", "size-4") }}</a>{% endif %}
+    <a class="toolbar-btn" href="{{ url_for('pages.page_home') }}" data-tip="Inicio" aria-label="Ir al inicio">{{ icon("home", "size-4") }}</a>
+    <a class="toolbar-btn" href="{{ url_for('pages.page_datos') }}" data-tip="Importar datos" aria-label="Importar datos">{{ icon("upload", "size-4") }}</a>
+    <a class="toolbar-btn" href="{{ url_for('pages.page_graficos') }}" data-tip="Gráficos" aria-label="Gráficos">{{ icon("graficos", "size-4") }}</a>
+    <a class="toolbar-btn" href="{{ url_for('pages.page_resultados') }}" data-tip="Resultados guardados" aria-label="Resultados guardados">{{ icon("resultados", "size-4") }}</a>
+    <a class="toolbar-btn" href="{{ url_for('pages.page_asistente') }}" data-tip="Asistente: ¿qué análisis usar?" aria-label="Asistente: ¿qué análisis usar?">{{ icon("asistente", "size-4") }}</a>
+    {% if current_user and current_user.can_use_console %}<a class="toolbar-btn" href="{{ url_for('pages.page_consola') }}" data-tip="Consola (Python y R)" aria-label="Consola (Python y R)">{{ icon("consola", "size-4") }}</a>{% endif %}
     <span class="toolbar-separator"></span>
-    <button type="button" class="toolbar-btn" @click="printPage()" title="Imprimir">{{ icon("print", "size-4") }}</button>
+    <button type="button" class="toolbar-btn" @click="printPage()" data-tip="Imprimir" aria-label="Imprimir">{{ icon("print", "size-4") }}</button>
     <span class="ml-auto truncate px-2 text-[13px] font-semibold text-slate-700 dark:text-slate-200">{{ page_title }}</span>
   </div>
 

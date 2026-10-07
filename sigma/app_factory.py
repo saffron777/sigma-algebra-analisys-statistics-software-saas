@@ -12,6 +12,7 @@ from sigma.presentation.web.auth import init_auth
 from sigma.presentation.web.blueprints import register_blueprints
 from sigma.presentation.web.blueprints.pages import PAGES
 from sigma.presentation.web.errors import register_error_handlers
+from sigma.presentation.web import help_content
 from sigma.presentation.web.migration import MigrationRunner, init_maintenance
 from sigma.presentation.web.security import init_security
 from sigma.presentation.web.switching import ContainerSwitcher
@@ -56,7 +57,7 @@ MENU = (
     ),
     ("Gráficos", (("graficos",),)),
     ("Utilidades", (("asistente",), ("consola",), ("__sep__",), ("usuarios",), ("basedatos",))),
-    ("Ayuda", (("__about__",),)),
+    ("Ayuda", (("__help__", "/ayuda#guia", "Guía de uso"), ("__help__", "/ayuda#referencia", "Referencia teórica"), ("__sep__",), ("__help__", "/ayuda#acerca", "Acerca de"))),
 )
 
 
@@ -84,11 +85,13 @@ def create_app(config: Config | None = None) -> Flask:
         {"title": title, "items": [{"key": key, "href": PAGES[key][0], "label": PAGES[key][1]} for key in keys]}
         for title, keys in NAV_GROUPS
     ]
-    # Menu bar: resolve page keys to href/label; keep the special markers (__sep__/__label__/__logout__/__about__) as-is.
+    # Menu bar: resolve page keys to href/label; keep the special markers (__sep__/__label__/__logout__/__about__/__help__) as-is.
     def _menu_item(item: tuple) -> dict:
         key = item[0]
         if key == "__label__":
             return {"kind": "__label__", "label": item[1], "href": None, "key": None}
+        if key == "__help__":
+            return {"kind": "__help__", "label": item[2], "href": item[1], "key": None}
         if key in ("__sep__", "__logout__", "__about__"):
             return {"kind": key, "label": None, "href": None, "key": None}
         return {"kind": "page", "label": PAGES[key][1], "href": PAGES[key][0], "key": key}
@@ -102,5 +105,8 @@ def create_app(config: Config | None = None) -> Flask:
         menu=menu,
         sigma_version=__version__,
         catalog_modules=[(m.key, m.label, m.description) for m in CATALOG_MODULES],
+        help_guide=help_content.GUIDE,
+        help_reference=help_content.REFERENCE,
+        help_about=help_content.ABOUT,
     )
     return app
