@@ -8,7 +8,7 @@ import { workspace } from "../workspace.js";
 const KIND_LABELS = { numeric: "numérica", categorical: "categórica", boolean: "lógica", datetime: "fecha", text: "texto" };
 const SOURCE_LABELS = {
   csv: "CSV", excel: "Excel", text: "Texto", sqlserver: "SQL Server", mysql: "MySQL / MariaDB", postgresql: "PostgreSQL",
-  oracle: "Oracle", mongodb: "MongoDB", json_api: "API JSON", sample: "Muestra",
+  oracle: "Oracle", mongodb: "MongoDB", json_api: "API JSON", sample: "Muestra", manual: "Manual",
 };
 // the «Base de datos» tab reads from one of these; each engine is its own source type on the server
 const DB_ENGINES = ["sqlserver", "mysql", "postgresql", "oracle", "mongodb"];
@@ -40,6 +40,24 @@ const SECRET_FIELDS = {
   sqlserver: ["password"], mysql: ["password"], postgresql: ["password"], oracle: ["password"], mongodb: ["password"],
   json_api: ["headers", "body", "params"],
 };
+
+// the Jspreadsheet instance lives outside Alpine so its Proxy does not wrap (and break) the third-party object
+let manualSheet = null;
+let manualSheetData = null; // last grid data (array of arrays), kept across column rebuilds
+let manualResizeTimer = null;
+let manualResizeHandler = null;
+
+// Sigma variable kind -> Jspreadsheet v5 column definition
+function manualColumn(variable, index) {
+  const title = (variable.name || "").trim() || `V${index + 1}`;
+  const base = { title, width: 140 };
+  switch (variable.kind) {
+    case "numeric": return { ...base, type: "numeric", decimal: ".", mask: "#,##0.##########" };
+    case "datetime": return { ...base, type: "calendar", options: { format: "YYYY-MM-DD" } };
+    case "boolean": return { ...base, type: "dropdown", source: ["Sí", "No"] };
+    default: return { ...base, type: "text" }; // categorical and text are free entry
+  }
+}
 
 document.addEventListener("alpine:init", () => {
   Alpine.data("datosPage", () => ({
@@ -465,6 +483,137 @@ document.addEventListener("alpine:init", () => {
         Alpine.store("toast").show("Dataset eliminado.", "success");
       } catch (error) {
         Alpine.store("toast").show(error.message, "error");
+      }
+    },
+
+    // ------------------------------------------------------------------ manual dataset editor
+    editor: { open: false, tab: "variables", name: "", variables: [{ name: "", kind: "numeric" }], busy: false, error: "" },
+
+    openEditor() {
+      manualSheet = null;
+      manualSheetData = null;
+      this.editor = { open: true, tab: "variables", name: "", variables: [{ name: "", kind: "numeric" }], busy: false, error: "" };
+      manualResizeHandler = () => {
+        clearTimeout(manualResizeTimer);
+        manualResizeTimer = setTimeout(() => { if (manualSheet) this._buildSheet(); }, 200);
+      };
+      window.addEventListener("resize", manualResizeHandler);
+    },
+
+    closeEditor() {
+      this._destroySheet();
+      if (manualResizeHandler) { window.removeEventListener("resize", manualResizeHandler); manualResizeHandler = null; }
+      this.editor.open = false;
+    },
+
+    setEditorTab(tab) {
+      this.editor.tab = tab;
+      if (tab === "datos") this.$nextTick(() => this._buildSheet());
+    },
+
+    addVariable() {
+      this.editor.variables.push({ name: "", kind: "numeric" });
+      if (manualSheet) this._buildSheet();
+    },
+
+    removeVariable(index) {
+      if (this.editor.variables.length <= 1) { Alpine.store("toast").show("El dataset necesita al menos una variable.", "info"); return; }
+      this.editor.variables.splice(index, 1);
+      if (manualSheet) this._buildSheet();
+    },
+
+    _sheetNames() {
+      return this.editor.variables.map((v, i) => v.name.trim() || `V${i + 1}`);
+    },
+
+    _snapshotSheet() {
+      if (!manualSheet || !manualSheet[0]) return;
+      const names = this._sheetNames();
+      const data = manualSheet[0].getData(false, true);
+      manualSheetData = data.map((row) => Object.fromEntries(names.map((name, j) => [name, row[j] ?? ""])));
+    },
+
+    _destroySheet() {
+      if (manualSheet) { try { jspreadsheet.destroy(this.$refs.manualSheet); } catch (error) { /* already destroyed */ } manualSheet = null; }
+    },
+
+    /** Toolbar actions that map onto the Jspreadsheet instance. */
+    async sheetAction(action) {
+      const sheet = manualSheet?.[0];
+      if (!sheet) return;
+      try {
+        switch (action) {
+          case "undo": sheet.undo(); break;
+          case "redo": sheet.redo(); break;
+          case "copy": sheet.copy(false); break;
+          case "paste": {
+            const [x1, y1] = sheet.getHighlighted()[0] ?? [0, 0];
+            const text = await navigator.clipboard.readText();
+            sheet.paste(x1, y1, text);
+            break;
+          }
+          case "insertRow": sheet.insertRow(); break;
+          case "deleteRow": sheet.deleteRow(); break;
+          case "insertColumn": sheet.insertColumn(); break;
+          case "deleteColumn": sheet.deleteColumn(); break;
+        }
+      } catch (error) {
+        Alpine.store("toast").show(error.message, "error");
+      }
+    },
+
+    _buildSheet() {
+      this._snapshotSheet();
+      this._destroySheet();
+      const names = this._sheetNames();
+      const columns = this.editor.variables.map((v, i) => manualColumn(v, i));
+      const data = (manualSheetData ?? [{}]).map((obj) => names.map((name) => obj[name] ?? ""));
+      const height = this.$refs.manualSheet.clientHeight || 560;
+      manualSheet = jspreadsheet(this.$refs.manualSheet, {
+        worksheets: [
+          {
+            data,
+            columns,
+            // v5 order is [columns, rows]
+            minDimensions: [Math.max(1, columns.length), Math.max(data.length + 1, 50)],
+            minSpareRows: 20,
+            minSpareCols: 2,
+            tableOverflow: true,
+            tableHeight: height,
+            tableWidth: "100%",
+            allowInsertRow: true,
+            allowDeleteRow: true,
+            allowInsertColumn: true,
+            allowDeleteColumn: true,
+            columnSorting: false,
+          },
+        ],
+      });
+    },
+
+    async saveManual() {
+      const name = (this.editor.name || "").trim();
+      if (!name) { this.editor.error = "Escriba un nombre para el dataset."; return; }
+      const columns = this.editor.variables.filter((v) => v.name.trim()).map((v) => ({ name: v.name.trim(), kind: v.kind }));
+      if (!columns.length) { this.editor.error = "Defina al menos una variable con nombre."; return; }
+      const names = columns.map((c) => c.name);
+      if (new Set(names.map((n) => n.toLowerCase())).size !== names.length) {
+        this.editor.error = "Los nombres de variable deben ser únicos."; return;
+      }
+      this._snapshotSheet();
+      const rows = (manualSheetData ?? []).map((obj) => Object.fromEntries(names.map((n) => [n, obj[n] ?? ""])));
+      this.editor.busy = true;
+      this.editor.error = "";
+      try {
+        const { dataset } = await api("/api/datasets/manual", { method: "POST", json: { name, columns, rows } });
+        Alpine.store("datasets").select(dataset.id);
+        await Alpine.store("datasets").refresh();
+        this.closeEditor();
+        Alpine.store("toast").show(`Dataset «${dataset.name}» creado.`, "success");
+      } catch (error) {
+        this.editor.error = error.message;
+      } finally {
+        this.editor.busy = false;
       }
     },
   }));

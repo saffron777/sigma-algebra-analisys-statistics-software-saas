@@ -196,3 +196,50 @@ def test_describe_reports_engine_and_counts(backend, uid):
     info = backend.describe()
     assert info["engine"] == backend.settings.engine and info["counts"]["users"] == 1
     assert info["counts"]["datasets"] == 1 and info["server_version"]
+
+
+# ------------------------------------------------------------------ manual dataset creation
+def test_create_manual_dataset_with_typed_variables(backend, uid):
+    from sigma.application.use_cases.datasets import CreateManualDataset
+
+    create = CreateManualDataset(backend.datasets(uid))
+    info = create.execute(
+        "estudio",
+        [
+            {"name": "edad", "kind": "numeric"},
+            {"name": "grupo", "kind": "categorical"},
+            {"name": "activo", "kind": "boolean"},
+            {"name": "fecha", "kind": "datetime"},
+        ],
+        [
+            {"edad": "25", "grupo": "A", "activo": "sí", "fecha": "2024-01-15"},
+            {"edad": "", "grupo": "B", "activo": "no", "fecha": "2024-02-20"},
+            {"edad": "30", "grupo": "A", "activo": "", "fecha": ""},
+        ],
+    )
+    assert info.source_type == "manual"
+    assert (info.n_rows, info.n_cols) == (3, 4)
+    kinds = {c.name: c.kind for c in info.columns}
+    assert kinds == {"edad": "numeric", "grupo": "categorical", "activo": "boolean", "fecha": "datetime"}
+    data = backend.datasets(uid).get(info.id).data
+    assert data["edad"].iloc[0] == 25.0 and pd.isna(data["edad"].iloc[1])
+    assert data["activo"].iloc[0] is True and data["activo"].iloc[1] is False and pd.isna(data["activo"].iloc[2])
+    assert data["grupo"].tolist()[:2] == ["A", "B"]
+    assert data["fecha"].iloc[0] == pd.Timestamp("2024-01-15") and pd.isna(data["fecha"].iloc[2])
+
+
+def test_create_manual_dataset_validations(backend, uid):
+    from sigma.application.use_cases.datasets import CreateManualDataset
+
+    create = CreateManualDataset(backend.datasets(uid))
+    with pytest.raises(InvalidInputError):
+        create.execute("x", [], [])  # no variables
+    with pytest.raises(InvalidInputError):
+        create.execute("x", [{"name": "a", "kind": "numeric"}, {"name": "A", "kind": "text"}], [])  # duplicate names
+    with pytest.raises(InvalidInputError):
+        create.execute("x", [{"name": "a", "kind": "no-tipo"}], [])  # invalid kind
+    with pytest.raises(InvalidInputError):
+        create.execute("x", [{"name": "  ", "kind": "numeric"}], [])  # blank name
+    # empty dataset is allowed when there is at least one variable
+    info = create.execute("vacio", [{"name": "a", "kind": "numeric"}], [])
+    assert info.n_rows == 0 and info.n_cols == 1

@@ -1,6 +1,32 @@
 {% extends "base.html" %}
 {% from "partials/macros.html" import icon, clear_button, workspace_bar %}
-{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/datos.js') }}"></script>{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/jsuites.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/jspreadsheet.css') }}">
+<style>
+  .jss_worksheet > thead > tr > td {
+    background-color: #dbe6f0 !important;
+    border-bottom: 2px solid #8fa8c4 !important;
+  }
+  .jss_worksheet > thead > tr > td,
+  .jss_worksheet > thead > tr > td * {
+    color: #1c3a5c !important;
+    font-weight: 600 !important;
+  }
+  .dark .jss_worksheet > thead > tr > td {
+    background-color: #26374a !important;
+    border-bottom: 2px solid #4a6a8a !important;
+  }
+  .dark .jss_worksheet > thead > tr > td,
+  .dark .jss_worksheet > thead > tr > td * {
+    color: #dbe6f0 !important;
+  }
+  .dark .jss_worksheet > tbody > tr > td { background-color: #1b1b1f !important; color: #e5e7eb !important; }
+</style>
+<script defer src="{{ url_for('static', filename='vendor/jsuites.js') }}"></script>
+<script defer src="{{ url_for('static', filename='vendor/jspreadsheet.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/modules/datos.js') }}"></script>
+{% endblock %}
 
 {% macro kind_select(model) %}
 <select class="input !py-1 text-xs" x-model="{{ model }}">
@@ -23,6 +49,7 @@
       <h2 id="import-title" class="card-title">Importar datos</h2>
       <div class="flex items-center gap-3">
         <span class="hidden text-xs text-slate-500 sm:inline">Excel · CSV · texto · bases de datos · API JSON</span>
+        <button type="button" class="btn btn-secondary btn-sm" @click="openEditor()">{{ icon("plus", "size-4") }} Crear dataset manual</button>
         {{ clear_button("busy") }}
       </div>
     </div>
@@ -404,5 +431,80 @@
       </div>
     </div>
   </section>
+
+  {# ---------------------------------------------------------------- manual dataset editor #}
+  <div x-show="editor.open" x-cloak class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Crear dataset manual" @keydown.escape.window="closeEditor()">
+    <div class="absolute inset-0 bg-slate-900/60" @click="closeEditor()"></div>
+    <div class="card relative flex h-[92vh] w-full max-w-6xl flex-col shadow-xl">
+      <div class="card-header shrink-0">
+        <h2 class="card-title">Crear dataset manual</h2>
+        <button type="button" class="btn btn-ghost btn-sm" @click="closeEditor()">{{ icon("close", "size-4") }} Cerrar</button>
+      </div>
+
+      <div class="card-body flex min-h-0 flex-1 flex-col space-y-3">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div class="min-w-0 flex-1"><label class="label" for="manual-name">Nombre del dataset</label>
+            <input id="manual-name" class="input" type="text" maxlength="120" x-model="editor.name" placeholder="p. ej. mi_estudio"></div>
+          <div class="tab-bar w-fit self-end" role="tablist">
+            <button type="button" role="tab" class="tab" :class="editor.tab === 'variables' && 'tab-active'" :aria-selected="editor.tab === 'variables'" @click="setEditorTab('variables')">Variables</button>
+            <button type="button" role="tab" class="tab" :class="editor.tab === 'datos' && 'tab-active'" :aria-selected="editor.tab === 'datos'" @click="setEditorTab('datos')">Datos</button>
+          </div>
+        </div>
+
+        {# ---- variables ---- #}
+        <div x-show="editor.tab === 'variables'" class="space-y-2 overflow-y-auto">
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="btn btn-secondary btn-sm" @click="addVariable()">{{ icon("plus", "size-4") }} Añadir variable</button>
+            <p class="hint">Defina el nombre y el tipo de cada variable; luego pase a la pestaña <strong>Datos</strong> para escribir los valores.</p>
+          </div>
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead><tr><th class="w-10">#</th><th>Nombre</th><th>Tipo</th><th class="w-16 text-right"></th></tr></thead>
+              <tbody>
+                <template x-for="(v, i) in editor.variables" :key="i">
+                  <tr>
+                    <td class="text-slate-400" x-text="i + 1"></td>
+                    <td><input class="input" type="text" maxlength="120" x-model="v.name" placeholder="nombre de la variable"></td>
+                    <td class="w-52"><select class="input" x-model="v.kind">
+                      <option value="numeric">Numérica</option><option value="categorical">Categórica</option>
+                      <option value="text">Texto</option><option value="datetime">Fecha</option>
+                      <option value="boolean">Lógica (sí/no)</option></select></td>
+                    <td class="text-right"><button type="button" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400" @click="removeVariable(i)" :aria-label="`Quitar variable ${i + 1}`">{{ icon("trash", "size-4") }}</button></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <div class="flex justify-end"><button type="button" class="btn btn-primary" @click="setEditorTab('datos')">Continuar a Datos</button></div>
+        </div>
+
+        {# ---- datos (spreadsheet) ---- #}
+        <div x-show="editor.tab === 'datos'" x-cloak class="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+          <div class="flex flex-wrap items-center gap-0.5 rounded-sm border border-slate-300 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800" role="toolbar" aria-label="Edición de la grilla">
+            <button type="button" class="toolbar-btn" @click="sheetAction('undo')" data-tip="Deshacer" aria-label="Deshacer">{{ icon("undo", "size-4") }}</button>
+            <button type="button" class="toolbar-btn" @click="sheetAction('redo')" data-tip="Rehacer" aria-label="Rehacer">{{ icon("redo", "size-4") }}</button>
+            <span class="toolbar-separator"></span>
+            <button type="button" class="toolbar-btn" @click="sheetAction('copy')" data-tip="Copiar" aria-label="Copiar">{{ icon("copy", "size-4") }}</button>
+            <button type="button" class="toolbar-btn" @click="sheetAction('paste')" data-tip="Pegar" aria-label="Pegar">{{ icon("paste", "size-4") }}</button>
+            <span class="toolbar-separator"></span>
+            <button type="button" class="toolbar-btn" @click="sheetAction('insertRow')" data-tip="Insertar fila" aria-label="Insertar fila">{{ icon("insert-row", "size-4") }}</button>
+            <button type="button" class="toolbar-btn" @click="sheetAction('deleteRow')" data-tip="Eliminar fila" aria-label="Eliminar fila">{{ icon("delete-row", "size-4") }}</button>
+            <span class="toolbar-separator"></span>
+            <button type="button" class="toolbar-btn" @click="sheetAction('insertColumn')" data-tip="Insertar columna" aria-label="Insertar columna">{{ icon("insert-column", "size-4") }}</button>
+            <button type="button" class="toolbar-btn" @click="sheetAction('deleteColumn')" data-tip="Eliminar columna" aria-label="Eliminar columna">{{ icon("delete-column", "size-4") }}</button>
+          </div>
+          <div x-ref="manualSheet" class="min-h-0 flex-1 w-full"></div>
+          <p class="hint">Atajos: Ctrl+C copiar · Ctrl+V pegar · Ctrl+Z deshacer · clic derecho para insertar/eliminar filas y columnas.</p>
+        </div>
+
+        <p class="alert alert-danger" role="alert" x-show="editor.error" x-cloak x-text="editor.error"></p>
+
+        <div class="flex shrink-0 justify-end gap-2 border-t border-slate-300 pt-3 dark:border-slate-700">
+          <button type="button" class="btn btn-ghost" @click="closeEditor()">Cancelar</button>
+          <button type="button" class="btn btn-primary" @click="saveManual()" :disabled="editor.busy">{{ icon("save", "size-4") }} <span x-text="editor.busy ? 'Guardando…' : 'Guardar dataset'"></span></button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

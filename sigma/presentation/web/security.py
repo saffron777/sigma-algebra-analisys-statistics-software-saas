@@ -23,6 +23,7 @@ CONTENT_SECURITY_POLICY = "; ".join(
     [
         "default-src 'self'",
         "script-src 'self' 'unsafe-eval'",  # Alpine.js evaluates expressions with the Function constructor
+        "script-src-attr 'unsafe-inline'",  # Jspreadsheet/jSuites attach inline handlers (onclick, onchange) to grid cells
         "style-src 'self' 'unsafe-inline'",  # Plotly and Alpine set inline styles
         "img-src 'self' data: blob:",
         "font-src 'self' data:",

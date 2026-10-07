@@ -40,6 +40,7 @@ from sigma.application.use_cases.database import ApplyDatabase, GetDatabaseStatu
 from sigma.application.use_cases.datasets import (
     ChangeColumnTypes,
     CommitImport,
+    CreateManualDataset,
     DeleteDataset,
     DiscardImportDraft,
     GetDatasetInfo,
@@ -149,6 +150,7 @@ class UserServices:
     delete_dataset: DeleteDataset
     change_column_types: ChangeColumnTypes
     load_sample_data: LoadSampleData
+    create_manual_dataset: CreateManualDataset
     # analyses
     run_descriptive: RunDescriptive
     run_hypothesis_test: RunHypothesisTest
@@ -291,6 +293,7 @@ class Container:
             delete_dataset=DeleteDataset(datasets),
             change_column_types=ChangeColumnTypes(datasets),
             load_sample_data=LoadSampleData(self.importers, datasets, self.config.sample_dir),
+            create_manual_dataset=CreateManualDataset(datasets),
             run_descriptive=RunDescriptive(datasets),
             run_hypothesis_test=RunHypothesisTest(datasets),
             run_regression=RunRegression(datasets),

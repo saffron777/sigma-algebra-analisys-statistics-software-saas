@@ -15,6 +15,10 @@ const assets = [
   ["node_modules/katex/dist/katex.min.js", "katex.min.js"],
   ["node_modules/katex/dist/katex.min.css", "katex.min.css"],
   ["node_modules/katex/dist/contrib/auto-render.min.js", "katex-auto-render.min.js"],
+  ["node_modules/jsuites/dist/jsuites.js", "jsuites.js"],
+  ["node_modules/jsuites/dist/jsuites.css", "jsuites.css"],
+  ["node_modules/jspreadsheet-ce/dist/index.js", "jspreadsheet.js"],
+  ["node_modules/jspreadsheet-ce/dist/jspreadsheet.css", "jspreadsheet.css"],
 ];
 
 // whole directories (KaTeX ships its fonts next to the CSS and references them relatively)

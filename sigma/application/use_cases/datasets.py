@@ -17,6 +17,7 @@ from sigma.application.ports import (
     StagedImport,
 )
 from sigma.domain.datasets import (
+    CONVERTIBLE_KINDS,
     ColumnInfo,
     Dataset,
     DatasetInfo,
@@ -294,3 +295,33 @@ class ChangeColumnTypes:
                 raise InvalidInputError(f"La columna «{column}» no existe.")
             frame[column], failures[column] = convert_column(frame[column], kind)
         return self._datasets.replace_data(dataset_id, frame), failures
+
+
+class CreateManualDataset:
+    """Creates a dataset from data typed by hand (SPSS/Minitab-style data editor)."""
+
+    def __init__(self, datasets: DatasetRepository) -> None:
+        self._datasets = datasets
+
+    def execute(self, name: str | None, columns: list[dict[str, Any]], rows: list[dict[str, Any]]) -> DatasetInfo:
+        if not columns:
+            raise InvalidInputError("Defina al menos una variable.")
+        names: list[str] = []
+        for column in columns:
+            column_name = str(column.get("name") or "").strip()
+            kind = str(column.get("kind") or "")
+            if not column_name:
+                raise InvalidInputError("Las variables deben tener un nombre.")
+            if kind not in CONVERTIBLE_KINDS:
+                raise InvalidInputError(f"Tipo de variable inválido «{kind}».")
+            names.append(column_name)
+        if len({n.lower() for n in names}) != len(names):
+            raise InvalidInputError("Los nombres de variable deben ser únicos.")
+
+        data = {name: [row.get(name, "") for row in rows] for name in names}
+        frame = pd.DataFrame(data)
+        for name, column in zip(names, columns):
+            series = frame[name].astype("string")
+            frame[name], _ = convert_column(series, str(column.get("kind") or "text"))
+        frame = normalize_columns(frame)
+        return self._datasets.add(clean_dataset_name(name, "dataset"), frame, "manual", {"source_type": "manual"})

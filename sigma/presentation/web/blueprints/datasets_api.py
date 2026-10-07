@@ -10,7 +10,7 @@ from flask import Blueprint, jsonify, request
 from sigma.application.ports import ImportRequest
 from sigma.domain.errors import InvalidInputError
 from sigma.presentation.web.blueprints._helpers import container, export_options_from_query, file_response, parse_body
-from sigma.presentation.web.schemas.datasets import ColumnTypesRequest, CommitImportRequest, RenameRequest
+from sigma.presentation.web.schemas.datasets import ColumnTypesRequest, CommitImportRequest, ManualDatasetRequest, RenameRequest
 from sigma.presentation.web.serializers import to_jsonable
 
 bp = Blueprint("datasets_api", __name__, url_prefix="/api/datasets")
@@ -50,6 +50,16 @@ def load_samples():
     """Imports the bundled demo CSV files into the signed-in user's datasets."""
     outcome = container().load_sample_data.execute()
     return jsonify({**outcome, "datasets": to_jsonable(container().list_datasets.execute())}), 201
+
+
+@bp.post("/manual")
+def create_manual_dataset():
+    """Creates a dataset from data typed by hand (SPSS/Minitab-style data editor)."""
+    body = parse_body(ManualDatasetRequest)
+    info = container().create_manual_dataset.execute(
+        body.name, [column.model_dump() for column in body.columns], body.rows
+    )
+    return jsonify({"dataset": to_jsonable(info)}), 201
 
 
 @bp.post("/import/inspect")

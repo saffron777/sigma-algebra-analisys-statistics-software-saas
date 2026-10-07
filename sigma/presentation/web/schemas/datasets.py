@@ -2,10 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from sigma.application.dto import SaveResultCommand
 from sigma.presentation.web.schemas.base import NonEmpty, RequestModel
+
+
+class ManualColumn(RequestModel):
+    name: NonEmpty
+    kind: Literal["numeric", "categorical", "boolean", "datetime", "text"]
+
+
+class ManualDatasetRequest(RequestModel):
+    name: str | None = None
+    columns: list[ManualColumn]
+    rows: list[dict[str, Any]] = []
 
 
 class CommitImportRequest(RequestModel):
