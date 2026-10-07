@@ -22,6 +22,20 @@
     color: #dbe6f0 !important;
   }
   .dark .jss_worksheet > tbody > tr > td { background-color: #1b1b1f !important; color: #e5e7eb !important; }
+  /* jSuites calendar: crisp, no dark backdrop */
+  .jcalendar .jcalendar-content {
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .jcalendar .jcalendar-backdrop { display: none !important; }
+  .jcalendar-header span { color: #1e293b !important; }
+  .jcalendar-weekday { color: #475569 !important; }
+  .jcalendar-table td { color: #1e293b !important; }
+  .dark .jcalendar .jcalendar-content { background-color: #1e293b !important; border-color: #334155 !important; }
+  .dark .jcalendar-header span, .dark .jcalendar-table td { color: #e2e8f0 !important; }
+  .dark .jcalendar-weekday { color: #94a3b8 !important; }
 </style>
 <script defer src="{{ url_for('static', filename='vendor/jsuites.js') }}"></script>
 <script defer src="{{ url_for('static', filename='vendor/jspreadsheet.js') }}"></script>
@@ -459,16 +473,28 @@
           </div>
           <div class="table-wrap">
             <table class="tbl">
-              <thead><tr><th class="w-10">#</th><th>Nombre</th><th>Tipo</th><th class="w-16 text-right"></th></tr></thead>
+              <thead><tr><th class="w-10">#</th><th>Nombre</th><th>Tipo</th><th>Opciones</th><th class="w-16 text-right"></th></tr></thead>
               <tbody>
                 <template x-for="(v, i) in editor.variables" :key="i">
                   <tr>
                     <td class="text-slate-400" x-text="i + 1"></td>
                     <td><input class="input" type="text" maxlength="120" x-model="v.name" placeholder="nombre de la variable"></td>
-                    <td class="w-52"><select class="input" x-model="v.kind">
+                    <td class="w-44"><select class="input" x-model="v.kind">
                       <option value="numeric">Numérica</option><option value="categorical">Categórica</option>
                       <option value="text">Texto</option><option value="datetime">Fecha</option>
                       <option value="boolean">Lógica (sí/no)</option></select></td>
+                    <td class="w-72">
+                      <div x-show="v.kind === 'numeric'" x-cloak class="flex flex-wrap items-center gap-1.5">
+                        <select class="input !py-1 text-xs" x-model="v.numericType">
+                          <option value="decimal">Decimal</option><option value="integer">Entera</option></select>
+                        <span x-show="v.numericType === 'decimal'" x-cloak class="flex items-center gap-1.5">
+                          <input class="input !py-1 text-xs w-16" type="number" min="0" max="10" step="1" x-model.number="v.decimals" :aria-label="`Decimales de ${v.name || 'variable'}`">
+                          <span class="text-xs text-slate-500">decimales</span></span>
+                      </div>
+                      <div x-show="v.kind === 'categorical'" x-cloak>
+                        <input class="input !py-1 text-xs" type="text" maxlength="500" x-model="v.categories" placeholder="Bajo, Medio, Alto">
+                      </div>
+                    </td>
                     <td class="text-right"><button type="button" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400" @click="removeVariable(i)" :aria-label="`Quitar variable ${i + 1}`">{{ icon("trash", "size-4") }}</button></td>
                   </tr>
                 </template>

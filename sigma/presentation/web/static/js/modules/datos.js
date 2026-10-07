@@ -52,11 +52,19 @@ function manualColumn(variable, index) {
   const title = (variable.name || "").trim() || `V${index + 1}`;
   const base = { title, width: 140 };
   switch (variable.kind) {
-    case "numeric": return { ...base, type: "numeric", decimal: ".", mask: "#,##0.##########" };
+    case "numeric": return { ...base, type: "numeric", decimal: "." };
     case "datetime": return { ...base, type: "calendar", options: { format: "YYYY-MM-DD" } };
     case "boolean": return { ...base, type: "dropdown", source: ["Sí", "No"] };
-    default: return { ...base, type: "text" }; // categorical and text are free entry
+    case "categorical": {
+      const categories = (variable.categories || "").split(",").map((s) => s.trim()).filter(Boolean);
+      return categories.length ? { ...base, type: "dropdown", source: categories } : { ...base, type: "text" };
+    }
+    default: return { ...base, type: "text" }; // text is free entry
   }
+}
+
+function defaultVariable() {
+  return { name: "", kind: "numeric", numericType: "decimal", decimals: 2, categories: "" };
 }
 
 document.addEventListener("alpine:init", () => {
@@ -487,12 +495,12 @@ document.addEventListener("alpine:init", () => {
     },
 
     // ------------------------------------------------------------------ manual dataset editor
-    editor: { open: false, tab: "variables", name: "", variables: [{ name: "", kind: "numeric" }], busy: false, error: "" },
+    editor: { open: false, tab: "variables", name: "", variables: [defaultVariable()], busy: false, error: "" },
 
     openEditor() {
       manualSheet = null;
       manualSheetData = null;
-      this.editor = { open: true, tab: "variables", name: "", variables: [{ name: "", kind: "numeric" }], busy: false, error: "" };
+      this.editor = { open: true, tab: "variables", name: "", variables: [defaultVariable()], busy: false, error: "" };
       manualResizeHandler = () => {
         clearTimeout(manualResizeTimer);
         manualResizeTimer = setTimeout(() => { if (manualSheet) this._buildSheet(); }, 200);
@@ -512,7 +520,7 @@ document.addEventListener("alpine:init", () => {
     },
 
     addVariable() {
-      this.editor.variables.push({ name: "", kind: "numeric" });
+      this.editor.variables.push(defaultVariable());
       if (manualSheet) this._buildSheet();
     },
 
@@ -570,13 +578,25 @@ document.addEventListener("alpine:init", () => {
       const data = (manualSheetData ?? [{}]).map((obj) => names.map((name) => obj[name] ?? ""));
       const height = this.$refs.manualSheet.clientHeight || 560;
       manualSheet = jspreadsheet(this.$refs.manualSheet, {
+        // Round/truncate numeric values on commit (no visible mask while typing).
+        onbeforechange: (instance, cell, colIndex, rowIndex, newValue) => {
+          const variable = this.editor.variables[Number(colIndex)];
+          if (!variable || variable.kind !== "numeric") return undefined;
+          if (newValue === null || newValue === undefined || newValue === "") return undefined;
+          const num = Number(String(newValue).replace(",", "."));
+          if (Number.isNaN(num)) return undefined; // the numeric type already rejects letters
+          if (variable.numericType === "integer") return Math.round(num);
+          const decimals = Math.max(0, Math.min(10, Number(variable.decimals) || 0));
+          const factor = Math.pow(10, decimals);
+          return Math.round(num * factor) / factor;
+        },
         worksheets: [
           {
             data,
             columns,
             // v5 order is [columns, rows]
-            minDimensions: [Math.max(1, columns.length), Math.max(data.length + 1, 50)],
-            minSpareRows: 20,
+            minDimensions: [Math.max(1, columns.length), Math.max(data.length + 1, 200)],
+            minSpareRows: 30,
             minSpareCols: 2,
             tableOverflow: true,
             tableHeight: height,
@@ -585,6 +605,8 @@ document.addEventListener("alpine:init", () => {
             allowDeleteRow: true,
             allowInsertColumn: true,
             allowDeleteColumn: true,
+            allowManualInsertRow: true,
+            allowManualInsertColumn: true,
             columnSorting: false,
           },
         ],
