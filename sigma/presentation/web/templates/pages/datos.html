@@ -345,9 +345,9 @@
     <div class="card-header">
       <h2 id="viewer-title" class="card-title" x-text="viewer.dataset ? `Datos de «${viewer.dataset.name}»` : ''"></h2>
       <div class="flex items-center gap-2 text-xs text-slate-500">
-        <span x-text="`filas ${viewer.offset + 1}–${Math.min(viewer.offset + 50, viewer.total)} de ${viewer.total.toLocaleString('es')}`"></span>
-        <button type="button" class="btn btn-secondary btn-sm" @click="page(-1)" :disabled="viewer.offset === 0 || viewer.busy">Anterior</button>
-        <button type="button" class="btn btn-secondary btn-sm" @click="page(1)" :disabled="viewer.offset + 50 >= viewer.total || viewer.busy">Siguiente</button>
+        <span x-show="viewer.mode === 'data'" x-text="`filas ${viewer.offset + 1}–${Math.min(viewer.offset + 50, viewer.total)} de ${viewer.total.toLocaleString('es')}`"></span>
+        <button type="button" class="btn btn-secondary btn-sm" x-show="viewer.mode === 'data'" @click="page(-1)" :disabled="viewer.offset === 0 || viewer.busy">Anterior</button>
+        <button type="button" class="btn btn-secondary btn-sm" x-show="viewer.mode === 'data'" @click="page(1)" :disabled="viewer.offset + 50 >= viewer.total || viewer.busy">Siguiente</button>
         <button type="button" class="btn btn-secondary btn-sm print:hidden" @click="exportFicha()">{{ icon("download", "size-4") }} Exportar ficha</button>
         <button type="button" class="btn btn-secondary btn-sm print:hidden" @click="printViewer()">{{ icon("print", "size-4") }} Imprimir</button>
         <button type="button" class="btn btn-secondary btn-sm print:hidden" x-show="$store.ai.available" x-cloak @click="askAiDataset()" :disabled="$store.ai.busy"
@@ -355,35 +355,53 @@
         <button type="button" class="btn btn-ghost btn-sm" @click="closeViewer()" aria-label="Cerrar">{{ icon("close", "size-4") }}</button>
       </div>
     </div>
-    <div class="card-body space-y-4">
+    <div class="card-body space-y-3">
+      <div class="tab-bar w-fit" role="tablist">
+        <button type="button" role="tab" class="tab" :class="viewer.mode === 'data' && 'tab-active'" :aria-selected="viewer.mode === 'data'" @click="viewer.mode = 'data'">Vista de datos</button>
+        <button type="button" role="tab" class="tab" :class="viewer.mode === 'variables' && 'tab-active'" :aria-selected="viewer.mode === 'variables'" @click="viewer.mode = 'variables'">Vista de variables</button>
+      </div>
+
       <p class="alert alert-danger" role="alert" x-show="ficha.error" x-cloak x-text="ficha.error"></p>
-      <section class="rounded-lg border border-brand-200 bg-brand-50/50 p-4 dark:border-brand-900 dark:bg-brand-950/30" x-show="fichaInterpretation" x-cloak aria-label="Interpretación con IA">
-        <h3 class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ icon("ai", "size-4") }} Calidad de los datos (IA)</h3>
+      <section class="rounded-sm border border-brand-200 bg-brand-50/60 p-3 dark:border-brand-900 dark:bg-brand-950/30" x-show="fichaInterpretation" x-cloak aria-label="Interpretación con IA">
+        <h3 class="mb-2 flex items-center gap-2 text-[13px] font-semibold text-slate-900 dark:text-slate-100">{{ icon("ai", "size-4") }} Calidad de los datos (IA)</h3>
         <div class="rendered-html" x-effect="drawFichaInterpretation($el)"></div>
-        <p class="mt-3 text-xs text-slate-500"><strong>Generado por IA</strong>: puede contener errores; verifique las cifras con la ficha.</p>
+        <p class="mt-2 text-xs text-slate-500"><strong>Generado por IA</strong>: puede contener errores; verifique las cifras con la ficha.</p>
       </section>
-      <div class="table-wrap max-h-96">
-        <table class="tbl">
-          <thead class="sticky top-0"><tr>
+
+      {# ---- data view: cases (rows) × variables (columns) ---- #}
+      <div class="table-wrap max-h-[60vh] overflow-auto" x-show="viewer.mode === 'data'" x-cloak>
+        <table class="datagrid min-w-full">
+          <thead><tr>
+            <th class="rownum w-12">#</th>
             <template x-for="c in viewer.dataset?.columns ?? []" :key="c.name"><th><div x-text="c.name"></div>
-              <div class="font-normal text-slate-400" x-text="`${kindLabels[c.kind]} · ${c.n_missing} vacíos`"></div></th></template></tr></thead>
-          <tbody><template x-for="(row, i) in viewer.rows" :key="i"><tr><template x-for="(cell, j) in row" :key="j">
-            <td class="max-w-[16rem] truncate" x-text="formatCell(cell)"></td></template></tr></template></tbody>
+              <div class="font-normal text-slate-400" x-text="kindLabels[c.kind]"></div></th></template></tr></thead>
+          <tbody><template x-for="(row, i) in viewer.rows" :key="i"><tr>
+            <td class="rownum" x-text="viewer.offset + i + 1"></td>
+            <template x-for="(cell, j) in row" :key="j"><td class="max-w-[16rem] truncate" x-text="formatCell(cell)"></td></template></tr></template></tbody>
         </table>
       </div>
-      <details class="rounded-lg border border-slate-200 dark:border-slate-800">
-        <summary class="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300">Cambiar el tipo de las columnas</summary>
-        <div class="space-y-3 border-t border-slate-200 p-4 dark:border-slate-800">
-          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <template x-for="c in viewer.dataset?.columns ?? []" :key="c.name">
-              <div><label class="label"><span x-text="c.name"></span> <span class="font-normal text-slate-400" x-text="`(${kindLabels[c.kind]})`"></span></label>
-                {{ kind_select("viewer.kinds[c.name]") }}</div>
-            </template>
-          </div>
-          <button type="button" class="btn btn-primary btn-sm" @click="applyTypes()">Aplicar cambios</button>
+
+      {# ---- variable view: one row per variable ---- #}
+      <div x-show="viewer.mode === 'variables'" x-cloak class="space-y-3">
+        <div class="table-wrap max-h-[60vh] overflow-auto">
+          <table class="tbl">
+            <thead><tr><th>Nombre</th><th>Tipo</th><th class="text-right">Vacíos</th></tr></thead>
+            <tbody>
+              <template x-for="c in viewer.dataset?.columns ?? []" :key="c.name">
+                <tr>
+                  <td class="font-medium" x-text="c.name"></td>
+                  <td class="w-56">{{ kind_select("viewer.kinds[c.name]") }}<span class="mt-0.5 block text-xs text-slate-400" x-text="kindLabels[c.kind]"></span></td>
+                  <td class="text-right" x-text="c.n_missing.toLocaleString('es')"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" class="btn btn-primary btn-sm" @click="applyTypes()">Aplicar cambios de tipo</button>
           <p class="hint">Los valores que no se puedan convertir quedarán vacíos y se le avisará de cuántos fueron.</p>
         </div>
-      </details>
+      </div>
     </div>
   </section>
 </div>

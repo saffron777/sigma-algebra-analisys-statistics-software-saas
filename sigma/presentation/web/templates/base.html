@@ -1,5 +1,24 @@
 <!doctype html>
 {% from "partials/macros.html" import icon %}
+
+{% macro menu_items(items) %}
+  {% for item in items %}
+    {% if item.kind == "__sep__" %}
+      <div class="menu-separator"></div>
+    {% elif item.kind == "__label__" %}
+      <div class="menu-label">{{ item.label }}</div>
+    {% elif item.kind == "__logout__" %}
+      {% if current_user %}<button type="button" class="menu-item" @click="logout()">{{ icon("logout", "size-4") }} Cerrar sesión</button>{% endif %}
+    {% elif item.kind == "__about__" %}
+      <div class="menu-label">Sigma v{{ sigma_version }}</div>
+    {% elif item.key == "consola" and not (current_user and current_user.can_use_console) %}
+    {% elif item.key in ("usuarios", "basedatos") and not (current_user and current_user.is_admin) %}
+    {% else %}
+      <a class="menu-item" href="{{ item.href }}">{{ icon(item.key) }} {{ item.label }}</a>
+    {% endif %}
+  {% endfor %}
+{% endmacro %}
+
 <html lang="es" class="h-full">
 <head>
   <meta charset="utf-8">
@@ -19,71 +38,75 @@
   <script defer src="{{ url_for('static', filename='vendor/purify.min.js') }}"></script>
   <script defer src="{{ url_for('static', filename='vendor/alpine.min.js') }}"></script>
 </head>
-<body class="h-full" x-data="shell" @keydown.escape.window="menuOpen = false">
-  <div class="flex min-h-full">
+<body class="flex h-dvh flex-col overflow-hidden" x-data="shell" @keydown.escape.window="openMenu = null; menuOpen = false">
 
-    {# ---------- sidebar (drawer on mobile) ---------- #}
-    <div x-show="menuOpen" x-cloak class="fixed inset-0 z-30 bg-slate-900/50 lg:hidden" @click="menuOpen = false" aria-hidden="true"></div>
-    <aside class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-slate-200 bg-white transition-transform duration-200 dark:border-slate-800 dark:bg-slate-900 lg:sticky lg:top-0 lg:h-screen lg:shrink-0 lg:self-start lg:translate-x-0"
-           :class="menuOpen && 'translate-x-0'" aria-label="Navegación principal">
-      <div class="flex h-16 shrink-0 items-center justify-between px-5">
-        <a href="{{ url_for('pages.page_home') }}" class="flex items-center gap-2.5 text-lg font-bold tracking-tight text-slate-900 dark:text-white">
-          <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="32" height="32" class="size-8"> Sigma
-        </a>
-        <button type="button" class="btn btn-ghost btn-sm lg:hidden" @click="menuOpen = false" aria-label="Cerrar menú">{{ icon("close") }}</button>
+  {# ===================== menu bar ===================== #}
+  <nav class="menubar" aria-label="Menú principal">
+    <button type="button" class="toolbar-btn lg:hidden" @click="menuOpen = true" aria-label="Abrir menú">{{ icon("menu", "size-4") }}</button>
+    <a href="{{ url_for('pages.page_home') }}" class="flex items-center gap-1.5 px-2 text-[13px] font-bold text-slate-800 dark:text-slate-100">
+      <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="16" height="16" class="size-4"> Sigma
+    </a>
+    <div class="hidden lg:flex">
+      {% for group in menu %}
+      <div class="relative" @click.outside="openMenu = null">
+        <button type="button" class="menubar-item" :aria-expanded="openMenu === '{{ group.title }}'" @click="toggleMenu('{{ group.title }}')">{{ group.title }}</button>
+        <div class="menu max-h-[75vh] overflow-y-auto" x-show="openMenu === '{{ group.title }}'" x-cloak>
+          {{ menu_items(group["items"]) }}
+        </div>
       </div>
-      <nav class="flex-1 space-y-5 overflow-y-auto px-3 pb-6 pt-2">
-        {% for group in nav_groups %}
+      {% endfor %}
+    </div>
+    <div class="ml-auto flex items-center">
+      <button type="button" class="toolbar-btn" @click="toggleTheme()" :aria-label="dark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'">
+        <span x-show="!dark">{{ icon("moon", "size-4") }}</span><span x-show="dark" x-cloak>{{ icon("sun", "size-4") }}</span>
+      </button>
+    </div>
+  </nav>
+
+  {# ===================== mobile drawer ===================== #}
+  <div x-show="menuOpen" x-cloak class="fixed inset-0 z-40 lg:hidden" @click="menuOpen = false" aria-hidden="true">
+    <div class="absolute inset-0 bg-slate-900/50"></div>
+    <div class="absolute inset-y-0 left-0 w-64 overflow-y-auto border-r border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900" @click.stop>
+      <div class="flex h-12 items-center justify-between border-b border-slate-300 px-4 dark:border-slate-700">
+        <span class="flex items-center gap-1.5 text-sm font-bold text-slate-800 dark:text-slate-100">
+          <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="16" height="16" class="size-4"> Sigma</span>
+        <button type="button" class="toolbar-btn" @click="menuOpen = false" aria-label="Cerrar menú">{{ icon("close", "size-4") }}</button>
+      </div>
+      <nav class="space-y-3 p-2">
+        {% for group in menu %}
         <div>
-          <p class="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ group.title }}</p>
-          <ul class="space-y-0.5">
-            {% for item in group["items"] if item.key != "consola" or (current_user and current_user.can_use_console) %}
-            <li>
-              <a href="{{ item.href }}" {% if active == item.key %}aria-current="page"{% endif %}
-                 class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition
-                        {% if active == item.key %}bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200{% else %}text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100{% endif %}">
-                {{ icon(item.key) }} {{ item.label }}
-              </a>
-            </li>
-            {% endfor %}
-          </ul>
+          <p class="menu-label">{{ group.title }}</p>
+          {{ menu_items(group["items"]) }}
         </div>
         {% endfor %}
+        <button type="button" class="menu-item" @click="toggleTheme()"><span x-show="!dark">{{ icon("moon", "size-4") }}</span><span x-show="dark" x-cloak>{{ icon("sun", "size-4") }}</span> Tema claro/oscuro</button>
       </nav>
-      {% if current_user %}
-      <div class="space-y-1 border-t border-slate-200 p-3 dark:border-slate-800">
-        <div class="flex items-center gap-3 px-2 py-1.5">
-          <span class="grid size-8 shrink-0 place-items-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700 dark:bg-brand-900/50 dark:text-brand-200">{{ current_user.display_name[:1] | upper }}</span>
-          <span class="min-w-0"><span class="block truncate text-sm font-medium text-slate-900 dark:text-slate-100">{{ current_user.display_name }}</span>
-            <span class="block truncate text-xs text-slate-500">{{ 'Administrador' if current_user.is_admin else 'Usuario' }} · {{ current_user.username }}</span></span>
-        </div>
-        <a href="{{ url_for('pages.page_cuenta') }}" class="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">{{ icon("cuenta", "size-4") }} Mi cuenta</a>
-        {% if current_user.is_admin %}
-        <a href="{{ url_for('pages.page_usuarios') }}" class="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">{{ icon("usuarios", "size-4") }} Usuarios</a>
-        <a href="{{ url_for('pages.page_basedatos') }}" class="flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">{{ icon("datos", "size-4") }} Base de datos</a>
-        {% endif %}
-        <button type="button" class="flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" @click="logout()">{{ icon("logout", "size-4") }} Cerrar sesión</button>
-      </div>
-      {% endif %}
-      <div class="border-t border-slate-200 px-5 py-2 text-xs text-slate-400 dark:border-slate-800">Sigma v{{ sigma_version }}</div>
-    </aside>
-
-    {# ---------- main column ---------- #}
-    <div class="flex min-w-0 flex-1 flex-col">
-      <header class="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-slate-200 bg-white/85 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-900/85 sm:px-6">
-        <button type="button" class="btn btn-ghost btn-sm lg:hidden" @click="menuOpen = true" aria-label="Abrir menú">{{ icon("menu") }}</button>
-        <h1 class="truncate text-base font-semibold text-slate-900 dark:text-slate-50">{{ page_title }}</h1>
-        <div class="ml-auto flex items-center gap-1">
-          <button type="button" class="btn btn-ghost btn-sm" @click="toggleTheme()" :aria-label="dark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'">
-            <span x-show="!dark">{{ icon("moon") }}</span><span x-show="dark" x-cloak>{{ icon("sun") }}</span>
-          </button>
-        </div>
-      </header>
-      <main class="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 sm:px-6 lg:py-7">
-        {% block content %}{% endblock %}
-      </main>
     </div>
   </div>
+
+  {# ===================== toolbar ===================== #}
+  <div class="toolbar" aria-label="Barra de herramientas">
+    <a class="toolbar-btn" href="{{ url_for('pages.page_datos') }}" title="Importar datos">{{ icon("upload", "size-4") }}</a>
+    <a class="toolbar-btn" href="{{ url_for('pages.page_graficos') }}" title="Gráficos">{{ icon("graficos", "size-4") }}</a>
+    <a class="toolbar-btn" href="{{ url_for('pages.page_resultados') }}" title="Resultados guardados">{{ icon("resultados", "size-4") }}</a>
+    <a class="toolbar-btn" href="{{ url_for('pages.page_asistente') }}" title="Asistente: ¿qué análisis usar?">{{ icon("asistente", "size-4") }}</a>
+    {% if current_user and current_user.can_use_console %}<a class="toolbar-btn" href="{{ url_for('pages.page_consola') }}" title="Consola (Python y R)">{{ icon("consola", "size-4") }}</a>{% endif %}
+    <span class="toolbar-separator"></span>
+    <button type="button" class="toolbar-btn" @click="printPage()" title="Imprimir">{{ icon("print", "size-4") }}</button>
+    <span class="ml-auto truncate px-2 text-[13px] font-semibold text-slate-700 dark:text-slate-200">{{ page_title }}</span>
+  </div>
+
+  {# ===================== content ===================== #}
+  <main class="mx-auto w-full max-w-7xl flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
+    {% block content %}{% endblock %}
+  </main>
+
+  {# ===================== status bar ===================== #}
+  <footer class="statusbar" aria-label="Barra de estado">
+    <span class="statusbar-cell">Sigma listo</span>
+    <span class="statusbar-cell" x-text="$store.datasets.active ? `${$store.datasets.active.name} · ${$store.datasets.active.n_rows} filas × ${$store.datasets.active.n_cols} col.` : 'Sin dataset activo'"></span>
+    <span class="statusbar-cell ml-auto">Sigma v{{ sigma_version }}</span>
+  </footer>
 
   {% include "partials/save_dialog.html" %}
   {% include "partials/export_dialog.html" %}

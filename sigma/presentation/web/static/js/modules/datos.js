@@ -65,7 +65,7 @@ document.addEventListener("alpine:init", () => {
     saveName: "",
     kinds: {},
 
-    viewer: { dataset: null, columns: [], rows: [], offset: 0, total: 0, kinds: {}, busy: false },
+    viewer: { dataset: null, columns: [], rows: [], offset: 0, total: 0, kinds: {}, busy: false, mode: "data" },
 
     async init() {
       await this.startWorkspace();

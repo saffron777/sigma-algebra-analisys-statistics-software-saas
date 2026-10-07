@@ -23,12 +23,19 @@ document.addEventListener("alpine:init", () => {
   // ------------------------------------------------------------------ layout shell
   Alpine.data("shell", () => ({
     menuOpen: false,
+    openMenu: null, // title of the open menu-bar dropdown
     dark: document.documentElement.classList.contains("dark"),
     toggleTheme() {
       this.dark = !this.dark;
       document.documentElement.classList.toggle("dark", this.dark);
       storage.set(THEME_KEY, this.dark ? "dark" : "light");
       rethemeAll();
+    },
+    toggleMenu(title) {
+      this.openMenu = this.openMenu === title ? null : title;
+    },
+    printPage() {
+      window.print();
     },
     async logout() {
       try {

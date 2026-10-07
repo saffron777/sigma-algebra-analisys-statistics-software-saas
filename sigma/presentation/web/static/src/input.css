@@ -8,85 +8,86 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+  --font-sans: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Cascadia Mono", "SF Mono", Consolas, "Courier New", monospace;
 
-  --color-brand-50: #eef2ff;
-  --color-brand-100: #e0e7ff;
-  --color-brand-200: #c7d2fe;
-  --color-brand-300: #a5b4fc;
-  --color-brand-400: #818cf8;
-  --color-brand-500: #6366f1;
-  --color-brand-600: #4f46e5;
-  --color-brand-700: #4338ca;
-  --color-brand-800: #3730a3;
-  --color-brand-900: #312e81;
+  /* Traditional statistics-software accent: muted, sober blue (SPSS/Minitab convention). */
+  --color-brand-50: #f0f5fb;
+  --color-brand-100: #dbe7f3;
+  --color-brand-200: #bad0e6;
+  --color-brand-300: #90b2d4;
+  --color-brand-400: #6691bd;
+  --color-brand-500: #4575a6;
+  --color-brand-600: #2f6bb0;
+  --color-brand-700: #28578d;
+  --color-brand-800: #224972;
+  --color-brand-900: #1c3b5c;
 }
 
 @layer base {
   html { -webkit-text-size-adjust: 100%; }
-  body { @apply bg-slate-50 text-slate-800 antialiased dark:bg-slate-950 dark:text-slate-200; }
-  :focus-visible { @apply outline-2 outline-offset-2 outline-brand-500; }
+  body { @apply bg-[#eef1f4] text-slate-800 antialiased dark:bg-[#1b1b1f] dark:text-slate-200; }
+  :focus-visible { @apply outline-2 outline-offset-1 outline-brand-500; }
   [x-cloak] { display: none !important; }
 }
 
 @layer components {
-  /* ---------- surfaces ---------- */
-  .card { @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900; }
-  .card-header { @apply flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:px-5; }
-  .card-title { @apply text-sm font-semibold text-slate-900 dark:text-slate-100; }
-  .card-body { @apply p-4 sm:p-5; }
+  /* ---------- surfaces (flat, bordered, desktop-like) ---------- */
+  .card { @apply rounded-sm border border-slate-300 bg-white shadow-none dark:border-slate-700 dark:bg-slate-900; }
+  .card-header { @apply flex flex-wrap items-center justify-between gap-2 border-b border-slate-300 bg-slate-100/70 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/60; }
+  .card-title { @apply text-[13px] font-semibold text-slate-900 dark:text-slate-100; }
+  .card-body { @apply p-3 sm:p-4; }
 
   /* ---------- forms ---------- */
-  .label { @apply mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400; }
-  .hint { @apply mt-1 text-xs text-slate-500 dark:text-slate-500; }
+  .label { @apply mb-1 block text-[11.5px] font-semibold text-slate-600 dark:text-slate-400; }
+  .hint { @apply mt-1 text-[11.5px] text-slate-500 dark:text-slate-500; }
   .input {
-    @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm
-           placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 focus:outline-none
+    @apply block w-full rounded-sm border border-slate-300 bg-white px-2.5 py-1.5 text-[13px] text-slate-900
+           placeholder:text-slate-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/40 focus:outline-none
            disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400
-           dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:disabled:bg-slate-800;
+           dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:disabled:bg-slate-800;
   }
   textarea.input { @apply font-mono text-xs leading-relaxed; }
-  .check { @apply size-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800; }
-  .check-row { @apply flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800; }
-  .checklist { @apply max-h-48 overflow-y-auto rounded-lg border border-slate-200 p-1 dark:border-slate-700; }
+  .check { @apply size-3.5 rounded-sm border-slate-400 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800; }
+  .check-row { @apply flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1 text-[13px] hover:bg-slate-100 dark:hover:bg-slate-800; }
+  .checklist { @apply max-h-48 overflow-y-auto rounded-sm border border-slate-300 p-1 dark:border-slate-700; }
 
-  /* ---------- buttons ---------- */
+  /* ---------- buttons (flat) ---------- */
   .btn {
-    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition
-           focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2
+    @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-sm border border-transparent px-3 py-1.5 text-[13px] font-medium transition
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1
            disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-900;
   }
-  .btn-primary { @apply bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:bg-brand-800; }
-  .btn-secondary { @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700; }
-  .btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
-  .btn-ghost { @apply text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800; }
-  .btn-sm { @apply px-2.5 py-1.5 text-xs; }
+  .btn-primary { @apply border-brand-600 bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800; }
+  .btn-secondary { @apply border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700; }
+  .btn-danger { @apply border-red-600 bg-red-600 text-white hover:bg-red-700; }
+  .btn-ghost { @apply text-slate-600 hover:bg-slate-200/70 dark:text-slate-300 dark:hover:bg-slate-800; }
+  .btn-sm { @apply px-2 py-1 text-xs; }
 
   /* ---------- tabs ---------- */
-  .tab-bar { @apply flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800; }
-  .tab { @apply shrink-0 cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100; }
-  .tab-active { @apply bg-white text-brand-700 shadow-sm dark:bg-slate-900 dark:text-brand-300; }
+  .tab-bar { @apply flex gap-0 overflow-x-auto rounded-sm border border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-800; }
+  .tab { @apply shrink-0 cursor-pointer border-r border-slate-300 px-3 py-1.5 text-[13px] font-medium text-slate-600 transition last:border-r-0 hover:bg-slate-200/60 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100; }
+  .tab-active { @apply bg-white text-brand-700 shadow-[inset_0_2px_0_theme(colors.brand.600)] dark:bg-slate-900 dark:text-brand-300 dark:shadow-[inset_0_2px_0_theme(colors.brand.400)]; }
 
   /* ---------- badges / alerts ---------- */
-  .badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium; }
-  .badge-brand { @apply bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-200; }
-  .badge-gray { @apply bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300; }
-  .alert { @apply rounded-lg border px-4 py-3 text-sm; }
-  .alert-info { @apply border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-900 dark:bg-sky-950/50 dark:text-sky-200; }
-  .alert-success { @apply border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200; }
-  .alert-warning { @apply border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-200; }
-  .alert-danger { @apply border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/50 dark:text-red-200; }
+  .badge { @apply inline-flex items-center rounded-sm px-1.5 py-0.5 text-[11px] font-medium; }
+  .badge-brand { @apply bg-brand-100 text-brand-800 dark:bg-brand-900/60 dark:text-brand-200; }
+  .badge-gray { @apply bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300; }
+  .alert { @apply rounded-sm border px-3 py-2 text-[13px]; }
+  .alert-info { @apply border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-900 dark:bg-sky-950/50 dark:text-sky-200; }
+  .alert-success { @apply border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200; }
+  .alert-warning { @apply border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-200; }
+  .alert-danger { @apply border-red-300 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/50 dark:text-red-200; }
 
   /* ---------- report blocks (rendered by js/report.js) ---------- */
-  .tile { @apply rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900; }
-  .tile-label { @apply text-xs font-medium text-slate-500 dark:text-slate-400; }
-  .tile-value { @apply mt-0.5 text-xl font-semibold tabular-nums text-slate-900 dark:text-slate-50; }
-  .tile-hint { @apply mt-0.5 text-xs text-slate-500 dark:text-slate-400; }
-  .table-wrap { @apply overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800; }
-  .tbl { @apply w-full border-collapse text-sm tabular-nums; }
-  .tbl th { @apply whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300; }
-  .tbl td { @apply whitespace-nowrap border-b border-slate-100 px-3 py-1.5 dark:border-slate-800/70; }
+  .tile { @apply rounded-sm border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900; }
+  .tile-label { @apply text-[11px] font-semibold text-slate-500 dark:text-slate-400; }
+  .tile-value { @apply mt-0.5 text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-50; }
+  .tile-hint { @apply mt-0.5 text-[11px] text-slate-500 dark:text-slate-400; }
+  .table-wrap { @apply overflow-x-auto rounded-sm border border-slate-300 dark:border-slate-700; }
+  .tbl { @apply w-full border-collapse text-[12.5px] tabular-nums; }
+  .tbl th { @apply whitespace-nowrap border-b border-slate-300 bg-slate-100 px-2.5 py-1.5 text-left text-[11.5px] font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300; }
+  .tbl td { @apply whitespace-nowrap border-b border-slate-200 px-2.5 py-1 dark:border-slate-700/60; }
   .tbl tr:last-child td { @apply border-b-0; }
   .tbl tbody tr:hover { @apply bg-slate-50 dark:bg-slate-800/40; }
   .tbl td:first-child { @apply font-medium text-slate-900 dark:text-slate-100; }
@@ -94,34 +95,68 @@
   .tone-good { @apply text-emerald-700 dark:text-emerald-400; }
   .tone-bad { @apply font-medium text-red-600 dark:text-red-400; }
   .tone-muted { @apply text-slate-400; }
-  .report-heading { @apply mt-2 border-b border-slate-200 pb-1 text-base font-semibold text-slate-900 dark:border-slate-800 dark:text-slate-100; }
-  .plot-card { @apply overflow-hidden rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900; }
-  .caption { @apply px-3 pb-2 text-xs text-slate-500 dark:text-slate-400; }
+  .report-heading { @apply mt-2 border-b border-slate-300 pb-1 text-[15px] font-semibold text-slate-900 dark:border-slate-700 dark:text-slate-100; }
+  .plot-card { @apply overflow-hidden rounded-sm border border-slate-300 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900; }
+  .caption { @apply px-3 pb-2 text-[11.5px] text-slate-500 dark:text-slate-400; }
 
   /* ---------- sanitised HTML / markdown (notebook outputs, markdown cells) ---------- */
-  .rendered-html { @apply text-sm leading-relaxed text-slate-800 dark:text-slate-200; }
-  .rendered-html h1 { @apply mb-2 mt-3 text-xl font-bold text-slate-900 dark:text-slate-50; }
-  .rendered-html h2 { @apply mb-2 mt-3 text-lg font-semibold text-slate-900 dark:text-slate-50; }
-  .rendered-html h3, .rendered-html h4 { @apply mb-1 mt-2 text-base font-semibold text-slate-900 dark:text-slate-100; }
-  .rendered-html p { @apply my-2; }
-  .rendered-html ul { @apply my-2 list-disc pl-6; }
-  .rendered-html ol { @apply my-2 list-decimal pl-6; }
+  .rendered-html { @apply text-[13px] leading-relaxed text-slate-800 dark:text-slate-200; }
+  .rendered-html h1 { @apply mb-2 mt-3 text-lg font-bold text-slate-900 dark:text-slate-50; }
+  .rendered-html h2 { @apply mb-2 mt-3 text-base font-semibold text-slate-900 dark:text-slate-50; }
+  .rendered-html h3, .rendered-html h4 { @apply mb-1 mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100; }
+  .rendered-html p { @apply my-1.5; }
+  .rendered-html ul { @apply my-1.5 list-disc pl-5; }
+  .rendered-html ol { @apply my-1.5 list-decimal pl-5; }
   .rendered-html a { @apply text-brand-600 underline dark:text-brand-300; }
-  .rendered-html blockquote { @apply my-2 border-l-4 border-slate-300 pl-3 text-slate-600 dark:border-slate-600 dark:text-slate-400; }
-  .rendered-html code { @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-[12.5px] dark:bg-slate-800; }
-  .rendered-html pre { @apply my-2 overflow-x-auto rounded-md bg-slate-100 p-3 dark:bg-slate-800; }
+  .rendered-html blockquote { @apply my-1.5 border-l-4 border-slate-300 pl-3 text-slate-600 dark:border-slate-600 dark:text-slate-400; }
+  .rendered-html code { @apply rounded-sm bg-slate-100 px-1 py-0.5 font-mono text-xs dark:bg-slate-800; }
+  .rendered-html pre { @apply my-1.5 overflow-x-auto rounded-sm bg-slate-100 p-2.5 dark:bg-slate-800; }
   .rendered-html pre code { @apply bg-transparent p-0; }
   .rendered-html img { @apply max-w-full; }
-  .rendered-html table { @apply my-2 block max-w-full overflow-x-auto border-collapse text-xs tabular-nums; }
-  .rendered-html th, .rendered-html td { @apply border border-slate-200 px-2 py-1 text-right dark:border-slate-700; }
-  .rendered-html th { @apply bg-slate-50 font-semibold dark:bg-slate-800; }
+  .rendered-html table { @apply my-1.5 block max-w-full overflow-x-auto border-collapse text-[11.5px] tabular-nums; }
+  .rendered-html th, .rendered-html td { @apply border border-slate-300 px-1.5 py-0.5 text-right dark:border-slate-700; }
+  .rendered-html th { @apply bg-slate-100 font-semibold dark:bg-slate-800; }
   .rendered-html tbody th { @apply text-left; }
 
   /* ---------- notebook cells ---------- */
-  .cell { @apply rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900; }
-  .cell-active { @apply border-brand-400 ring-1 ring-brand-400/40 dark:border-brand-500; }
-  .code-input { @apply block w-full resize-none rounded-md bg-slate-50 p-3 font-mono text-[13px] leading-relaxed text-slate-900 outline-none dark:bg-slate-950 dark:text-slate-100; }
-  .cell-output { @apply overflow-x-auto px-3 py-2 font-mono text-[13px] leading-relaxed whitespace-pre-wrap; }
+  .cell { @apply rounded-sm border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900; }
+  .cell-active { @apply border-brand-500 ring-1 ring-brand-500/40; }
+  .code-input { @apply block w-full resize-none rounded-sm bg-slate-50 p-2.5 font-mono text-[12.5px] leading-relaxed text-slate-900 outline-none dark:bg-slate-950 dark:text-slate-100; }
+  .cell-output { @apply overflow-x-auto px-3 py-2 font-mono text-[12.5px] leading-relaxed whitespace-pre-wrap; }
+
+  /* ======================================================================== desktop chrome */
+  /* Menu bar (top) */
+  .menubar { @apply flex h-7 items-stretch border-b border-slate-300 bg-slate-100 px-1 text-[13px] dark:border-slate-700 dark:bg-slate-800; }
+  .menubar-item { @apply relative cursor-pointer px-2.5 leading-7 text-slate-700 select-none hover:bg-brand-600 hover:text-white dark:text-slate-200; }
+  .menubar-item[aria-expanded="true"] { @apply bg-brand-600 text-white; }
+  .menu { @apply absolute left-0 top-full z-50 min-w-56 rounded-sm border border-slate-300 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900; }
+  .menu-item { @apply flex w-full items-center gap-2 px-3 py-1 text-left text-[13px] text-slate-700 hover:bg-brand-50 hover:text-brand-800 dark:text-slate-200 dark:hover:bg-slate-800; }
+  .menu-item:disabled { @apply cursor-not-allowed text-slate-400; }
+  .menu-separator { @apply my-1 border-t border-slate-200 dark:border-slate-700; }
+  .menu-label { @apply px-3 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400; }
+
+  /* Toolbar (below the menu bar) */
+  .toolbar { @apply flex h-9 items-center gap-0.5 border-b border-slate-300 bg-slate-100 px-1.5 dark:border-slate-700 dark:bg-slate-800; }
+  .toolbar-btn { @apply inline-flex size-7 cursor-pointer items-center justify-center rounded-sm text-slate-600 hover:bg-slate-200/80 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100; }
+  .toolbar-separator { @apply mx-1 h-5 w-px bg-slate-300 dark:bg-slate-700; }
+
+  /* Status bar (bottom) */
+  .statusbar { @apply flex h-6 items-center gap-3 overflow-hidden border-t border-slate-300 bg-slate-100 px-2 text-[11.5px] text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400; }
+  .statusbar-cell { @apply truncate border-r border-slate-300 pr-3 last:border-r-0 dark:border-slate-700; }
+
+  /* Data grid (data view / variable view) */
+  .datagrid { @apply border-collapse text-[12px] tabular-nums; }
+  .datagrid th { @apply sticky top-0 z-10 border border-slate-300 bg-slate-200 px-2 py-1 text-left font-semibold text-slate-700 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200; }
+  .datagrid td { @apply border border-slate-300 bg-white px-2 py-0.5 text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200; }
+  .datagrid .rownum { @apply sticky left-0 z-[5] border border-slate-300 bg-slate-100 text-right font-normal text-slate-400 select-none dark:border-slate-600 dark:bg-slate-800; }
+  .datagrid tr:hover td { @apply bg-brand-50/60 dark:bg-slate-800; }
+
+  /* Output viewer (two panes) */
+  .output-viewer { @apply grid h-full grid-cols-1 gap-0 overflow-hidden rounded-sm border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900 lg:grid-cols-[15rem_1fr]; }
+  .output-nav { @apply overflow-y-auto border-r border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/40; }
+  .output-nav-item { @apply flex cursor-pointer items-center gap-2 border-l-2 border-transparent px-3 py-1.5 text-[13px] text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800; }
+  .output-nav-item[aria-current="true"] { @apply border-brand-600 bg-brand-50 font-medium text-brand-800 dark:bg-brand-900/40 dark:text-brand-200; }
+  .output-content { @apply min-w-0 overflow-y-auto p-4; }
 }
 
 /* ======================================================================== printing */
@@ -131,7 +166,7 @@
 @media print {
   html, body { background: #fff !important; color: #0f172a !important; }
   /* application chrome and controls never print */
-  aside, header.sticky, [role="dialog"], form, .btn, .tab-bar, .toast-host, .print\:hidden { display: none !important; }
+  .menubar, .toolbar, .statusbar, aside, header.sticky, [role="dialog"], form, .btn, .tab-bar, .toast-host, .print\:hidden { display: none !important; }
   main { max-width: none !important; padding: 0 !important; }
   .card { box-shadow: none !important; border-color: #cbd5e1 !important; background: #fff !important; }
   .table-wrap { max-height: none !important; overflow: visible !important; }
@@ -145,16 +180,16 @@
 
   /* ---------- notebook printout (see notebook-print.js) ---------- */
   .nb-print { font: 10pt/1.45 "Segoe UI", Arial, sans-serif; color: #0f172a; }
-  .nb-print-head { margin-bottom: 8mm; padding-bottom: 3mm; border-bottom: 1.5pt solid #4f46e5; }
+  .nb-print-head { margin-bottom: 8mm; padding-bottom: 3mm; border-bottom: 1.5pt solid #2f6bb0; }
   .nb-print-logo { max-height: 14mm; max-width: 45mm; margin-bottom: 3mm; }
-  .nb-print-title { font-size: 20pt; font-weight: 700; color: #4f46e5; margin: 0; }
+  .nb-print-title { font-size: 20pt; font-weight: 700; color: #2f6bb0; margin: 0; }
   .nb-print-meta { margin: 1mm 0 0; font-size: 9pt; color: #64748b; }
   .nb-cell { margin: 0 0 4mm; }
   .nb-keep { break-inside: avoid; page-break-inside: avoid; }
   .nb-break { break-before: page; page-break-before: always; }
   .nb-print .nb-break:first-child { break-before: auto; page-break-before: auto; }
   .nb-label { font: 8pt Consolas, monospace; color: #64748b; margin-bottom: 1mm; }
-  .nb-code { margin: 0; padding: 2.5mm 3mm; background: #f1f5f9 !important; border-radius: 1.5mm; font: 8.5pt/1.4 Consolas, "Courier New", monospace; white-space: pre-wrap; word-break: break-word; }
+  .nb-code { margin: 0; padding: 2.5mm 3mm; background: #f1f5f9 !important; border-radius: 1mm; font: 8.5pt/1.4 Consolas, "Courier New", monospace; white-space: pre-wrap; word-break: break-word; }
   .nb-out { margin-top: 1.5mm; padding-left: 3mm; border-left: 1.2pt solid #cbd5e1; }
   .nb-out pre, .nb-out .cell-output { font: 8.5pt/1.4 Consolas, "Courier New", monospace; white-space: pre-wrap; word-break: break-word; margin: 0; }
   .nb-out img, .nb-md img { max-width: 100%; height: auto; break-inside: avoid; }
@@ -164,10 +199,10 @@
   .nb-print tr { break-inside: avoid; }
   .nb-print h1 { font-size: 16pt; margin: 4mm 0 2mm; } .nb-print h2 { font-size: 13pt; margin: 3mm 0 2mm; } .nb-print h3 { font-size: 11pt; margin: 3mm 0 1mm; }
   .nb-print p { margin: 1.5mm 0; } .nb-print ul { list-style: disc; padding-left: 6mm; } .nb-print ol { list-style: decimal; padding-left: 6mm; }
-  .nb-print code { font-family: Consolas, "Courier New", monospace; background: #f1f5f9; padding: 0 1mm; border-radius: 1mm; }
-  .nb-print a { color: #4f46e5; text-decoration: none; }
+  .nb-print code { font-family: Consolas, "Courier New", monospace; background: #f1f5f9; padding: 0 1mm; border-radius: 0.5mm; }
+  .nb-print a { color: #2f6bb0; text-decoration: none; }
 }
 
 @media print {
-  .nb-ai { margin-top: 1.5mm; padding: 2mm 3mm; border: 0.5pt solid #c7d2fe; background: #eef2ff !important; border-radius: 1.5mm; font-size: 9pt; }
+  .nb-ai { margin-top: 1.5mm; padding: 2mm 3mm; border: 0.5pt solid #bad0e6; background: #f0f5fb !important; border-radius: 1mm; font-size: 9pt; }
 }

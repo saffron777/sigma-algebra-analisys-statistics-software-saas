@@ -10,20 +10,24 @@
   ("regresion", "Regresión lineal", "Simple y múltiple con diagnóstico de supuestos y predicción."),
   ("anova", "ANOVA", "Uno y dos factores, supuestos, post-hoc de Tukey y tamaños de efecto."),
   ("mercados", "Análisis de mercados", "Encuestas y sondeos: tamaño de muestra, muestreo aleatorio y márgenes de error."),
-  ("consola", "Consola Python", "Ejecute código y abra notebooks Jupyter (.ipynb) con sus datos de Sigma."),
+  ("consola", "Consola (Python y R)", "Ejecute código Python o R y abra notebooks Jupyter (.ipynb) con sus datos de Sigma."),
 ] + catalog_modules %}
 
 {% block content %}
 <div x-data="homePage" class="space-y-6">
-  <section class="overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 px-6 py-8 text-white shadow-sm sm:px-10 sm:py-10">
-    <p class="text-sm font-medium text-brand-100">Plataforma de análisis estadístico</p>
-    <h2 class="mt-1 flex items-center gap-3 text-3xl font-bold tracking-tight sm:text-4xl">
-      <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="44" height="44" class="size-11 rounded-full bg-white/10"> Sigma</h2>
-    <p class="mt-3 max-w-2xl text-brand-100">Importe sus datos, analícelos con pruebas rigurosas y conserve los resultados. Todo se ejecuta y se guarda en su servidor Sigma, y es privado para cada cuenta.</p>
-    <div class="mt-5 flex flex-wrap gap-2">
-      <a class="btn bg-white text-brand-700 hover:bg-brand-50" href="{{ url_for('pages.page_datos') }}">{{ icon("upload", "size-4") }} Importar datos</a>
-      <a class="btn border border-white/40 text-white hover:bg-white/10" href="{{ url_for('pages.page_resultados') }}">Ver resultados guardados</a>
-      <button type="button" class="btn border border-white/40 text-white hover:bg-white/10" @click="clearAll()" :disabled="cleaning"
+  <section class="rounded-sm border border-slate-300 bg-white px-5 py-5 dark:border-slate-700 dark:bg-slate-900">
+    <div class="flex flex-wrap items-center gap-4">
+      <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="44" height="44" class="size-11">
+      <div class="min-w-0 flex-1">
+        <p class="text-xs font-medium text-brand-600 dark:text-brand-300">Plataforma de análisis estadístico</p>
+        <h2 class="mt-0.5 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Sigma</h2>
+        <p class="mt-1 max-w-2xl text-[13px] text-slate-600 dark:text-slate-400">Importe sus datos, analícelos con pruebas rigurosas y conserve los resultados. Todo se ejecuta y se guarda en su servidor Sigma, y es privado para cada cuenta.</p>
+      </div>
+    </div>
+    <div class="mt-4 flex flex-wrap gap-2">
+      <a class="btn btn-primary" href="{{ url_for('pages.page_datos') }}">{{ icon("upload", "size-4") }} Importar datos</a>
+      <a class="btn btn-secondary" href="{{ url_for('pages.page_resultados') }}">Ver resultados guardados</a>
+      <button type="button" class="btn btn-secondary" @click="clearAll()" :disabled="cleaning"
               title="Vacía los formularios y resultados de todos los módulos (los resultados guardados se conservan)">Limpiar todos los módulos</button>
     </div>
   </section>

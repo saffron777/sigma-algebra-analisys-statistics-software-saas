@@ -28,6 +28,37 @@ NAV_GROUPS = (
     ("Programación", ("consola",)),
 )
 
+# Menu-bar structure (traditional statistics-software look): top-level menu -> ordered items.
+# Item markers: ("__sep__",), ("__label__", "texto"), ("__logout__",), ("__about__",); otherwise ("page_key",).
+MENU = (
+    ("Archivo", (("home",), ("datos",), ("resultados",), ("plantillas",), ("__sep__",), ("cuenta",), ("__logout__",))),
+    ("Datos", (("datos",), ("transformar",))),
+    (
+        "Analizar",
+        (
+            ("__label__", "Descriptiva"),
+            ("descriptiva",), ("distribuciones",),
+            ("__label__", "Pruebas"),
+            ("hipotesis",), ("pruebas",), ("potencia",), ("remuestreo",),
+            ("__label__", "Mercados y encuestas"),
+            ("mercados",), ("encuestas",),
+            ("__label__", "Regresión y modelos"),
+            ("regresion",), ("modelos",), ("anova",), ("anova_avanzado",), ("supervivencia",), ("sem",),
+            ("__label__", "Diseño y optimización"),
+            ("doe",), ("optimizacion",),
+            ("__label__", "Series y econometría"),
+            ("series",), ("econometria",),
+            ("__label__", "Multivariado y ML"),
+            ("multivariado",), ("aprendizaje",),
+            ("__label__", "Calidad"),
+            ("calidad",),
+        ),
+    ),
+    ("Gráficos", (("graficos",),)),
+    ("Utilidades", (("asistente",), ("consola",), ("__sep__",), ("usuarios",), ("basedatos",))),
+    ("Ayuda", (("__about__",),)),
+)
+
 
 def create_app(config: Config | None = None) -> Flask:
     config = config or Config.from_env()
@@ -53,8 +84,22 @@ def create_app(config: Config | None = None) -> Flask:
         {"title": title, "items": [{"key": key, "href": PAGES[key][0], "label": PAGES[key][1]} for key in keys]}
         for title, keys in NAV_GROUPS
     ]
+    # Menu bar: resolve page keys to href/label; keep the special markers (__sep__/__label__/__logout__/__about__) as-is.
+    def _menu_item(item: tuple) -> dict:
+        key = item[0]
+        if key == "__label__":
+            return {"kind": "__label__", "label": item[1], "href": None, "key": None}
+        if key in ("__sep__", "__logout__", "__about__"):
+            return {"kind": key, "label": None, "href": None, "key": None}
+        return {"kind": "page", "label": PAGES[key][1], "href": PAGES[key][0], "key": key}
+
+    menu = [
+        {"title": title, "items": [_menu_item(item) for item in items]}
+        for title, items in MENU
+    ]
     app.jinja_env.globals.update(
         nav_groups=nav,
+        menu=menu,
         sigma_version=__version__,
         catalog_modules=[(m.key, m.label, m.description) for m in CATALOG_MODULES],
     )

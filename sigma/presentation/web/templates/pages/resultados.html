@@ -3,95 +3,88 @@
 {% block scripts %}<script type="module" src="{{ url_for('static', filename='js/modules/resultados.js') }}"></script>{% endblock %}
 
 {% block content %}
-<div x-data="resultadosPage" class="space-y-5">
+<div x-data="resultadosPage" class="flex flex-col gap-3">
   {{ workspace_bar() }}
-  <section class="card">
-    <div class="card-body grid gap-3 sm:grid-cols-[14rem_1fr]">
-      <div><label class="label" for="filter-module">Módulo</label>
-        <select id="filter-module" class="input" x-model="filters.module" @change="load(true)">
-          <option value="">Todos</option>
-          <template x-for="(label, key) in modules" :key="key"><option :value="key" x-text="label"></option></template>
-        </select></div>
-      <div><label class="label" for="filter-search">Buscar en título, notas o dataset</label>
-        <input id="filter-search" class="input" type="search" placeholder="Ej.: regresión ventas" x-model="filters.search" @input="debouncedSearch()"></div>
-      <div class="flex flex-wrap items-center justify-between gap-2 sm:col-span-2">
-        <div class="flex flex-wrap items-center gap-2" x-show="items.length" x-cloak>
-          <button type="button" class="btn btn-ghost btn-sm" @click="toggleAll()">Marcar todos</button>
-          <button type="button" class="btn btn-primary btn-sm" :disabled="!selectedCount" @click="exportSelected()"
-                  title="Reúne los resultados marcados en un único documento con portada e índice">
-            {{ icon("download", "size-4") }} <span x-text="selectedCount ? `Exportar informe (${selectedCount})` : 'Exportar informe'"></span></button>
-          <button type="button" class="btn btn-ghost btn-sm" x-show="selectedCount" x-cloak @click="clearSelection()">Quitar marcas</button>
-        </div>
-        {{ clear_button() }}
-      </div>
-    </div>
-  </section>
-
   <div class="alert alert-danger" x-show="error" x-cloak x-text="error"></div>
 
-  <section class="space-y-3" aria-label="Resultados guardados">
-    <p class="text-sm text-slate-500" x-show="!loading && !items.length" x-cloak>
-      No hay resultados guardados<span x-show="filters.module || filters.search"> con esos filtros</span>.
-      Ejecute un análisis y pulse <strong>Guardar resultado</strong> para conservarlo aquí.
-    </p>
-    <template x-for="item in items" :key="item.id">
-      <article class="card" :class="detail?.id === item.id && 'border-brand-400 dark:border-brand-500'">
-        <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
-          <label class="mt-0.5 flex shrink-0 cursor-pointer items-start" :title="selected[item.id] ? 'Quitar del informe combinado' : 'Añadir al informe combinado'">
-            <input type="checkbox" class="check" :checked="!!selected[item.id]" @change="toggle(item)" :aria-label="`Incluir ${item.title} en el informe`">
-          </label>
-          <div class="min-w-0 flex-1 space-y-1">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="badge badge-brand" x-text="moduleLabel(item.module)"></span>
-              <span class="badge badge-gray" x-show="item.dataset_name" x-text="item.dataset_name"></span>
-              <span class="text-xs text-slate-400" x-text="formatDate(item.created_at)"></span>
-            </div>
-            <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100" x-text="item.title"></h3>
-            <p class="line-clamp-2 text-sm text-slate-500 dark:text-slate-400" x-show="item.notes" x-text="item.notes"></p>
+  {# ============================================================ output viewer #}
+  <div class="output-viewer min-h-[65vh]">
+
+    {# ---- left: navigator (filters + list) ---- #}
+    <div class="output-nav flex flex-col">
+      <div class="space-y-2 border-b border-slate-300 p-2 dark:border-slate-700">
+        <select class="input" aria-label="Filtrar por módulo" x-model="filters.module" @change="load(true)">
+          <option value="">Todos los módulos</option>
+          <template x-for="(label, key) in modules" :key="key"><option :value="key" x-text="label"></option></template>
+        </select>
+        <input class="input" type="search" placeholder="Buscar en título, notas o dataset" x-model="filters.search" @input="debouncedSearch()">
+        <div class="flex items-center justify-between gap-1">
+          <button type="button" class="btn btn-ghost btn-sm" @click="toggleAll()">Marcar todos</button>
+          <button type="button" class="btn btn-primary btn-sm" :disabled="!selectedCount" @click="exportSelected()"
+                  title="Reúne los resultados marcados en un único documento">
+            {{ icon("download", "size-3.5") }} <span x-text="selectedCount ? `Exportar (${selectedCount})` : 'Exportar'"></span></button>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto py-1">
+        <p class="px-3 py-4 text-center text-[13px] text-slate-500" x-show="!loading && !items.length" x-cloak>
+          No hay resultados guardados. Ejecute un análisis y pulse <strong>Guardar resultado</strong>.
+        </p>
+        <template x-for="item in items" :key="item.id">
+          <div class="output-nav-item" :aria-current="detail?.id === item.id ? 'true' : 'false'">
+            <input type="checkbox" class="check shrink-0" :checked="!!selected[item.id]" @click.stop @change="toggle(item)" :aria-label="`Incluir ${item.title} en el informe`">
+            <button type="button" class="min-w-0 flex-1 text-left" @click="open(item.id)">
+              <span class="block truncate" x-text="item.title"></span>
+              <span class="block truncate text-xs text-slate-400" x-text="`${moduleLabel(item.module)} · ${formatDate(item.created_at)}`"></span>
+            </button>
           </div>
-          <div class="flex shrink-0 flex-wrap gap-1.5">
-            <button type="button" class="btn btn-primary btn-sm" @click="open(item.id)">Ver</button>
-            <a class="btn btn-secondary btn-sm" :href="pageFor(item)" title="Abrir en su módulo con los mismos parámetros">Abrir en el módulo</a>
-            <button type="button" class="btn btn-ghost btn-sm" @click="edit(item)" :aria-label="`Editar ${item.title}`">{{ icon("edit", "size-4") }}</button>
-            <button type="button" class="btn btn-ghost btn-sm" @click="exportOne(item)" :aria-label="`Exportar ${item.title} como informe`" title="Exportar como PDF, Word o Excel">{{ icon("download", "size-4") }}</button>
-            <button type="button" class="btn btn-ghost btn-sm" @click="exportJson(item)" :aria-label="`Descargar ${item.title} en JSON`" title="Descargar los datos en JSON">JSON</button>
-            <button type="button" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400" @click="remove(item)" :aria-label="`Eliminar ${item.title}`">{{ icon("trash", "size-4") }}</button>
+        </template>
+        <div class="p-2 text-center" x-show="hasMore" x-cloak>
+          <button type="button" class="btn btn-secondary btn-sm" @click="load(false)" :disabled="loading">Cargar más</button>
+        </div>
+      </div>
+    </div>
+
+    {# ---- right: content ---- #}
+    <div class="output-content">
+      <div x-show="!detail" class="flex h-full items-center justify-center text-sm text-slate-500">
+        Seleccione un resultado del panel izquierdo para verlo.
+      </div>
+
+      <section x-show="detail" x-cloak class="space-y-4" aria-live="polite">
+        <div class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-300 pb-3 dark:border-slate-700">
+          <div class="min-w-0">
+            <h2 class="text-base font-semibold text-slate-900 dark:text-slate-50" x-text="detail?.title"></h2>
+            <p class="text-xs text-slate-500" x-text="detail ? `${moduleLabel(detail.module)} · guardado ${formatDate(detail.created_at)}${detail.dataset_name ? ' · ' + detail.dataset_name : ''}` : ''"></p>
+          </div>
+          <div class="flex flex-wrap gap-1.5 print:hidden">
+            <a class="btn btn-secondary btn-sm" :href="pageFor(detail)" title="Abrir en su módulo con los mismos parámetros">Abrir en el módulo</a>
+            <button type="button" class="btn btn-secondary btn-sm" @click="exportOne(detail)">{{ icon("download", "size-4") }} Exportar</button>
+            <button type="button" class="btn btn-secondary btn-sm" @click="printDetail()">{{ icon("print", "size-4") }} Imprimir</button>
+            <button type="button" class="btn btn-secondary btn-sm" x-show="$store.ai.available" x-cloak @click="askAiDetail()" :disabled="$store.ai.busy"
+                    title="Explicación del resultado generada por IA">{{ icon("ai", "size-4") }} <span x-text="$store.ai.busy ? 'Interpretando…' : (detail?.interpretation ? 'Regenerar IA' : 'Interpretar con IA')"></span></button>
+            <button type="button" class="btn btn-ghost btn-sm" @click="edit(detail)" :aria-label="`Editar ${detail.title}`">{{ icon("edit", "size-4") }}</button>
+            <button type="button" class="btn btn-ghost btn-sm" @click="exportJson(detail)" title="Descargar en JSON">JSON</button>
+            <button type="button" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400" @click="remove(detail)" :aria-label="`Eliminar ${detail.title}`">{{ icon("trash", "size-4") }}</button>
           </div>
         </div>
-      </article>
-    </template>
-    <div class="text-center" x-show="hasMore" x-cloak>
-      <button type="button" class="btn btn-secondary" @click="load(false)" :disabled="loading">Cargar más</button>
-    </div>
-  </section>
 
-  {# ---------------------------------------------------------------- detail #}
-  <section class="space-y-4" x-ref="detailCard" x-show="detail" x-cloak aria-live="polite">
-    <div class="flex flex-wrap items-start justify-between gap-3 border-t border-slate-200 pt-5 dark:border-slate-800">
-      <div class="min-w-0">
-        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-50" x-text="detail?.title"></h2>
-        <p class="text-sm text-slate-500" x-text="detail ? `${moduleLabel(detail.module)} · guardado ${formatDate(detail.created_at)}` : ''"></p>
-        <p class="mt-2 whitespace-pre-line text-sm text-slate-600 dark:text-slate-300" x-show="detail?.notes" x-text="detail?.notes"></p>
-      </div>
-      <div class="flex gap-2 print:hidden">
-        <button type="button" class="btn btn-secondary btn-sm" @click="exportOne(detail)">{{ icon("download", "size-4") }} Exportar</button>
-        <button type="button" class="btn btn-secondary btn-sm" @click="printDetail()">{{ icon("print", "size-4") }} Imprimir</button>
-        <button type="button" class="btn btn-secondary btn-sm" x-show="$store.ai.available" x-cloak @click="askAiDetail()" :disabled="$store.ai.busy"
-                title="Explicación del resultado generada por IA (se guarda con el resultado)">{{ icon("ai", "size-4") }} <span x-text="$store.ai.busy ? 'Interpretando…' : (detail?.interpretation ? 'Regenerar IA' : 'Interpretar con IA')"></span></button>
-        <button type="button" class="btn btn-ghost btn-sm" @click="closeDetail()">{{ icon("close", "size-4") }} Cerrar</button>
-      </div>
+        <p class="whitespace-pre-line text-[13px] text-slate-600 dark:text-slate-300" x-show="detail?.notes" x-text="detail?.notes"></p>
+        <p class="alert alert-danger" role="alert" x-show="aiError" x-cloak x-text="aiError"></p>
+
+        <div x-ref="out" class="space-y-4"></div>
+
+        <section class="card" x-show="detail?.interpretation" x-cloak aria-label="Interpretación con IA">
+          <div class="card-header"><h3 class="card-title flex items-center gap-2">{{ icon("ai", "size-4") }} Interpretación (IA)</h3>
+            <button type="button" class="btn btn-ghost btn-sm print:hidden" @click="removeAiDetail()">Quitar</button></div>
+          <div class="card-body space-y-2">
+            <div class="rendered-html" x-effect="drawDetailInterpretation($el)"></div>
+            <p class="alert alert-warning text-xs"><strong>Generado por IA</strong><span x-text="detail?.interpretation?.model ? ` (${detail.interpretation.model})` : ''"></span>: puede contener errores. Verifique las cifras con el análisis antes de usarlo.</p>
+          </div>
+        </section>
+      </section>
     </div>
-    <p class="alert alert-danger" role="alert" x-show="aiError" x-cloak x-text="aiError"></p>
-    <div x-ref="out" class="space-y-4"></div>
-    <section class="card" x-show="detail?.interpretation" x-cloak aria-label="Interpretación con IA">
-      <div class="card-header"><h3 class="card-title flex items-center gap-2">{{ icon("ai", "size-4") }} Interpretación (IA)</h3>
-        <button type="button" class="btn btn-ghost btn-sm print:hidden" @click="removeAiDetail()">Quitar</button></div>
-      <div class="card-body space-y-3">
-        <div class="rendered-html" x-effect="drawDetailInterpretation($el)"></div>
-        <p class="alert alert-warning text-xs"><strong>Generado por IA</strong><span x-text="detail?.interpretation?.model ? ` (${detail.interpretation.model})` : ''"></span>: puede contener errores. Verifique las cifras con el análisis antes de usarlo.</p>
-      </div>
-    </section>
-  </section>
+  </div>
 
   {# ---------------------------------------------------------------- edit dialog #}
   <div x-show="editing" x-cloak class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Editar resultado" @keydown.escape.window="editing = null">
@@ -99,12 +92,12 @@
     <template x-if="editing">
       <form class="card relative w-full max-w-lg shadow-xl" @submit.prevent="saveEdit()">
         <div class="card-header"><h2 class="card-title">Editar resultado</h2></div>
-        <div class="card-body space-y-4">
+        <div class="card-body space-y-3">
           <div><label class="label" for="edit-title">Título</label><input id="edit-title" class="input" required maxlength="200" x-model="editing.title"></div>
           <div><label class="label" for="edit-notes">Notas</label><textarea id="edit-notes" class="input" rows="5" maxlength="5000" x-model="editing.notes"></textarea></div>
           <p class="alert alert-danger" x-show="editing.error" x-text="editing.error"></p>
         </div>
-        <div class="flex justify-end gap-2 border-t border-slate-200 px-5 py-3 dark:border-slate-800">
+        <div class="flex justify-end gap-2 border-t border-slate-300 px-4 py-2.5 dark:border-slate-700">
           <button type="button" class="btn btn-ghost" @click="editing = null">Cancelar</button>
           <button type="submit" class="btn btn-primary">Guardar cambios</button>
         </div>
