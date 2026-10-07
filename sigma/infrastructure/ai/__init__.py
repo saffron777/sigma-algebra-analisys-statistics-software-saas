@@ -1,1 +1,1 @@
-"""AI interpretation: configuration and the Anthropic adapter."""
+"""AI interpretation: the configured models and one adapter per provider family."""

@@ -165,13 +165,14 @@ class MongoAiUsageRepository:
         self._core = core
         self._usage = core.col("ai_usage")
 
-    def add(self, user_id: int, module: str, model: str, input_tokens: int, output_tokens: int) -> None:
+    def add(self, user_id: int, module: str, model: str, input_tokens: int, output_tokens: int, provider: str = "") -> None:
         self._usage.insert_one(
             {
                 "id": self._core.next_id("ai_usage"),
                 "user_id": user_id,
                 "module": module,
                 "model": model,
+                "provider": provider or "",
                 "input_tokens": int(input_tokens),
                 "output_tokens": int(output_tokens),
                 "created_at": now_iso(),

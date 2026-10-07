@@ -8,17 +8,46 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from sqlalchemy import create_engine, event, insert, inspect, select, text, update
+from sqlalchemy import Column, Table, create_engine, event, insert, inspect, select, text, update
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.schema import CreateColumn
 
 from sigma.domain.errors import InvalidInputError
 from sigma.infrastructure.persistence.database_settings import ENGINES, DatabaseSettings, driver_available
 from sigma.infrastructure.persistence.sql import schema
 from sigma.infrastructure.persistence.sql.legacy_sqlite import upgrade_legacy_sqlite
 
+
 # future schema changes: version -> function that upgrades from version-1 (portable DDL through SQLAlchemy)
-_STEPS: dict[int, Callable[[Engine], None]] = {}
+def _add_ai_provider(engine: Engine) -> None:
+    """v8: the usage log also records which service (anthropic, openai, ollama…) answered."""
+    _add_column(engine, schema.ai_usage, schema.ai_usage.c.provider)
+
+
+def _add_column(engine: Engine, table: Table, column: Column) -> None:
+    """Add a missing column to an existing table, portably and **idempotently**.
+
+    SQL Server and Oracle say ``ADD`` where SQLite, MySQL and PostgreSQL say ``ADD COLUMN``; the identifier is
+    quoted so the lower-case names survive on engines that upper-case unquoted ones. The default is written inline
+    (SQL Server and Oracle cannot add a column that is both ``NOT NULL`` and defaultless), and a step that already
+    ran is skipped: the version stamp may have been interrupted, so the check must not raise.
+    """
+    columns = inspect(engine).get_columns(table.name, schema=table.schema)
+    if any(item["name"].lower() == column.name.lower() for item in columns):
+        return
+    ddl = CreateColumn(column).compile(dialect=engine.dialect)
+    if engine.dialect.name not in ("mssql", "oracle") and column.default is not None and "DEFAULT" not in str(ddl):
+        evaluated = column.default.arg
+        if isinstance(evaluated, str):  # SQLAlchemy omits a str default from the DDL: it is a client-side one
+            ddl = f"{ddl} DEFAULT '{evaluated}'"
+    keyword = "ADD" if engine.dialect.name in ("mssql", "oracle") else "ADD COLUMN"
+    statement = f"ALTER TABLE {engine.dialect.identifier_preparer.quote(table.name)} {keyword} {ddl}"
+    with engine.begin() as conn:
+        conn.execute(text(statement))
+
+
+_STEPS: dict[int, Callable[[Engine], None]] = {8: _add_ai_provider}
 
 
 CONNECT_TIMEOUT_ARG = {

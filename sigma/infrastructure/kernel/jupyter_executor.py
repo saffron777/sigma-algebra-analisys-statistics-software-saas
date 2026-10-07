@@ -21,6 +21,7 @@ from typing import Any
 
 from jupyter_client import BlockingKernelClient, KernelManager
 
+from sigma.domain.ai import SECRET_KEY_ENV_VARS
 from sigma.domain.errors import KernelError
 from sigma.domain.notebooks import EXECUTION_ERROR, EXECUTION_OK, EXECUTION_TIMEOUT, ExecutionResult, KernelStatus
 from sigma.infrastructure.kernel.bootstrap_code import BOOTSTRAP_CODE, R_BOOTSTRAP_CODE
@@ -189,7 +190,8 @@ class JupyterKernelPool:
             r_tmp.mkdir(parents=True, exist_ok=True)
             # R must create its own temp dir; the sandbox/system TEMP may be read-only.
             env["TEMP"] = env["TMP"] = env["TMPDIR"] = str(r_tmp)
-        env.pop("ANTHROPIC_API_KEY", None)  # code run in a kernel must never be able to read the server's AI key
+        for name in SECRET_KEY_ENV_VARS:  # code run in a kernel must never read the server's AI keys
+            env.pop(name, None)
         manager = KernelManager(kernel_name=kernel_name)
         label = "R" if kernel_name == "ir" else "Python"
         try:

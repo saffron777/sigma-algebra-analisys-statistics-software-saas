@@ -169,7 +169,7 @@
     <div>
       <label class="label" for="ai-focus">¿Qué quieres saber? (opcional)</label>
       <input id="ai-focus" class="input" type="text" maxlength="400" x-model="aiFocus" placeholder="Por ejemplo: explícalo para gerencia, o ¿es fiable el modelo?">
-      <p class="hint">Se envía a la API de Anthropic un resumen del resultado (parámetros, cifras y tablas), no sus datos completos ni los gráficos.
+      <p class="hint">Se envía al proveedor de IA configurado un resumen del resultado (parámetros, cifras y tablas), no sus datos completos ni los gráficos.
         <span x-show="$store.ai.status.requests_per_hour" x-text="`Uso: ${$store.ai.status.requests_this_hour} de ${$store.ai.status.requests_per_hour} esta hora.`"></span></p>
     </div>
     <p class="alert alert-danger" role="alert" x-show="aiError" x-cloak x-text="aiError"></p>

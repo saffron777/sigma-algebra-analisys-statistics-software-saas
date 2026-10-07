@@ -82,6 +82,9 @@ def init_security(app: Flask, config: Config) -> None:
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "no-referrer")
-        if not request.path.startswith("/static/"):
+        if request.path.startswith("/static/"):
+            # the browser can revalidate but must not run an old script: a stale JS is very confusing to debug
+            response.headers["Cache-Control"] = "no-cache, must-revalidate"
+        else:
             response.headers["Cache-Control"] = "no-store"  # nothing private may be served from a browser cache
         return response

@@ -23,6 +23,7 @@ from sigma.application.use_cases.accounts import (
     UpdateUser,
 )
 from sigma.application.use_cases.ai import (
+    AiServers,
     GetAiAdmin,
     GetAiStatus,
     InterpretResult,
@@ -103,7 +104,7 @@ from sigma.application.use_cases.templates import (
 from sigma.application.use_cases.workspace import ClearWorkspace, GetSyncState, GetWorkspace, SaveWorkspace
 from sigma.config import PROJECT_ROOT, Config
 from sigma.domain.users import User
-from sigma.infrastructure.ai.anthropic_gateway import AnthropicGateway
+from sigma.infrastructure.ai.gateway import ConfiguredGateway
 from sigma.infrastructure.ai.settings import AiSettings
 from sigma.infrastructure.compute.process_runner import AnalysisRunnerImpl
 from sigma.infrastructure.exporters.docx_exporter import DocxExporter
@@ -236,9 +237,10 @@ class Container:
         self.users = self.backend.users()
         self.ai_settings = AiSettings(self.backend.settings_store(), config.instance_dir)
         self.ai_usage = self.backend.ai_usage()
-        self.ai_gateway = AnthropicGateway(self.ai_settings)
+        self.ai_gateway = ConfiguredGateway(self.ai_settings)
         self.get_ai_admin = GetAiAdmin(self.ai_settings, self.ai_usage, config.ai_requests_per_hour)
         self.update_ai_settings = UpdateAiSettings(self.ai_settings)
+        self.ai_servers = AiServers(self, self.ai_settings, self.get_ai_admin)
         self.database_admin = DatabaseAdmin(
             config.instance_dir, config.db_path, config.database, self.backend, ConnectionTester()
         )
@@ -246,7 +248,7 @@ class Container:
         self.test_database = TestDatabase(self.database_admin)
         self.apply_database = ApplyDatabase(self.database_admin)
         self.get_migration_status = GetMigrationStatus(self.database_admin)
-        self.test_ai_connection = TestAiConnection(self.ai_gateway, self.ai_settings)
+        self.test_ai_connection = TestAiConnection(self, self.ai_settings)
         hasher = WerkzeugPasswordHasher()
         throttle = InMemoryLoginThrottle()
         adopter = self.backend.adopter(config.notebooks_dir)

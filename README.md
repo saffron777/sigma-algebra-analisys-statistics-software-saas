@@ -120,7 +120,7 @@ Variables de entorno (opcionales, también en un archivo `.env`, ver `.env.examp
 ## Interpretación con IA (opcional)
 
 En cada módulo, en la ficha de **Datos**, en **Resultados guardados** y en cada celda de código de la **Consola**, el
-botón **Interpretar con IA** pide a Claude una explicación en español (*Resumen · Hallazgos · Supuestos y advertencias ·
+botón **Interpretar con IA** pide a un modelo de lenguaje una explicación en español (*Resumen · Hallazgos · Supuestos y advertencias ·
 Conclusión · Siguientes pasos*) con criterios propios de cada análisis; un campo opcional («¿Qué quieres saber?») orienta
 el enfoque (p. ej. «explícalo para gerencia»). **Solo se ejecuta cuando usted lo pulsa.**
 
@@ -131,14 +131,31 @@ el enfoque (p. ej. «explícalo para gerencia»). **Solo se ejecuta cuando usted
 - **Dónde queda**: la interpretación forma parte del resultado: se conserva en el espacio de trabajo, se guarda con
   *Guardar resultado* (y se puede añadir o quitar después en *Resultados guardados*), va en los metadatos de la celda
   del notebook y aparece en los PDF, Word y Excel exportados.
-- **Configuración (administrador)**: la clave de API es única del servidor, en la variable de entorno
-  `ANTHROPIC_API_KEY` o guardada desde **Usuarios → Interpretación con IA** (`instance/ai_key.txt`; nunca se vuelve a
-  mostrar ni llega al navegador ni a los kernels). Allí también se elige el modelo (por defecto `claude-opus-5-5`, con
-  esfuerzo medio y, si el modelo declina, reserva en `claude-opus-4-8`), se activa o desactiva la función, se prueba la
-  conexión y se ve el consumo de los últimos 30 días por cuenta. El permiso **IA** se concede por usuario (activo para
-  administradores, desactivado por defecto para el resto).
-- **Límites y costo**: `SIGMA_AI_REQUESTS_PER_HOUR` (20) solicitudes por persona y hora; cada una consume tokens de su
-  cuenta de Anthropic. Sin clave, sin conexión o con la IA desactivada el resto de Sigma funciona igual.
+- **Modelos (administrador)**: en **Usuarios → Interpretación con IA** se **añaden, editan, activan, prueban y borran**
+  modelos de distintos proveedores, y se marca uno como **predeterminado** del servidor. Familias soportadas:
+
+  | Proveedor | Dirección por defecto | Notas |
+  |---|---|---|
+  | Anthropic (Claude) | `https://api.anthropic.com` | Opus con esfuerzo medio y reserva a Opus 4.8 si el modelo declina. |
+  | OpenAI (ChatGPT) | `https://api.openai.com/v1` | |
+  | Azure OpenAI | *(la URL del despliegue)* | Pegue la URL con su `?api-version=…` y use el nombre del despliegue como modelo. |
+  | Google Gemini | `https://generativelanguage.googleapis.com` | |
+  | DeepSeek · Groq · Mistral · xAI · OpenRouter · Together | (sus URL públicas) | Todos compatibles con *Chat Completions*. |
+  | Ollama · LM Studio · **personalizado** | `http://127.0.0.1:11434/v1` | Modelos locales: **no necesitan clave** y no sale nada a internet. |
+
+  Las claves se guardan en `instance/ai.json` (permisos 0600) o se leen de las variables de entorno del servidor
+  (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`…, que aparecen como entrada de solo lectura). **Nunca** se
+  vuelven a mostrar, no llegan al navegador ni a la consola: de una clave guardada solo se ve `…1234`. El **Modelo** se
+  elige de una **lista con los modelos de cada proveedor** (Claude Opus/Sonnet/Haiku, gpt-5, gemini-2.5-pro,
+  deepseek-chat…); con **«Otro modelo»** se escribe cualquier identificador nuevo o propio, y en los proveedores sin
+  catálogo (Azure, un servidor local o uno personalizado) el campo es de texto. La IA se activa
+  o desactiva con un interruptor y se prueba la conexión de cada modelo; el consumo de los últimos 30 días se ve por cuenta.
+  El permiso **IA** se concede por usuario (activo para administradores, desactivado por defecto para el resto).
+- **Compatibilidad**: una instalación que ya usaba Claude conserva su configuración: la clave de `ANTHROPIC_API_KEY` o
+  de `instance/ai_key.txt` y el modelo guardado aparecen como el primer modelo configurado (el archivo `ai_key.txt` deja
+  de usarse y se puede borrar).
+- **Límites y costo**: `SIGMA_AI_REQUESTS_PER_HOUR` (20) solicitudes por persona y hora; cada una consume tokens de la
+  cuenta del proveedor. Sin ningún modelo configurado, sin conexión o con la IA desactivada el resto de Sigma funciona igual.
 
 ## Informes: exportar e imprimir
 

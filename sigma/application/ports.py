@@ -312,15 +312,18 @@ class DocumentExporter(Protocol):
 
 
 class AiGateway(Protocol):
-    """The AI service: turns a prompt into text (and says what it cost)."""
+    """The AI service: turns a prompt into text (and says what it cost).
 
-    def interpret(self, prompt: Prompt) -> InterpretationOutput: ...
+    ``model_id`` picks one of the models the administrator configured; without it the server's default is used.
+    """
 
-    def test_connection(self) -> InterpretationOutput: ...
+    def interpret(self, prompt: Prompt, model_id: str | None = None) -> InterpretationOutput: ...
+
+    def test_connection(self, model_id: str | None = None) -> InterpretationOutput: ...
 
 
 class AiConfiguration(Protocol):
-    """Server-wide AI settings (the administrator's): key, model and the on/off switch."""
+    """Server-wide AI settings (the administrator's): the configured models and the on/off switch."""
 
     @property
     def enabled(self) -> bool: ...
@@ -343,7 +346,9 @@ class AiConfiguration(Protocol):
 
 
 class AiUsageRepository(Protocol):
-    def add(self, user_id: int, module: str, model: str, input_tokens: int, output_tokens: int) -> None: ...
+    def add(
+        self, user_id: int, module: str, model: str, input_tokens: int, output_tokens: int, provider: str = ""
+    ) -> None: ...
 
     def count_since(self, user_id: int, since_iso: str) -> int: ...
 

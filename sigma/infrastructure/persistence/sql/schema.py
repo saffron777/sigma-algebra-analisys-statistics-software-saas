@@ -25,7 +25,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects import mysql
 
-SCHEMA_VERSION = 7  # v1–v6 are the SQLite-only history kept in legacy_sqlite.py; v7 is the portable baseline
+SCHEMA_VERSION = 8  # v1–v6 are the SQLite-only history kept in legacy_sqlite.py; v7 is the portable baseline
 
 LongText = UnicodeText().with_variant(mysql.LONGTEXT(), "mysql", "mariadb")
 Blob = LargeBinary().with_variant(mysql.LONGBLOB(), "mysql", "mariadb")
@@ -190,6 +190,7 @@ ai_usage = Table(
     Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
     Column("module", Str(24), nullable=False),
     Column("model", Str(80), nullable=False),
+    Column("provider", Str(40), default=""),  # which service answered (anthropic, openai, ollama…)
     Column("input_tokens", Integer, nullable=False, default=0),
     Column("output_tokens", Integer, nullable=False, default=0),
     Column("created_at", Str(40), nullable=False),

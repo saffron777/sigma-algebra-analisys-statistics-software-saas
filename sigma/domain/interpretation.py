@@ -179,6 +179,8 @@ class InterpretationOutput:
     output_tokens: int = 0
     fallback_used: bool = False
     truncated: bool = False
+    provider: str = ""  # which configured model answered (filled in by the gateway)
+    server_label: str = ""
 
 
 def clean_interpretation(value: Any) -> dict[str, Any] | None:

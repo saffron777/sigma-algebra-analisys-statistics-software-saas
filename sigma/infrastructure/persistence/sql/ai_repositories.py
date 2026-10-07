@@ -33,13 +33,14 @@ class SqlAiUsageRepository:
     def __init__(self, database: Database) -> None:
         self._db = database
 
-    def add(self, user_id: int, module: str, model: str, input_tokens: int, output_tokens: int) -> None:
+    def add(self, user_id: int, module: str, model: str, input_tokens: int, output_tokens: int, provider: str = "") -> None:
         with self._db.begin() as conn:
             conn.execute(
                 insert(_a).values(
                     user_id=user_id,
                     module=module,
                     model=model,
+                    provider=provider or "",
                     input_tokens=int(input_tokens),
                     output_tokens=int(output_tokens),
                     created_at=now_iso(),

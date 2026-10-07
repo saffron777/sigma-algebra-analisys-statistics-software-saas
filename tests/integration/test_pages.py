@@ -54,6 +54,13 @@ def test_static_assets_are_served_without_signing_in(app):
         assert client.get(f"/static/{asset}").status_code == 200, asset
 
 
+def test_static_assets_must_be_revalidated_so_no_stale_script_runs(app):
+    """A cached module once made the page fail with errors from code that no longer existed."""
+    client = app.test_client()
+    assert client.get("/static/js/modules/usuarios.js").headers["Cache-Control"] == "no-cache, must-revalidate"
+    assert client.get("/regresion").headers["Cache-Control"] == "no-store"
+
+
 def test_login_and_setup_pages_render(app, anonymous):
     setup = anonymous.raw.get("/setup")
     assert setup.status_code == 200 and "cuenta de administrador" in setup.get_data(as_text=True)
@@ -125,7 +132,12 @@ def test_ai_controls_are_in_the_pages_that_use_them(api):
     assert "Interpretar con IA" in api.raw.get("/datos").get_data(as_text=True)
     assert "Interpretar con IA" in api.raw.get("/consola").get_data(as_text=True)
     users = api.raw.get("/usuarios").get_data(as_text=True)
-    assert "Interpretación con IA" in users and "Clave de API del servidor" in users and "Probar conexión" in users
+    assert "Interpretación con IA" in users and "Modelos configurados" in users and "Añadir un modelo" in users
+    assert "Probar el predeterminado" in users and "instance/ai.json" in users
+    # the «Modelo» field of the add form is a list of the chosen provider's models, with a way out for the rest
+    assert 'x-model="aiForm.model"' in users and "Otro modelo (escribir a mano)…" in users
+    assert 'x-for="name in suggestions()"' in users and "pickModel()" in users and "providerChanged()" in users
+    assert "aiForm.suggestions" not in users  # the list always comes from the helper: it is never undefined
 
 
 def test_the_logo_is_used_in_the_layouts_and_served(api, app):

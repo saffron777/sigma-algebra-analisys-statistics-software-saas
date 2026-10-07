@@ -13,7 +13,7 @@ presentation/web ──► application ──► domain
 |---|---|---|
 | `domain` | Entidades, errores, resultados, **toda la estadística** (`statistics/`, `distributions/`), el modelo de documentos de los informes, el prompt de la IA, el informe de un notebook | Flask, SQLAlchemy, sqlite3, requests, nada de E/S |
 | `application` | Casos de uso (una clase por acción), comandos (`dto.py`) y **puertos** (`ports.py`, `typing.Protocol`) | Flask, adaptadores concretos |
-| `infrastructure` | Adaptadores: SQLite, importadores, kernel Jupyter, almacén de `.ipynb`, exportadores (PDF/Word/Excel), cliente de Anthropic, seguridad (hash, limitador) | Flask |
+| `infrastructure` | Adaptadores: SQLite, importadores, kernel Jupyter, almacén de `.ipynb`, exportadores (PDF/Word/Excel), adaptadores de IA (los modelos configurados), seguridad (hash, limitador) | Flask |
 | `presentation/web` | Blueprints, esquemas pydantic, reportes/gráficos, plantillas, JS | Lógica estadística (solo la presenta) |
 | `bootstrap.py` | **Composition root**: único lugar donde se eligen los adaptadores y se arman los casos de uso | — |
 
@@ -178,11 +178,22 @@ La impresión usa CSS `@media print`, gráficos congelados como imágenes blanca
 
 `domain/interpretation.py` convierte el reporte en texto compacto y construye el prompt (criterios por módulo, datos
 entre `<resultado>…</resultado>`, regla de ignorar instrucciones dentro de ellos). `InterpretResult` comprueba permiso,
-interruptor, clave y límite horario, y registra el consumo; el puerto `AiGateway` lo implementa `AnthropicGateway`
-(SDK oficial, `claude-opus-5-5`, esfuerzo medio, sin parámetros de muestreo, reserva a `claude-opus-4-8`, errores
-traducidos sin exponer la clave). Solo viaja el resumen del resultado: la ficha de un dataset la construye el servidor y
-omite filas y valores de columnas tipo identificador. La clave (`ANTHROPIC_API_KEY` o `instance/ai_key.txt`) nunca sale
-del servidor.
+interruptor, modelo, clave y límite horario, y registra el consumo (proveedor, modelo y tokens).
+
+El administrador configura **varios modelos** desde *Usuarios*: `domain/ai.py` guarda el catálogo de proveedores
+(Anthropic, OpenAI-compatible —OpenAI, Azure, DeepSeek, Groq, Mistral, xAI, OpenRouter, Together, Ollama, LM Studio—,
+Gemini y «personalizado») con sus validaciones, y `infrastructure/ai/settings.py` compone lo que hay configurado:
+las entradas de `instance/ai.json` (modo 0600, ahí viven las claves) más una entrada de solo lectura por cada clave que
+llegue del entorno (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`…). Una instalación antigua se migra sola: `ANTHROPIC_API_KEY` o
+`instance/ai_key.txt` y el modelo guardado pasan a ser el primer modelo configurado.
+
+`infrastructure/ai/adapters.py` y `infrastructure/ai/providers.py` implementan las tres formas de HTTP del mercado
+(Messages, Chat Completions y `generateContent`) con `requests` —sin SDKs— y traducen los errores sin exponer la clave;
+`infrastructure/ai/gateway.py` (`ConfiguredGateway`) resuelve qué modelo responde (el pedido o el predeterminado) e
+implementa el puerto `AiGateway`. Solo viaja el resumen del resultado: la ficha de un dataset la construye el servidor y
+omite filas y valores de columnas tipo identificador. Ninguna clave sale del servidor: la página solo ve si existe, de
+dónde viene (`file`/`env`) y sus últimos cuatro caracteres, y el entorno de los kernels las elimina todas
+(`SECRET_KEY_ENV_VARS`).
 
 ## Lectura de bases de datos externas
 
@@ -293,7 +304,8 @@ tamaño de favicon.
 - **Nuevo motor de base de datos**: un `Backend` (todos los repositorios + `transfer`) y una rama en `persistence/backend.py`;
   añadirlo a `ENGINES` (`database_settings.py`) y pasar la batería de `tests/conformance/` (se activa con su `SIGMA_TEST_*_URL`).
   Para un motor SQL basta, normalmente, con el dialecto de SQLAlchemy y un controlador.
-- **Cambiar el proveedor de IA**: implementar `AiGateway` y cambiarlo en `bootstrap.py`.
+- **Cambiar el proveedor de IA**: añadir su `ProviderSpec` en `domain/ai.py` y, si su API no es ninguna de las tres
+  formas soportadas, un adaptador en `infrastructure/ai/`. El resto de Sigma usa el puerto `AiGateway`.
 
 ## Pruebas
 
@@ -306,8 +318,9 @@ tamaño de favicon.
   (bases vacías y desechables: cada prueba empieza borrando sus tablas). `docker-compose.test.yml` levanta PostgreSQL, MariaDB,
   MySQL, Oracle y MongoDB para ello. Con `SIGMA_TEST_APP_ENGINE=postgresql` (…) la suite de `integration/` completa corre sobre ese motor.
 - `tests/unit/infrastructure`: SQLite (actualización de archivos antiguos, aislamiento, borradores), `DatabaseSettings`, importadores (con un servidor
-  HTTP local real), exportadores (PDF con `pypdf`, DOCX y XLSX reabiertos), adaptador de Anthropic con un cliente
-  simulado y los activos del logotipo.
+  HTTP local real), exportadores (PDF con `pypdf`, DOCX y XLSX reabiertos), los modelos de IA (catálogo, almacén
+  `instance/ai.json`, migración de la clave antigua y los adaptadores de Anthropic, OpenAI-compatible y Gemini con un
+  cliente HTTP simulado) y los activos del logotipo.
 - `tests/integration`: la API completa con el cliente de pruebas de Flask (autenticación, matriz de aislamiento entre
   cuentas, CSRF/Host, espacio de trabajo y sincronización, borradores, exportación, plantillas, IA), las páginas y la
   consola con **kernels reales**. `pytest -m live` activa la prueba opcional contra el servicio real de IA.
