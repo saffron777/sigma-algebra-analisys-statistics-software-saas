@@ -13,6 +13,7 @@ from sigma.presentation.web.charts.common import PALETTE, as_list, figure_json, 
 
 BAND_FILL = "rgba(79,70,229,0.20)"
 PRED_FILL = "rgba(79,70,229,0.08)"
+MAX_POINTS = 1500  # a Q-Q with one point per row of a big dataset is unreadable and enormous: sample it
 
 
 def fit_figure(result: RegressionResult) -> dict[str, Any]:
@@ -134,10 +135,17 @@ def residuals_vs_fitted_figure(result: RegressionResult) -> dict[str, Any]:
 def residual_qq_figure(result: RegressionResult) -> dict[str, Any]:
     standardized = result.plot_data["standardized"]
     (osm, osr), (slope, intercept, _) = stats.probplot(standardized, dist="norm")
+    # the theoretical quantiles carry one point per row: sample them like the ANOVA chart does, or a big dataset
+    # sends a figure of tens of megabytes that no browser can draw (the line still uses the real ends)
+    step = max(1, len(osm) // MAX_POINTS)
     fig = new_figure("Q-Q de los residuos estandarizados", "Cuantiles teóricos", "Cuantiles de los residuos")
     fig.add_trace(
         go.Scatter(
-            x=as_list(osm), y=as_list(osr), mode="markers", marker={"color": PALETTE[0], "size": 6, "opacity": 0.75}
+            x=as_list(osm[::step]),
+            y=as_list(osr[::step]),
+            mode="markers",
+            name="Residuos",
+            marker={"color": PALETTE[0], "size": 6, "opacity": 0.75},
         )
     )
     ends = np.array([float(np.min(osm)), float(np.max(osm))])

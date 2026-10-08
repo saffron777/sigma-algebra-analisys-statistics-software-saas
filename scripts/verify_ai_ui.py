@@ -56,6 +56,12 @@ print("  'aiForm.suggestions' in HTML? ->", "aiForm.suggestions" in html)
 print("  drop-down option      ->", "Otro modelo (escribir a mano)…" in html)
 print("  bindings in the card  ->", len(re.findall(r"aiForm\.", html)))
 
+# the AI button of an analysis page is rendered (disabled) with the reason, instead of being hidden
+descriptiva = client.get("/descriptiva").get_data(as_text=True)
+print("GET /descriptiva       -> 'Interpretar con IA':", "Interpretar con IA" in descriptiva)
+print("  disabled when off     ->", 'disabled="$store.ai.busy || !aiAvailable()"' in descriptiva)
+print("  shows the reason      ->", "$store.ai.status.reason" in descriptiva)
+
 container.close()
 for leftover in (config_path, database_path):
     leftover.unlink(missing_ok=True)

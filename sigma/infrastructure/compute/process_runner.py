@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import multiprocessing
 import threading
+import time
 import warnings
 from typing import Any
 
@@ -22,6 +23,7 @@ from sigma.domain.errors import ComputationError, SigmaError
 
 log = logging.getLogger(__name__)
 _KNOWN_ERRORS = {cls.__name__: cls for cls in SigmaError.__subclasses__()}
+SLOW_SECONDS = 10.0  # an analysis slower than this is worth a line in the log
 _NOISE = (
     "divide by zero",
     "invalid value encountered",
@@ -154,4 +156,20 @@ class AnalysisRunnerImpl:
     ) -> AnalysisOutput:
         spec = registry.get(module, analysis_id)
         runner = self._process if spec.heavy else self._inline
-        return runner.run(module, analysis_id, frame, roles, params)
+        rows = 0 if frame is None else len(frame)
+        started = time.perf_counter()
+        try:
+            output = runner.run(module, analysis_id, frame, roles, params)
+        finally:
+            # how long an analysis took and over how many rows: the first thing to look at when a page seems stuck
+            elapsed = time.perf_counter() - started
+            log.log(
+                logging.INFO if elapsed > SLOW_SECONDS or spec.heavy else logging.DEBUG,
+                "analysis %s/%s: %.1f s, %s filas (%s)",
+                module,
+                analysis_id,
+                elapsed,
+                f"{rows:,}",
+                "proceso aparte" if spec.heavy else "en la web",
+            )
+        return output

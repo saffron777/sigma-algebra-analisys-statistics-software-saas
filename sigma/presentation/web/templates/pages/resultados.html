@@ -61,8 +61,8 @@
             <a class="btn btn-secondary btn-sm" :href="pageFor(detail)" title="Abrir en su módulo con los mismos parámetros">Abrir en el módulo</a>
             <button type="button" class="btn btn-secondary btn-sm" @click="exportOne(detail)">{{ icon("download", "size-4") }} Exportar</button>
             <button type="button" class="btn btn-secondary btn-sm" @click="printDetail()">{{ icon("print", "size-4") }} Imprimir</button>
-            <button type="button" class="btn btn-secondary btn-sm" x-show="$store.ai.available" x-cloak @click="askAiDetail()" :disabled="$store.ai.busy"
-                    title="Explicación del resultado generada por IA">{{ icon("ai", "size-4") }} <span x-text="$store.ai.busy ? 'Interpretando…' : (detail?.interpretation ? 'Regenerar IA' : 'Interpretar con IA')"></span></button>
+            <button type="button" class="btn btn-secondary btn-sm" @click="askAiDetail()" :disabled="$store.ai.busy || !aiAvailable()"
+                    :title="!$store.ai.available ? $store.ai.status.reason : 'Explicación del resultado generada por IA'">{{ icon("ai", "size-4") }} <span x-text="$store.ai.busy ? 'Interpretando…' : (detail?.interpretation ? 'Regenerar IA' : 'Interpretar con IA')"></span></button>
             <button type="button" class="btn btn-ghost btn-sm" @click="edit(detail)" :aria-label="`Editar ${detail.title}`">{{ icon("edit", "size-4") }}</button>
             <button type="button" class="btn btn-ghost btn-sm" @click="exportJson(detail)" title="Descargar en JSON">JSON</button>
             <button type="button" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400" @click="remove(detail)" :aria-label="`Eliminar ${detail.title}`">{{ icon("trash", "size-4") }}</button>

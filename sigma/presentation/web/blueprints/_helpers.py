@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import logging
 from typing import Any, TypeVar
 
 from flask import Response, current_app, g, jsonify, request
@@ -13,6 +15,8 @@ from sigma.presentation.web.schemas.base import RequestModel
 from sigma.presentation.web.serializers import to_jsonable
 
 M = TypeVar("M", bound=RequestModel)
+log = logging.getLogger(__name__)
+HUGE_RESPONSE_BYTES = 5_000_000  # a report bigger than this is a chart that should have been down-sampled
 
 
 def container() -> UserServices:
@@ -48,21 +52,38 @@ def analysis_response(
 
     ``extra`` adds top-level keys that are not part of the saved result (e.g. a dataset created by the call).
     """
-    return jsonify(
-        {
-            "meta": {
-                "module": module,
-                "analysis_type": analysis_type,
-                "title": title,
-                "dataset_id": dataset_id,
-                "params": to_jsonable(params.model_dump()),
-            },
-            "result": to_jsonable(result),
-            "report": builder.report(),
-            "figures": builder.figures,
-            **(extra or {}),
-        }
-    )
+    payload = {
+        "meta": {
+            "module": module,
+            "analysis_type": analysis_type,
+            "title": title,
+            "dataset_id": dataset_id,
+            "params": to_jsonable(params.model_dump()),
+        },
+        "result": to_jsonable(result),
+        "report": builder.report(),
+        "figures": builder.figures,
+        **(extra or {}),
+    }
+    _warn_if_huge(module, payload)
+    return jsonify(payload)
+
+
+def _warn_if_huge(module: str, payload: dict[str, Any]) -> None:
+    """A figure with one point per row is what once froze a browser tab: say so in the log while it is shipped."""
+    try:
+        figures = payload.get("figures") or []
+        size = len(json.dumps(figures))
+    except (TypeError, ValueError):  # measuring must never break the answer
+        return
+    if size > HUGE_RESPONSE_BYTES:
+        biggest = max(range(len(figures)), key=lambda index: len(json.dumps(figures[index])), default=-1)
+        log.warning(
+            "analysis %s: respuesta de %.1f MB (figura %s es la mayor); ¿falta remuestrear sus puntos?",
+            module,
+            size / 1e6,
+            biggest,
+        )
 
 
 def _flag(name: str) -> bool | None:

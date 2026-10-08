@@ -391,8 +391,8 @@
         <button type="button" class="btn btn-secondary btn-sm" x-show="viewer.mode === 'data'" @click="page(1)" :disabled="viewer.offset + 50 >= viewer.total || viewer.busy">Siguiente</button>
         <button type="button" class="btn btn-secondary btn-sm print:hidden" @click="exportFicha()">{{ icon("download", "size-4") }} Exportar ficha</button>
         <button type="button" class="btn btn-secondary btn-sm print:hidden" @click="printViewer()">{{ icon("print", "size-4") }} Imprimir</button>
-        <button type="button" class="btn btn-secondary btn-sm print:hidden" x-show="$store.ai.available" x-cloak @click="askAiDataset()" :disabled="$store.ai.busy"
-                title="Evaluación de la calidad de los datos generada por IA (no se envían las filas)">{{ icon("ai", "size-4") }} <span x-text="$store.ai.busy ? 'Interpretando…' : 'Interpretar con IA'"></span></button>
+        <button type="button" class="btn btn-secondary btn-sm print:hidden" @click="askAiDataset()" :disabled="$store.ai.busy || !aiAvailable()"
+                :title="!$store.ai.available ? $store.ai.status.reason : 'Evaluación de la calidad de los datos generada por IA (no se envían las filas)'">{{ icon("ai", "size-4") }} <span x-text="$store.ai.busy ? 'Interpretando…' : 'Interpretar con IA'"></span></button>
         <button type="button" class="btn btn-ghost btn-sm" @click="closeViewer()" aria-label="Cerrar">{{ icon("close", "size-4") }}</button>
       </div>
     </div>

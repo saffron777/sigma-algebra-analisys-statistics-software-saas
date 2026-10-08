@@ -127,6 +127,9 @@ def test_ai_controls_are_in_the_pages_that_use_them(api):
         and "Interpretación (IA)" in regression
         and "¿Qué quieres saber?" in regression
     )
+    # the button is never hidden without an explanation: it is disabled and the hint says why
+    assert "aiAvailable()" in regression and "$store.ai.status.reason" in regression
+    assert "Interpretar con IA" in api.raw.get("/descriptiva").get_data(as_text=True)
     assert "marked.min.js" in api.raw.get("/").get_data(as_text=True)  # Markdown is rendered with marked + DOMPurify
     assert "Interpretar con IA" in api.raw.get("/resultados").get_data(as_text=True)
     assert "Interpretar con IA" in api.raw.get("/datos").get_data(as_text=True)

@@ -93,6 +93,11 @@ document.addEventListener("alpine:init", () => {
 
     viewer: { dataset: null, columns: [], rows: [], offset: 0, total: 0, kinds: {}, busy: false, mode: "data" },
 
+    /** Whether this user can ask the AI right now (the store explains why not when it cannot). */
+    aiAvailable() {
+      return Alpine.store("ai").available;
+    },
+
     async init() {
       await this.startWorkspace();
       await this.loadDatabases();

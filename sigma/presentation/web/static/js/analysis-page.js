@@ -10,6 +10,10 @@ import { printPage, resultSection } from "./export.js";
 import { renderReport } from "./report.js";
 import { workspace } from "./workspace.js";
 
+// The server cancels a heavy analysis after SIGMA_ANALYSIS_TIMEOUT_SECONDS (120 by default); the browser waits a
+// little longer, so a slow but valid answer still arrives and a lost connection does not wait forever.
+const ANALYSIS_DEADLINE_MS = 180_000;
+
 /**
  * @param {string} module   workspace key of the page
  * @param {string[]} fields component properties that make up the form
@@ -26,22 +30,35 @@ export function analysisPage(module, fields = [], options = {}) {
     aiFocus: "",
     aiError: "",
 
+    /** Whether this user can ask the AI right now (the store explains why not when it cannot). */
+    aiAvailable() {
+      return Alpine.store("ai").available;
+    },
+
     /** POST `body` to `url` and show the resulting report. Returns the payload (or null on error). */
     async runAnalysis(url, body) {
       this.loading = true;
       this.error = "";
       this.savedId = null;
+      // A heavy analysis on a big dataset can take a while; without a deadline the page would wait forever and look
+      // frozen (it shows no progress and no error). The server has its own limit, which is lower than this one.
+      const controller = new AbortController();
+      const deadline = setTimeout(() => controller.abort(), ANALYSIS_DEADLINE_MS);
       try {
-        const data = await api(url, { method: "POST", json: body });
+        const data = await api(url, { method: "POST", json: body, signal: controller.signal });
         await this.showPayload(data);
         this.wsPayloadChanged?.(); // the result now belongs to the workspace
         return data;
       } catch (error) {
         this.payload = null;
-        this.error = error.message;
+        this.error =
+          error.name === "AbortError"
+            ? "El cálculo está tardando demasiado y se canceló la espera. El servidor sigue trabajando: vuelva a intentarlo en un minuto o use menos filas o columnas."
+            : error.message;
         this.wsPayloadChanged?.();
         return null;
       } finally {
+        clearTimeout(deadline);
         this.loading = false;
       }
     },

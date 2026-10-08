@@ -27,6 +27,11 @@ document.addEventListener("alpine:init", () => {
     editing: null,
     _timer: null,
 
+    /** Whether this user can ask the AI right now (the store explains why not when it cannot). */
+    aiAvailable() {
+      return Alpine.store("ai").available;
+    },
+
     async init() {
       await this.startWorkspace(); // restores the filters and the open result, and loads the list
       const open = new URLSearchParams(location.search).get("open");

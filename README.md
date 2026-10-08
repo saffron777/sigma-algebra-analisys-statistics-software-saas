@@ -32,6 +32,25 @@ Todo se ejecuta y se guarda en su propio servidor; nada sale de él.
 Cada resultado que depende de una distribución de referencia (t, F, χ², normal…) muestra la curva con la región de
 rechazo y el valor p sombreados.
 
+## Datasets grandes
+
+Sigma no copia los datos al navegador: los cálculos corren en el servidor y la página recibe el informe (cifras,
+tablas y gráficos). Para que un dataset grande (decenas de MB, cientos de miles de filas) siga siendo usable:
+
+- **Los gráficos se remuestrean**: las nubes de puntos y los gráficos de barras por observación (residuos,
+  observado vs ajustado, escala-ubicación, distancia de Cook, Q-Q, cajas y violines) se dibujan con una muestra
+  equiespaciada de unos 5 000 puntos como máximo. Las cifras del informe (coeficientes, pruebas, diagnósticos) se
+  calculan siempre con **todas** las filas; solo se muestrea lo que se dibuja. Si necesita el gráfico completo,
+  exporte el conjunto desde **Datos**.
+- **Límite de tiempo por análisis**: los análisis pesados (rejillas de modelos, bosques, bootstrap…) corren en un
+  proceso aparte con `SIGMA_ANALYSIS_TIMEOUT_SECONDS` (120 s). Si se supera, el proceso se cancela y la página lo
+  dice, en lugar de quedarse esperando. El navegador espera un poco más que el servidor (180 s) y, si se agota,
+  avisa con un mensaje claro.
+- **Tiempos en el registro**: cada análisis pesado deja una línea (`analysis módulo/análisis: N s, M filas`), y si
+  un informe supera los 5 MB de gráficos se anota una advertencia: es la señal de que falta remuestrear alguna figura.
+- **Límite de subida**: `SIGMA_MAX_UPLOAD_MB` (100 MB por archivo). Un archivo mayor se rechaza con un mensaje claro
+  antes de leerlo.
+
 ## Requisitos
 
 - Windows 10/11 (también funciona en Linux/macOS), **Python 3.11+** y **Node.js 20+** (solo para compilar el CSS).

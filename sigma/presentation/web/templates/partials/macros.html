@@ -151,11 +151,14 @@
       <button type="button" class="btn btn-secondary btn-sm" @click="openSave()">{{ icon("save", "size-4") }} Guardar resultado</button>
       <button type="button" class="btn btn-secondary btn-sm" @click="openExport()" title="Descargar como PDF, Word o Excel">{{ icon("download", "size-4") }} Exportar</button>
       <button type="button" class="btn btn-secondary btn-sm" @click="printResult()" title="Imprimir este resultado">{{ icon("print", "size-4") }} Imprimir</button>
-      <button type="button" class="btn btn-secondary btn-sm" x-show="$store.ai.available" x-cloak @click="aiOpen = !aiOpen"
-              :title="`Explicación del resultado generada por ${$store.ai.status.model}`">{{ icon("ai", "size-4") }} Interpretar con IA</button>
+      {# Always visible: when the AI is not available the hint below says why, instead of hiding the button silently. #}
+      <button type="button" class="btn btn-secondary btn-sm" :disabled="$store.ai.busy || !aiAvailable()" @click="aiOpen = !aiOpen"
+              :title="$store.ai.available ? `Explicación del resultado generada por ${$store.ai.status.model}` : $store.ai.status.reason">
+        {{ icon("ai", "size-4") }} Interpretar con IA</button>
       <a class="btn btn-ghost btn-sm" href="{{ url_for('pages.page_resultados') }}" x-show="savedId" x-cloak>Ver guardados</a>
     </div>
   </div>
+  <p class="hint" x-show="!$store.ai.available && $store.ai.loaded" x-cloak>{{ icon("ai", "size-4 inline") }} <span x-text="$store.ai.status.reason"></span></p>
   {{ ai_ask_bar() }}
   <div x-ref="out" class="space-y-4"></div>
   {{ interpretation_card() }}

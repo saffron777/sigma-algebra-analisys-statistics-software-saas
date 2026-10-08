@@ -191,6 +191,11 @@ def parse_openai(payload: Mapping[str, Any], requested_model: str) -> Answer:
     first = _mapping(choices[0]) if choices else {}
     message = _mapping(first.get("message"))
     text = _text_parts(message.get("content")).strip()
+    if not text:
+        # some reasoning models (DeepSeek R1, QwQ, o-series in certain modes) put the chain of thought in
+        # «reasoning_content» and the final answer in «content»; if «content» comes empty, that reasoning is all we
+        # have, and an explanation is better than nothing.
+        text = str(message.get("reasoning_content") or message.get("reasoning") or "").strip()
     finish = str(first.get("finish_reason") or "")
     usage = _mapping(payload.get("usage"))
     return Answer(
