@@ -389,6 +389,7 @@
         <span x-show="viewer.mode === 'data'" x-text="`filas ${viewer.offset + 1}–${Math.min(viewer.offset + 50, viewer.total)} de ${viewer.total.toLocaleString('es')}`"></span>
         <button type="button" class="btn btn-secondary btn-sm" x-show="viewer.mode === 'data'" @click="page(-1)" :disabled="viewer.offset === 0 || viewer.busy">Anterior</button>
         <button type="button" class="btn btn-secondary btn-sm" x-show="viewer.mode === 'data'" @click="page(1)" :disabled="viewer.offset + 50 >= viewer.total || viewer.busy">Siguiente</button>
+        <button type="button" class="btn btn-primary btn-sm print:hidden" @click="openEdit(viewer.dataset)" title="Editar los datos del dataset y guardar los cambios">{{ icon("pencil", "size-4") }} Editar</button>
         <button type="button" class="btn btn-secondary btn-sm print:hidden" @click="exportFicha()">{{ icon("download", "size-4") }} Exportar ficha</button>
         <button type="button" class="btn btn-secondary btn-sm print:hidden" @click="printViewer()">{{ icon("print", "size-4") }} Imprimir</button>
         <button type="button" class="btn btn-secondary btn-sm print:hidden" @click="askAiDataset()" :disabled="$store.ai.busy || !aiAvailable()"
@@ -451,14 +452,14 @@
     <div class="absolute inset-0 bg-slate-900/60" @click="closeEditor()"></div>
     <div class="card relative flex h-[92vh] w-full max-w-6xl flex-col shadow-xl">
       <div class="card-header shrink-0">
-        <h2 class="card-title">Crear dataset manual</h2>
+        <h2 class="card-title" x-text="editor.mode === 'edit' ? 'Editar datos del dataset' : 'Crear dataset manual'"></h2>
         <button type="button" class="btn btn-ghost btn-sm" @click="closeEditor()">{{ icon("close", "size-4") }} Cerrar</button>
       </div>
 
       <div class="card-body flex min-h-0 flex-1 flex-col space-y-3">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div class="min-w-0 flex-1"><label class="label" for="manual-name">Nombre del dataset</label>
-            <input id="manual-name" class="input" type="text" maxlength="120" x-model="editor.name" placeholder="p. ej. mi_estudio"></div>
+            <input id="manual-name" class="input" type="text" maxlength="120" x-model="editor.name" placeholder="p. ej. mi_estudio" :disabled="editor.mode === 'edit'"></div>
           <div class="tab-bar w-fit self-end" role="tablist">
             <button type="button" role="tab" class="tab" :class="editor.tab === 'variables' && 'tab-active'" :aria-selected="editor.tab === 'variables'" @click="setEditorTab('variables')">Variables</button>
             <button type="button" role="tab" class="tab" :class="editor.tab === 'datos' && 'tab-active'" :aria-selected="editor.tab === 'datos'" @click="setEditorTab('datos')">Datos</button>
@@ -468,8 +469,9 @@
         {# ---- variables ---- #}
         <div x-show="editor.tab === 'variables'" class="space-y-2 overflow-y-auto">
           <div class="flex flex-wrap items-center gap-2">
-            <button type="button" class="btn btn-secondary btn-sm" @click="addVariable()">{{ icon("plus", "size-4") }} Añadir variable</button>
-            <p class="hint">Defina el nombre y el tipo de cada variable; luego pase a la pestaña <strong>Datos</strong> para escribir los valores.</p>
+            <button type="button" class="btn btn-secondary btn-sm" x-show="editor.mode === 'create'" @click="addVariable()">{{ icon("plus", "size-4") }} Añadir variable</button>
+            <p class="hint" x-show="editor.mode === 'create'">Defina el nombre y el tipo de cada variable; luego pase a la pestaña <strong>Datos</strong> para escribir los valores.</p>
+            <p class="hint" x-show="editor.mode === 'edit'" x-cloak>Las variables son de solo lectura; corrija los valores en la pestaña <strong>Datos</strong>.</p>
           </div>
           <div class="table-wrap">
             <table class="tbl">
@@ -478,30 +480,30 @@
                 <template x-for="(v, i) in editor.variables" :key="i">
                   <tr>
                     <td class="text-slate-400" x-text="i + 1"></td>
-                    <td><input class="input" type="text" maxlength="120" x-model="v.name" placeholder="nombre de la variable"></td>
-                    <td class="w-44"><select class="input" x-model="v.kind">
+                    <td><input class="input" type="text" maxlength="120" x-model="v.name" placeholder="nombre de la variable" :disabled="editor.mode === 'edit'"></td>
+                    <td class="w-44"><select class="input" x-model="v.kind" :disabled="editor.mode === 'edit'">
                       <option value="numeric">Numérica</option><option value="categorical">Categórica</option>
                       <option value="text">Texto</option><option value="datetime">Fecha</option>
                       <option value="boolean">Lógica (sí/no)</option></select></td>
                     <td class="w-72">
-                      <div x-show="v.kind === 'numeric'" x-cloak class="flex flex-wrap items-center gap-1.5">
+                      <div x-show="editor.mode === 'create' && v.kind === 'numeric'" x-cloak class="flex flex-wrap items-center gap-1.5">
                         <select class="input !py-1 text-xs" x-model="v.numericType">
                           <option value="decimal">Decimal</option><option value="integer">Entera</option></select>
                         <span x-show="v.numericType === 'decimal'" x-cloak class="flex items-center gap-1.5">
                           <input class="input !py-1 text-xs w-16" type="number" min="0" max="10" step="1" x-model.number="v.decimals" :aria-label="`Decimales de ${v.name || 'variable'}`">
                           <span class="text-xs text-slate-500">decimales</span></span>
                       </div>
-                      <div x-show="v.kind === 'categorical'" x-cloak>
+                      <div x-show="editor.mode === 'create' && v.kind === 'categorical'" x-cloak>
                         <input class="input !py-1 text-xs" type="text" maxlength="500" x-model="v.categories" placeholder="Bajo, Medio, Alto">
                       </div>
                     </td>
-                    <td class="text-right"><button type="button" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400" @click="removeVariable(i)" :aria-label="`Quitar variable ${i + 1}`">{{ icon("trash", "size-4") }}</button></td>
+                    <td class="text-right"><button x-show="editor.mode === 'create'" type="button" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400" @click="removeVariable(i)" :aria-label="`Quitar variable ${i + 1}`">{{ icon("trash", "size-4") }}</button></td>
                   </tr>
                 </template>
               </tbody>
             </table>
           </div>
-          <div class="flex justify-end"><button type="button" class="btn btn-primary" @click="setEditorTab('datos')">Continuar a Datos</button></div>
+          <div class="flex justify-end" x-show="editor.mode === 'create'"><button type="button" class="btn btn-primary" @click="setEditorTab('datos')">Continuar a Datos</button></div>
         </div>
 
         {# ---- datos (spreadsheet) ---- #}
@@ -515,9 +517,6 @@
             <span class="toolbar-separator"></span>
             <button type="button" class="toolbar-btn" @click="sheetAction('insertRow')" data-tip="Insertar fila" aria-label="Insertar fila">{{ icon("insert-row", "size-4") }}</button>
             <button type="button" class="toolbar-btn" @click="sheetAction('deleteRow')" data-tip="Eliminar fila" aria-label="Eliminar fila">{{ icon("delete-row", "size-4") }}</button>
-            <span class="toolbar-separator"></span>
-            <button type="button" class="toolbar-btn" @click="sheetAction('insertColumn')" data-tip="Insertar columna" aria-label="Insertar columna">{{ icon("insert-column", "size-4") }}</button>
-            <button type="button" class="toolbar-btn" @click="sheetAction('deleteColumn')" data-tip="Eliminar columna" aria-label="Eliminar columna">{{ icon("delete-column", "size-4") }}</button>
           </div>
           <div x-ref="manualSheet" class="min-h-0 flex-1 w-full"></div>
           <p class="hint">Atajos: Ctrl+C copiar · Ctrl+V pegar · Ctrl+Z deshacer · clic derecho para insertar/eliminar filas y columnas.</p>
@@ -527,7 +526,7 @@
 
         <div class="flex shrink-0 justify-end gap-2 border-t border-slate-300 pt-3 dark:border-slate-700">
           <button type="button" class="btn btn-ghost" @click="closeEditor()">Cancelar</button>
-          <button type="button" class="btn btn-primary" @click="saveManual()" :disabled="editor.busy">{{ icon("save", "size-4") }} <span x-text="editor.busy ? 'Guardando…' : 'Guardar dataset'"></span></button>
+          <button type="button" class="btn btn-primary" @click="saveManual()" :disabled="editor.busy">{{ icon("save", "size-4") }} <span x-text="editor.busy ? 'Guardando…' : (editor.mode === 'edit' ? 'Guardar cambios' : 'Guardar dataset')"></span></button>
         </div>
       </div>
     </div>

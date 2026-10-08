@@ -297,6 +297,45 @@ class ChangeColumnTypes:
         return self._datasets.replace_data(dataset_id, frame), failures
 
 
+def _is_blank(value: Any) -> bool:
+    """True when a raw cell is empty (missing, NaN, or a blank string)."""
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value.strip() == ""
+    try:
+        return bool(pd.isna(value))
+    except (TypeError, ValueError):
+        return False
+
+
+def _build_manual_frame(columns: list[dict[str, Any]], rows: list[dict[str, Any]]) -> pd.DataFrame:
+    """Validates a variable definition and builds a typed frame from hand-typed rows (empty cells -> missing)."""
+    if not columns:
+        raise InvalidInputError("Defina al menos una variable.")
+    names: list[str] = []
+    for column in columns:
+        column_name = str(column.get("name") or "").strip()
+        kind = str(column.get("kind") or "")
+        if not column_name:
+            raise InvalidInputError("Las variables deben tener un nombre.")
+        if kind not in CONVERTIBLE_KINDS:
+            raise InvalidInputError(f"Tipo de variable inválido «{kind}».")
+        names.append(column_name)
+    if len({n.lower() for n in names}) != len(names):
+        raise InvalidInputError("Los nombres de variable deben ser únicos.")
+
+    data = {name: [row.get(name, "") for row in rows] for name in names}
+    frame = pd.DataFrame(data)
+    # drop rows where every cell is blank (the grid's spare rows must not be persisted)
+    if not frame.empty:
+        frame = frame[~frame.apply(lambda col: col.map(_is_blank)).all(axis=1)].reset_index(drop=True)
+    for name, column in zip(names, columns):
+        series = frame[name].astype("string")
+        frame[name], _ = convert_column(series, str(column.get("kind") or "text"))
+    return normalize_columns(frame)
+
+
 class CreateManualDataset:
     """Creates a dataset from data typed by hand (SPSS/Minitab-style data editor)."""
 
@@ -304,24 +343,16 @@ class CreateManualDataset:
         self._datasets = datasets
 
     def execute(self, name: str | None, columns: list[dict[str, Any]], rows: list[dict[str, Any]]) -> DatasetInfo:
-        if not columns:
-            raise InvalidInputError("Defina al menos una variable.")
-        names: list[str] = []
-        for column in columns:
-            column_name = str(column.get("name") or "").strip()
-            kind = str(column.get("kind") or "")
-            if not column_name:
-                raise InvalidInputError("Las variables deben tener un nombre.")
-            if kind not in CONVERTIBLE_KINDS:
-                raise InvalidInputError(f"Tipo de variable inválido «{kind}».")
-            names.append(column_name)
-        if len({n.lower() for n in names}) != len(names):
-            raise InvalidInputError("Los nombres de variable deben ser únicos.")
-
-        data = {name: [row.get(name, "") for row in rows] for name in names}
-        frame = pd.DataFrame(data)
-        for name, column in zip(names, columns):
-            series = frame[name].astype("string")
-            frame[name], _ = convert_column(series, str(column.get("kind") or "text"))
-        frame = normalize_columns(frame)
+        frame = _build_manual_frame(columns, rows)
         return self._datasets.add(clean_dataset_name(name, "dataset"), frame, "manual", {"source_type": "manual"})
+
+
+class UpdateDatasetData:
+    """Replaces the data of a saved dataset with manually corrected rows (schema unchanged)."""
+
+    def __init__(self, datasets: DatasetRepository) -> None:
+        self._datasets = datasets
+
+    def execute(self, dataset_id: str, columns: list[dict[str, Any]], rows: list[dict[str, Any]]) -> DatasetInfo:
+        frame = _build_manual_frame(columns, rows)
+        return self._datasets.replace_data(dataset_id, frame)

@@ -54,6 +54,7 @@ from sigma.application.use_cases.datasets import (
     PreviewDataset,
     PreviewImport,
     RenameDataset,
+    UpdateDatasetData,
     UploadImportFile,
 )
 from sigma.application.use_cases.exports import (
@@ -152,6 +153,7 @@ class UserServices:
     change_column_types: ChangeColumnTypes
     load_sample_data: LoadSampleData
     create_manual_dataset: CreateManualDataset
+    update_dataset_data: UpdateDatasetData
     # analyses
     run_descriptive: RunDescriptive
     run_hypothesis_test: RunHypothesisTest
@@ -296,6 +298,7 @@ class Container:
             change_column_types=ChangeColumnTypes(datasets),
             load_sample_data=LoadSampleData(self.importers, datasets, self.config.sample_dir),
             create_manual_dataset=CreateManualDataset(datasets),
+            update_dataset_data=UpdateDatasetData(datasets),
             run_descriptive=RunDescriptive(datasets),
             run_hypothesis_test=RunHypothesisTest(datasets),
             run_regression=RunRegression(datasets),

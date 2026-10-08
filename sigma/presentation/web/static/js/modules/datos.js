@@ -46,6 +46,8 @@ let manualSheet = null;
 let manualSheetData = null; // last grid data (array of arrays), kept across column rebuilds
 let manualResizeTimer = null;
 let manualResizeHandler = null;
+let manualKeydownHandler = null;
+let manualClickHandler = null;
 
 // Sigma variable kind -> Jspreadsheet v5 column definition
 function manualColumn(variable, index) {
@@ -65,6 +67,17 @@ function manualColumn(variable, index) {
 
 function defaultVariable() {
   return { name: "", kind: "numeric", numericType: "decimal", decimals: 2, categories: "" };
+}
+
+// stored (typed) value -> the string shown in the editor grid
+function gridCell(kind, value) {
+  if (value === null || value === undefined) return "";
+  switch (kind) {
+    case "boolean": return value ? "Sí" : "No";
+    case "datetime": return String(value).slice(0, 10); // "YYYY-MM-DD"
+    case "numeric": return value === "" ? "" : String(value);
+    default: return String(value);
+  }
 }
 
 document.addEventListener("alpine:init", () => {
@@ -500,17 +513,40 @@ document.addEventListener("alpine:init", () => {
     },
 
     // ------------------------------------------------------------------ manual dataset editor
-    editor: { open: false, tab: "variables", name: "", variables: [defaultVariable()], busy: false, error: "" },
+    editor: { open: false, tab: "variables", name: "", variables: [defaultVariable()], busy: false, error: "", mode: "create", datasetId: null },
 
-    openEditor() {
-      manualSheet = null;
-      manualSheetData = null;
-      this.editor = { open: true, tab: "variables", name: "", variables: [defaultVariable()], busy: false, error: "" };
+    _attachResize() {
       manualResizeHandler = () => {
         clearTimeout(manualResizeTimer);
         manualResizeTimer = setTimeout(() => { if (manualSheet) this._buildSheet(); }, 200);
       };
       window.addEventListener("resize", manualResizeHandler);
+    },
+
+    openEditor() {
+      manualSheet = null;
+      manualSheetData = null;
+      this.editor = { open: true, tab: "variables", name: "", variables: [defaultVariable()], busy: false, error: "", mode: "create", datasetId: null };
+      this._attachResize();
+    },
+
+    async openEdit(dataset) {
+      manualSheet = null;
+      manualSheetData = null;
+      const variables = (dataset.columns ?? []).map((c) => ({
+        name: c.name, kind: c.kind, numericType: "decimal", decimals: 2, categories: "",
+      }));
+      this.editor = { open: true, tab: "datos", name: dataset.name, variables, busy: false, error: "", mode: "edit", datasetId: dataset.id };
+      this._attachResize();
+      try {
+        const res = await api(`/api/datasets/${dataset.id}/preview?limit=${dataset.n_rows || 100000}&offset=0`);
+        const kinds = (res.dataset?.columns ?? []).map((c) => c.kind);
+        const names = variables.map((v) => v.name);
+        manualSheetData = (res.rows ?? []).map((row) => Object.fromEntries(names.map((name, j) => [name, gridCell(kinds[j], row[j])])));
+        this.$nextTick(() => this._buildSheet());
+      } catch (error) {
+        this.editor.error = error.message;
+      }
     },
 
     closeEditor() {
@@ -548,6 +584,38 @@ document.addEventListener("alpine:init", () => {
 
     _destroySheet() {
       if (manualSheet) { try { jspreadsheet.destroy(this.$refs.manualSheet); } catch (error) { /* already destroyed */ } manualSheet = null; }
+      if (manualKeydownHandler) { this.$refs.manualSheet.removeEventListener("keydown", manualKeydownHandler, true); manualKeydownHandler = null; }
+      if (manualClickHandler) { this.$refs.manualSheet.removeEventListener("click", manualClickHandler, false); manualClickHandler = null; }
+    },
+
+    /** Numeric cells only accept digits (and `.` for decimals, `-` for negatives). */
+    _onSheetKeydown(event) {
+      const sheet = manualSheet?.[0];
+      if (!sheet) return;
+      const [col] = sheet.getHighlighted()[0] ?? [-1];
+      const variable = this.editor.variables[col];
+      if (!variable || variable.kind !== "numeric") return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return; // shortcuts
+      const key = event.key;
+      if (key.length > 1) return; // navigation/control keys (Backspace, arrows, Tab, Enter, Delete…)
+      if (/[0-9]/.test(key)) return;
+      if (key === "-") return; // negative sign
+      if (variable.numericType === "decimal" && key === ".") return;
+      event.preventDefault();
+      event.stopPropagation();
+    },
+
+    /** Open dropdown/calendar editors with a single click (text/numeric keep double-click). */
+    _onSheetClick(event) {
+      const sheet = manualSheet?.[0];
+      if (!sheet) return;
+      const td = event.target.closest("td");
+      if (!td) return;
+      const [col] = sheet.getHighlighted()[0] ?? [-1];
+      const variable = this.editor.variables[col];
+      if (!variable) return;
+      const columnType = manualColumn(variable, col).type;
+      if (columnType === "dropdown" || columnType === "calendar") sheet.openEditor(td, false, event);
     },
 
     /** Toolbar actions that map onto the Jspreadsheet instance. */
@@ -587,6 +655,7 @@ document.addEventListener("alpine:init", () => {
         onbeforechange: (instance, cell, colIndex, rowIndex, newValue) => {
           const variable = this.editor.variables[Number(colIndex)];
           if (!variable || variable.kind !== "numeric") return undefined;
+          if (this.editor.mode === "edit") return undefined; // editing preserves existing precision
           if (newValue === null || newValue === undefined || newValue === "") return undefined;
           const num = Number(String(newValue).replace(",", "."));
           if (Number.isNaN(num)) return undefined; // the numeric type already rejects letters
@@ -602,25 +671,30 @@ document.addEventListener("alpine:init", () => {
             // v5 order is [columns, rows]
             minDimensions: [Math.max(1, columns.length), Math.max(data.length + 1, 200)],
             minSpareRows: 30,
-            minSpareCols: 2,
+            minSpareCols: 0,
             tableOverflow: true,
             tableHeight: height,
             tableWidth: "100%",
             allowInsertRow: true,
             allowDeleteRow: true,
-            allowInsertColumn: true,
-            allowDeleteColumn: true,
+            allowInsertColumn: false,
+            allowDeleteColumn: false,
             allowManualInsertRow: true,
-            allowManualInsertColumn: true,
+            allowManualInsertColumn: false,
             columnSorting: false,
           },
         ],
       });
+      manualKeydownHandler = (event) => this._onSheetKeydown(event);
+      manualClickHandler = (event) => this._onSheetClick(event);
+      this.$refs.manualSheet.addEventListener("keydown", manualKeydownHandler, true);
+      this.$refs.manualSheet.addEventListener("click", manualClickHandler, false);
     },
 
     async saveManual() {
+      const isEdit = this.editor.mode === "edit";
       const name = (this.editor.name || "").trim();
-      if (!name) { this.editor.error = "Escriba un nombre para el dataset."; return; }
+      if (!isEdit && !name) { this.editor.error = "Escriba un nombre para el dataset."; return; }
       const columns = this.editor.variables.filter((v) => v.name.trim()).map((v) => ({ name: v.name.trim(), kind: v.kind }));
       if (!columns.length) { this.editor.error = "Defina al menos una variable con nombre."; return; }
       const names = columns.map((c) => c.name);
@@ -628,15 +702,23 @@ document.addEventListener("alpine:init", () => {
         this.editor.error = "Los nombres de variable deben ser únicos."; return;
       }
       this._snapshotSheet();
-      const rows = (manualSheetData ?? []).map((obj) => Object.fromEntries(names.map((n) => [n, obj[n] ?? ""])));
+      const rows = (manualSheetData ?? [])
+        .map((obj) => Object.fromEntries(names.map((n) => [n, obj[n] ?? ""])))
+        .filter((row) => names.some((n) => String(row[n] ?? "").trim() !== ""));
       this.editor.busy = true;
       this.editor.error = "";
       try {
-        const { dataset } = await api("/api/datasets/manual", { method: "POST", json: { name, columns, rows } });
-        Alpine.store("datasets").select(dataset.id);
+        if (isEdit) {
+          await api(`/api/datasets/${this.editor.datasetId}/data`, { method: "PUT", json: { columns, rows } });
+          Alpine.store("toast").show(`Datos de «${this.editor.name}» guardados.`, "success");
+        } else {
+          const { dataset } = await api("/api/datasets/manual", { method: "POST", json: { name, columns, rows } });
+          Alpine.store("datasets").select(dataset.id);
+          Alpine.store("toast").show(`Dataset «${dataset.name}» creado.`, "success");
+        }
         await Alpine.store("datasets").refresh();
         this.closeEditor();
-        Alpine.store("toast").show(`Dataset «${dataset.name}» creado.`, "success");
+        if (isEdit && this.viewer.dataset) await this.view(this.viewer.dataset, this.viewer.offset);
       } catch (error) {
         this.editor.error = error.message;
       } finally {

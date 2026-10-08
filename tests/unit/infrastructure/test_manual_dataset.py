@@ -66,3 +66,37 @@ def test_create_manual_dataset_validations(datasets):
         create.execute("x", [{"name": "  ", "kind": "numeric"}], [])  # blank name
     info = create.execute("vacio", [{"name": "a", "kind": "numeric"}], [])  # empty is allowed with one variable
     assert info.n_rows == 0 and info.n_cols == 1
+
+
+def test_update_dataset_data(datasets):
+    from sigma.application.use_cases.datasets import UpdateDatasetData
+
+    columns = [{"name": "edad", "kind": "numeric"}, {"name": "grupo", "kind": "categorical"}]
+    info = CreateManualDataset(datasets).execute(
+        "estudio", columns, [{"edad": "25", "grupo": "A"}, {"edad": "30", "grupo": "B"}]
+    )
+    updated = UpdateDatasetData(datasets).execute(
+        info.id, columns, [{"edad": "40", "grupo": "C"}, {"edad": "45", "grupo": "D"}]
+    )
+    assert (updated.n_rows, updated.n_cols) == (2, 2)
+    data = datasets.get(info.id).data
+    assert data["edad"].tolist() == [40.0, 45.0]
+    assert data["grupo"].astype(object).tolist() == ["C", "D"]
+
+
+def test_empty_rows_are_dropped(datasets):
+    columns = [{"name": "a", "kind": "numeric"}, {"name": "b", "kind": "text"}]
+    info = CreateManualDataset(datasets).execute(
+        "x", columns,
+        [
+            {"a": "1", "b": "x"},
+            {"a": "", "b": ""},   # fully empty -> dropped
+            {"a": "2", "b": ""},  # partially filled -> kept
+            {"a": "", "b": ""},   # fully empty -> dropped
+            {"a": "", "b": "y"},  # partially filled -> kept
+        ],
+    )
+    assert info.n_rows == 3
+    data = datasets.get(info.id).data
+    assert data["a"].tolist()[:2] == [1.0, 2.0] and pd.isna(data["a"].iloc[2])
+    assert data["b"].tolist() == ["x", "", "y"]

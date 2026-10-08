@@ -19,6 +19,11 @@ class ManualDatasetRequest(RequestModel):
     rows: list[dict[str, Any]] = []
 
 
+class UpdateDatasetDataRequest(RequestModel):
+    columns: list[ManualColumn]
+    rows: list[dict[str, Any]] = []
+
+
 class CommitImportRequest(RequestModel):
     token: NonEmpty
     name: str | None = None

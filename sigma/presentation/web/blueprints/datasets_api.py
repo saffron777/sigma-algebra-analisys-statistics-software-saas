@@ -10,7 +10,7 @@ from flask import Blueprint, jsonify, request
 from sigma.application.ports import ImportRequest
 from sigma.domain.errors import InvalidInputError
 from sigma.presentation.web.blueprints._helpers import container, export_options_from_query, file_response, parse_body
-from sigma.presentation.web.schemas.datasets import ColumnTypesRequest, CommitImportRequest, ManualDatasetRequest, RenameRequest
+from sigma.presentation.web.schemas.datasets import ColumnTypesRequest, CommitImportRequest, ManualDatasetRequest, RenameRequest, UpdateDatasetDataRequest
 from sigma.presentation.web.serializers import to_jsonable
 
 bp = Blueprint("datasets_api", __name__, url_prefix="/api/datasets")
@@ -60,6 +60,16 @@ def create_manual_dataset():
         body.name, [column.model_dump() for column in body.columns], body.rows
     )
     return jsonify({"dataset": to_jsonable(info)}), 201
+
+
+@bp.put("/<dataset_id>/data")
+def update_dataset_data(dataset_id: str):
+    """Replaces a dataset's data with manually corrected rows (schema unchanged)."""
+    body = parse_body(UpdateDatasetDataRequest)
+    info = container().update_dataset_data.execute(
+        dataset_id, [column.model_dump() for column in body.columns], body.rows
+    )
+    return jsonify({"dataset": to_jsonable(info)})
 
 
 @bp.post("/import/inspect")
