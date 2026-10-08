@@ -185,10 +185,10 @@
 .nb-print { display: none; }
 
 @media print {
-  html, body { background: #fff !important; color: #0f172a !important; }
+  html, body { background: #fff !important; color: #0f172a !important; height: auto !important; overflow: visible !important; }
   /* application chrome and controls never print */
   .menubar, .toolbar, .statusbar, aside, header.sticky, [role="dialog"], form, .btn, .tab-bar, .toast-host, .print\:hidden { display: none !important; }
-  main { max-width: none !important; padding: 0 !important; }
+  main { max-width: none !important; padding: 0 !important; overflow: visible !important; height: auto !important; }
   .card { box-shadow: none !important; border-color: #cbd5e1 !important; background: #fff !important; }
   .table-wrap { max-height: none !important; overflow: visible !important; }
   .tbl thead { display: table-header-group; }

@@ -25,6 +25,34 @@ def _add_ai_provider(engine: Engine) -> None:
     _add_column(engine, schema.ai_usage, schema.ai_usage.c.provider)
 
 
+def _add_projects(engine: Engine) -> None:
+    """v9: the survey projects table (a brand-new table, created by ``metadata.create_all``)."""
+    return None
+
+
+def _fix_projects(engine: Engine) -> None:
+    """v10: the projects table changed shape while still unreleased (responses moved to a referenced dataset)."""
+    schema.projects.drop(engine, checkfirst=True)
+
+
+def _widen_app_settings(engine: Engine) -> None:
+    """v11: ``app_settings.value`` now holds the whole AI configuration (JSON), so it must accept long text."""
+    dialect = engine.dialect.name
+    table = engine.dialect.identifier_preparer.quote(schema.app_settings.name)
+    if dialect == "sqlite":
+        return  # TEXT has no length limit in SQLite
+    if dialect in ("mysql", "mariadb"):
+        statement = f"ALTER TABLE {table} MODIFY value LONGTEXT"
+    elif dialect == "postgresql":
+        statement = f"ALTER TABLE {table} ALTER COLUMN value TYPE TEXT"
+    elif dialect == "oracle":
+        statement = f"ALTER TABLE {table} MODIFY (value CLOB)"
+    else:  # mssql
+        statement = f"ALTER TABLE {table} ALTER COLUMN value NVARCHAR(MAX)"
+    with engine.begin() as conn:
+        conn.execute(text(statement))
+
+
 def _add_column(engine: Engine, table: Table, column: Column) -> None:
     """Add a missing column to an existing table, portably and **idempotently**.
 
@@ -47,7 +75,7 @@ def _add_column(engine: Engine, table: Table, column: Column) -> None:
         conn.execute(text(statement))
 
 
-_STEPS: dict[int, Callable[[Engine], None]] = {8: _add_ai_provider}
+_STEPS: dict[int, Callable[[Engine], None]] = {8: _add_ai_provider, 9: _add_projects, 10: _fix_projects, 11: _widen_app_settings}
 
 
 CONNECT_TIMEOUT_ARG = {

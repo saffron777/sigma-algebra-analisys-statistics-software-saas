@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block scripts %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/jsuites.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/jspreadsheet.css') }}">
+<script defer src="{{ url_for('static', filename='vendor/jsuites.js') }}"></script>
+<script defer src="{{ url_for('static', filename='vendor/jspreadsheet.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/modules/encuestas.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div x-data="encuestasPage" class="space-y-5">
+  {# ---------------------------------------------------------------- projects list #}
+  <section class="card" aria-labelledby="projects-title">
+    <div class="card-header">
+      <h2 id="projects-title" class="card-title">Proyectos de encuesta</h2>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-slate-500" x-text="`${store.list.length} proyecto(s)`"></span>
+        <button type="button" class="btn btn-primary btn-sm" @click="create()">{{ icon("plus", "size-4") }} Nuevo proyecto</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <p class="text-sm text-slate-500" x-show="store.loaded && !store.list.length" x-cloak>Cree un proyecto para diseñar una encuesta, capturar respuestas y analizarlas.</p>
+      <div class="table-wrap" x-show="store.list.length" x-cloak>
+        <table class="tbl">
+          <thead><tr><th>Nombre</th><th class="text-right">Preguntas</th><th class="text-right">Respuestas</th><th class="text-right">Muestra</th><th class="text-right">Población</th><th>Creado</th><th class="text-right">Acciones</th></tr></thead>
+          <tbody>
+            <template x-for="p in store.list" :key="p.id">
+              <tr class="cursor-pointer" :class="project?.id === p.id && 'bg-brand-50/60 dark:bg-brand-900/20'" @dblclick="store.open(p.id); tab = 'diseno'" title="Doble clic para abrir">
+                <td class="max-w-[18rem] truncate font-medium" x-text="p.name"></td>
+                <td class="text-right" x-text="p.n_questions"></td>
+                <td class="text-right" x-text="p.n_responses"></td>
+                <td class="text-right" x-text="p.sample_size ?? '—'"></td>
+                <td class="text-right" x-text="p.population_size ?? '—'"></td>
+                <td class="text-slate-500" x-text="formatDate(p.created_at)"></td>
+                <td class="text-right"><div class="flex justify-end gap-1">
+                  <button type="button" class="btn btn-ghost btn-sm" @click="store.open(p.id); tab = 'diseno'">Abrir</button>
+                  <button type="button" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400" @click="remove(p)" :aria-label="`Eliminar ${p.name}`">{{ icon("trash", "size-4") }}</button>
+                </div></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  {# ---------------------------------------------------------------- selected project #}
+  <template x-if="project">
+  <section class="card" aria-labelledby="editor-title">
+    <div class="card-header">
+      <h2 id="editor-title" class="card-title" x-text="`Proyecto: ${project.name}`"></h2>
+      <div class="flex items-center gap-2">
+        <button type="button" class="btn btn-primary btn-sm" @click="save()">{{ icon("save", "size-4") }} Guardar</button>
+        <button type="button" class="btn btn-secondary btn-sm print:hidden" @click="printProject()">{{ icon("print", "size-4") }} Imprimir</button>
+      </div>
+    </div>
+    <div class="card-body space-y-3">
+      <div class="tab-bar w-fit" role="tablist">
+        <button type="button" role="tab" class="tab" :class="tab === 'diseno' && 'tab-active'" @click="selectTab('diseno')">Diseño</button>
+        <button type="button" role="tab" class="tab" :class="tab === 'datos' && 'tab-active'" @click="selectTab('datos')">Datos</button>
+        <button type="button" role="tab" class="tab" :class="tab === 'resultados' && 'tab-active'" @click="selectTab('resultados')">Resultados y análisis</button>
+      </div>
+
+      <p class="alert alert-danger" role="alert" x-show="error" x-cloak x-text="error"></p>
+
+      {# ---- diseño ---- #}
+      <div x-show="tab === 'diseno'" x-cloak class="space-y-4">
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div><label class="label" for="p-name">Nombre del proyecto</label>
+            <input id="p-name" class="input" type="text" maxlength="120" x-model="project.name"></div>
+          <div><label class="label" for="p-pop">Tamaño de población</label>
+            <input id="p-pop" class="input" type="number" min="0" x-model.number="project.population_size"></div>
+          <div><label class="label" for="p-sample">Tamaño de muestra</label>
+            <input id="p-sample" class="input" type="number" min="0" x-model.number="project.sample_size"></div>
+          <div><label class="label">Indicadores a calcular</label>
+            <div class="flex flex-wrap gap-1.5 pt-1">
+              <template x-for="ind in indicators" :key="ind.key">
+                <label class="badge badge-gray cursor-pointer" :class="project.indicators.includes(ind.key) && 'badge-brand'">
+                  <input type="checkbox" class="hidden" :value="ind.key" x-model="project.indicators">
+                  <span x-text="ind.label"></span>
+                  <span x-text="ind.label"></span>
+                </label>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button type="button" class="btn btn-secondary btn-sm" @click="addQuestion()">{{ icon("plus", "size-4") }} Añadir pregunta</button>
+          <p class="hint">Defina cada pregunta con su tipo; en la pestaña <strong>Datos</strong> capture las respuestas.</p>
+        </div>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr><th class="w-10">#</th><th>Pregunta</th><th>Tipo</th><th>Opciones</th><th class="w-16 text-right"></th></tr></thead>
+            <tbody>
+              <template x-for="(q, i) in project.design" :key="i">
+                <tr>
+                  <td class="text-slate-400" x-text="i + 1"></td>
+                  <td><input class="input" type="text" maxlength="120" x-model="q.name" placeholder="texto de la pregunta"></td>
+                  <td class="w-44"><select class="input" x-model="q.kind">
+                    <option value="numeric">Numérica</option><option value="categorical">Categórica</option>
+                    <option value="boolean">Lógica (sí/no)</option><option value="datetime">Fecha</option>
+                    <option value="text">Texto</option></select></td>
+                  <td class="w-72">
+                    <div x-show="q.kind === 'numeric'" x-cloak class="flex flex-wrap items-center gap-1.5">
+                      <select class="input !py-1 text-xs" x-model="q.numericType">
+                        <option value="decimal">Decimal</option><option value="integer">Entera</option></select>
+                      <span x-show="q.numericType === 'decimal'" x-cloak class="flex items-center gap-1.5">
+                        <input class="input !py-1 text-xs w-16" type="number" min="0" max="10" x-model.number="q.decimals">
+                        <span class="text-xs text-slate-500">decimales</span></span>
+                    </div>
+                    <div x-show="q.kind === 'categorical'" x-cloak>
+                      <input class="input !py-1 text-xs" type="text" maxlength="500" x-model="q.categories" placeholder="Opción 1, Opción 2, Opción 3">
+                    </div>
+                  </td>
+                  <td class="text-right"><button type="button" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400" @click="removeQuestion(i)" :aria-label="`Quitar pregunta ${i+1}`">{{ icon("trash", "size-4") }}</button></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# ---- datos ---- #}
+      <div x-show="tab === 'datos'" x-cloak class="flex min-h-[420px] flex-col gap-2">
+        <div class="flex flex-wrap items-center gap-1 rounded-sm border border-slate-300 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800" role="toolbar">
+          <button type="button" class="toolbar-btn" @click="manualSheet?.[0]?.undo()" data-tip="Deshacer" aria-label="Deshacer">{{ icon("undo", "size-4") }}</button>
+          <button type="button" class="toolbar-btn" @click="manualSheet?.[0]?.redo()" data-tip="Rehacer" aria-label="Rehacer">{{ icon("redo", "size-4") }}</button>
+          <span class="toolbar-separator"></span>
+          <button type="button" class="toolbar-btn" @click="manualSheet?.[0]?.copy(false)" data-tip="Copiar" aria-label="Copiar">{{ icon("copy", "size-4") }}</button>
+          <span class="toolbar-separator"></span>
+          <button type="button" class="toolbar-btn" @click="manualSheet?.[0]?.insertRow()" data-tip="Insertar fila" aria-label="Insertar fila">{{ icon("insert-row", "size-4") }}</button>
+          <button type="button" class="toolbar-btn" @click="manualSheet?.[0]?.deleteRow()" data-tip="Eliminar fila" aria-label="Eliminar fila">{{ icon("delete-row", "size-4") }}</button>
+        </div>
+        <div x-ref="manualSheet" class="min-h-[380px] w-full"></div>
+        <div class="flex justify-end"><button type="button" class="btn btn-primary btn-sm" @click="save()">{{ icon("save", "size-4") }} Guardar respuestas</button></div>
+      </div>
+
+      {# ---- resultados ---- #}
+      <div x-show="tab === 'resultados'" x-cloak class="space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="hint">Calcule cada indicador para ver sus tablas y gráficos; se guardan con el proyecto.</p>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="btn btn-secondary btn-sm" @click="askAi()" :disabled="!aiAvailable() || $store.ai.busy"
+                    :title="!aiAvailable() ? $store.ai.status.reason : 'Interpretación de todos los resultados generada por IA'">{{ icon("ai", "size-4") }} <span x-text="$store.ai.busy ? 'Interpretando…' : 'Interpretar con IA'"></span></button>
+            <button type="button" class="btn btn-primary btn-sm" @click="exportResults()">{{ icon("download", "size-4") }} Exportar (PDF / Word / Excel)</button>
+          </div>
+        </div>
+        <p class="alert alert-danger" role="alert" x-show="ai.error" x-cloak x-text="ai.error"></p>
+        <section class="rounded-sm border border-brand-200 bg-brand-50/60 p-3 dark:border-brand-900 dark:bg-brand-950/30" x-show="ai.interpretation" x-cloak aria-label="Interpretación con IA">
+          <h3 class="mb-2 flex items-center gap-2 text-[13px] font-semibold text-slate-900 dark:text-slate-100">{{ icon("ai", "size-4") }} Interpretación de los resultados (IA)</h3>
+          <div class="rendered-html" x-effect="drawAi($el)"></div>
+          <p class="mt-2 text-xs text-slate-500"><strong>Generado por IA</strong>: puede contener errores; verifique las cifras con el análisis.</p>
+        </section>
+        <div class="space-y-4">
+          <template x-for="ind in indicators" :key="ind.key">
+            <section class="rounded-sm border border-slate-300 p-4 dark:border-slate-700">
+              <div class="mb-3 flex items-center justify-between">
+                <h3 class="text-sm font-semibold" x-text="ind.label"></h3>
+                <button type="button" class="btn btn-secondary btn-sm" @click="runAnalysis(ind.key)">{{ icon("play", "size-4") }} Calcular</button>
+              </div>
+              <div :id="`project-result-${ind.key}`" class="space-y-3"></div>
+              <p class="text-sm text-slate-500" x-show="!project.results?.[ind.key]" x-cloak>Aún sin resultado.</p>
+            </section>
+          </template>
+        </div>
+      </div>
+    </div>
+  </section>
+  </template>
+</div>
+{% endblock %}

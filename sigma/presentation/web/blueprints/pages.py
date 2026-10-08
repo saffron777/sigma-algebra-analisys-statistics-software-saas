@@ -23,6 +23,7 @@ PAGES = {
     "regresion": ("/regresion", "Regresión lineal", "pages/regresion.html"),
     "anova": ("/anova", "ANOVA", "pages/anova.html"),
     "mercados": ("/mercados", "Análisis de mercados", "pages/mercados.html"),
+    "proyectos": ("/proyectos", "Diseño de encuestas", "pages/encuestas.html"),
     "consola": ("/consola", "Consola (Python · R)", "pages/consola.html"),
     "resultados": ("/resultados", "Resultados guardados", "pages/resultados.html"),
     "plantillas": ("/plantillas", "Plantillas de informe", "pages/plantillas.html"),

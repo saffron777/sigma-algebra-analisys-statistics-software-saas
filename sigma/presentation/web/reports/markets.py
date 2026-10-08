@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from sigma.domain.distributions import DistributionRef
+from sigma.domain.errors import InvalidInputError
 from sigma.domain.results import (
     CrosstabResult,
     LikertResult,
@@ -16,6 +17,20 @@ from sigma.presentation.web.reports import blocks as b
 from sigma.presentation.web.reports.fmt import integer, num, pct, pval, ratio_pct
 
 SAMPLE_PREVIEW_ROWS = 20
+
+
+def project_report(analysis_type: str, result) -> b.ReportBuilder:
+    """The report builder for one survey-project analysis, by its type."""
+    builders = {
+        "sample_size": sample_size_report,
+        "estimate": estimate_report,
+        "crosstab": crosstab_report,
+        "likert": likert_report,
+    }
+    builder = builders.get(analysis_type)
+    if builder is None:
+        raise InvalidInputError(f"Análisis inválido «{analysis_type}».")
+    return builder(result)
 
 
 def sample_size_report(result: SampleSizeResult) -> b.ReportBuilder:

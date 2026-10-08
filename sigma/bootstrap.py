@@ -75,6 +75,14 @@ from sigma.application.use_cases.notebooks import (
     RenameNotebook,
     SaveNotebook,
 )
+from sigma.application.use_cases.projects import (
+    CreateProject,
+    DeleteProject,
+    GetProject,
+    ListProjects,
+    RunProjectAnalysis,
+    SaveProject,
+)
 from sigma.application.use_cases.results import (
     DeleteResult,
     ExportResult,
@@ -169,6 +177,13 @@ class UserServices:
     estimate_survey: EstimateSurvey
     run_crosstab: RunCrosstab
     run_likert: RunLikert
+    # survey projects
+    create_project: CreateProject
+    list_projects: ListProjects
+    get_project: GetProject
+    save_project: SaveProject
+    delete_project: DeleteProject
+    run_project_analysis: RunProjectAnalysis
     # saved results
     save_result: SaveResult
     list_results: ListResults
@@ -280,6 +295,7 @@ class Container:
         workspace = self.backend.workspace(user.id)
         sync = self.backend.sync(user.id)
         templates = self.backend.templates(user.id)
+        projects = self.backend.projects(user.id)
         return UserServices(
             user=user,
             inspect_source=InspectSource(self.importers, drafts),
@@ -312,6 +328,12 @@ class Container:
             estimate_survey=EstimateSurvey(datasets),
             run_crosstab=RunCrosstab(datasets),
             run_likert=RunLikert(datasets),
+            create_project=CreateProject(projects),
+            list_projects=ListProjects(projects),
+            get_project=GetProject(projects),
+            save_project=SaveProject(projects, datasets),
+            delete_project=DeleteProject(projects),
+            run_project_analysis=RunProjectAnalysis(projects, datasets),
             save_result=SaveResult(results, datasets),
             list_results=ListResults(results),
             get_result=GetResult(results),

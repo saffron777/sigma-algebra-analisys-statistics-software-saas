@@ -42,7 +42,7 @@ MENU = (
             ("__label__", "Pruebas"),
             ("hipotesis",), ("pruebas",), ("potencia",), ("remuestreo",),
             ("__label__", "Mercados y encuestas"),
-            ("mercados",), ("encuestas",),
+            ("mercados",), ("proyectos",), ("encuestas",),
             ("__label__", "Regresión y modelos"),
             ("regresion",), ("modelos",), ("anova",), ("anova_avanzado",), ("supervivencia",), ("sem",),
             ("__label__", "Diseño y optimización"),

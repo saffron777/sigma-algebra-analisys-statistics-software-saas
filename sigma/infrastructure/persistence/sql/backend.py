@@ -16,6 +16,7 @@ from sigma.infrastructure.persistence.sql.dataset_repository import SqlDatasetRe
 from sigma.infrastructure.persistence.sql.engine import Database
 from sigma.infrastructure.persistence.sql.import_draft_store import SqlImportDraftStore, purge_stale_drafts
 from sigma.infrastructure.persistence.sql.notebook_store import SqlNotebookStore
+from sigma.infrastructure.persistence.sql.project_repository import SqlProjectRepository
 from sigma.infrastructure.persistence.sql.result_repository import SqlResultRepository
 from sigma.infrastructure.persistence.sql.template_repository import SqlTemplateRepository
 from sigma.infrastructure.persistence.sql.transfer import SqlTransfer
@@ -61,6 +62,9 @@ class SqlBackend:
 
     def templates(self, user_id: int) -> SqlTemplateRepository:
         return SqlTemplateRepository(self.database, user_id)
+
+    def projects(self, user_id: int) -> SqlProjectRepository:
+        return SqlProjectRepository(self.database, user_id)
 
     def settings_store(self) -> SqlSettingsRepository:
         return SqlSettingsRepository(self.database)

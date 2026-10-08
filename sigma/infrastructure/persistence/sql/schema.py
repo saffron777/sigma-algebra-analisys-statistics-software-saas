@@ -25,7 +25,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects import mysql
 
-SCHEMA_VERSION = 8  # v1–v6 are the SQLite-only history kept in legacy_sqlite.py; v7 is the portable baseline
+SCHEMA_VERSION = 11  # v1–v6 are the SQLite-only history kept in legacy_sqlite.py; v7 is the portable baseline
 
 LongText = UnicodeText().with_variant(mysql.LONGTEXT(), "mysql", "mariadb")
 Blob = LargeBinary().with_variant(mysql.LONGBLOB(), "mysql", "mariadb")
@@ -180,7 +180,7 @@ app_settings = Table(
     "app_settings",
     metadata,
     Column("key", Str(64), primary_key=True),
-    Column("value", Str(1000), nullable=False),
+    Column("value", LongText, nullable=False),
 )
 
 ai_usage = Table(
@@ -218,6 +218,28 @@ schema_version = Table(
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=False),
     Column("version", Integer, nullable=False),
+)
+
+projects = Table(
+    "projects",
+    metadata,
+    Column("id", Str(32), primary_key=True),
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("name", Str(120), nullable=False),
+    Column("name_key", Key(120), nullable=False),
+    Column("population_size", BigInteger),
+    Column("sample_size", BigInteger),
+    Column("n_questions", Integer, nullable=False, default=0),
+    Column("n_responses", BigInteger, nullable=False, default=0),
+    Column("indicators", LongText, nullable=False),
+    Column("design", LongText, nullable=False),
+    Column("dataset_id", Str(32)),  # the responses, kept as a real dataset (like a manual one)
+    Column("dataset_name", Str(120)),
+    Column("results", LongText),
+    Column("created_at", Str(40), nullable=False),
+    Column("updated_at", Str(40), nullable=False),
+    UniqueConstraint("user_id", "name_key", name="uq_projects_user_name"),
+    Index("ix_projects_user", "user_id"),
 )
 
 # the data tables of datasets and the staged previews are created on the fly (see table_io.py)

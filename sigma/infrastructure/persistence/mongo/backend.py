@@ -26,6 +26,7 @@ from sigma.infrastructure.persistence.mongo.documents import (
     MongoTemplateRepository,
     purge_stale_drafts,
 )
+from sigma.infrastructure.persistence.mongo.projects import MongoProjectRepository
 from sigma.infrastructure.persistence.mongo.transfer import MongoTransfer
 
 
@@ -75,6 +76,9 @@ class MongoBackend:
 
     def templates(self, user_id: int) -> MongoTemplateRepository:
         return MongoTemplateRepository(self.core, user_id)
+
+    def projects(self, user_id: int) -> MongoProjectRepository:
+        return MongoProjectRepository(self.core, user_id)
 
     def settings_store(self) -> MongoSettingsRepository:
         return MongoSettingsRepository(self.core)

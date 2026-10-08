@@ -90,6 +90,10 @@ class TemplateNotFoundError(SigmaError):
     code = "template_not_found"
 
 
+class ProjectNotFoundError(SigmaError):
+    code = "project_not_found"
+
+
 class AiUnavailableError(SigmaError):
     """The AI service cannot be used right now (disabled, no key, network or service problem)."""
 

@@ -136,7 +136,7 @@ def test_ai_controls_are_in_the_pages_that_use_them(api):
     assert "Interpretar con IA" in api.raw.get("/consola").get_data(as_text=True)
     users = api.raw.get("/usuarios").get_data(as_text=True)
     assert "Interpretación con IA" in users and "Modelos configurados" in users and "Añadir un modelo" in users
-    assert "Probar el predeterminado" in users and "instance/ai.json" in users
+    assert "Probar el predeterminado" in users and "base de datos" in users
     # the «Modelo» field of the add form is a list of the chosen provider's models, with a way out for the rest
     assert 'x-model="aiForm.model"' in users and "Otro modelo (escribir a mano)…" in users
     assert 'x-for="name in suggestions()"' in users and "pickModel()" in users and "providerChanged()" in users

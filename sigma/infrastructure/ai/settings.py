@@ -8,6 +8,7 @@ last four characters.
 
 from __future__ import annotations
 
+import json
 import os
 from collections.abc import Mapping
 from pathlib import Path
@@ -46,6 +47,7 @@ DEFAULT_MODEL = DEFAULT_ANTHROPIC_MODEL
 ENABLED_KEY = "ai_enabled"
 DEFAULT_KEY = "ai_default_server"
 MODEL_KEY = "ai_model"  # what older versions of Sigma wrote and read
+CONFIG_KEY = "ai_models"  # the whole model list (with keys), persisted in the database
 
 
 class AiSettings:
@@ -73,10 +75,26 @@ class AiSettings:
         except OSError:
             return ""
 
-    # ------------------------------------------------------------------ configuration file
+    # ------------------------------------------------------------------ configuration (database)
     @property
     def stored_configuration(self) -> StoredConfiguration:
-        return load_configuration(self._path)
+        """The configured models, read from the database; an older on-disk ``ai.json`` is migrated on first read."""
+        raw = self._settings.get(CONFIG_KEY)
+        if raw:
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError:
+                data = None
+            if isinstance(data, Mapping):
+                return StoredConfiguration.from_dict(data)
+        file_config = load_configuration(self._path)
+        if file_config.servers:
+            self._settings.set(CONFIG_KEY, json.dumps(file_config.to_dict(), ensure_ascii=False))
+            return file_config
+        return StoredConfiguration()
+
+    def _save(self, configuration: StoredConfiguration) -> None:
+        self._settings.set(CONFIG_KEY, json.dumps(configuration.to_dict(), ensure_ascii=False))
 
     def _migrate_legacy(self, configuration: StoredConfiguration) -> StoredConfiguration:
         """Keep an installation working: the old key and model become the first configured entry."""
@@ -91,7 +109,7 @@ class AiSettings:
         entry = legacy_entry(model, "" if env_key and not key else key, default=True)
         configuration.servers = [entry]
         configuration.default_id = entry.id
-        save_configuration(self._path, configuration)
+        self._save(configuration)
         self._settings.set(DEFAULT_KEY, entry.id)
         return configuration
 
@@ -169,7 +187,7 @@ class AiSettings:
         if configuration.default_id is None:
             configuration.default_id = entry.id
         self._settings.set(DEFAULT_KEY, configuration.default_id or "")
-        save_configuration(self._path, configuration)
+        self._save(configuration)
         return entry
 
     def update_model(self, model_id: str, changes: Mapping[str, Any]) -> StoredModel:
@@ -196,7 +214,7 @@ class AiSettings:
         if configuration.default_id is None and configuration.servers:
             configuration.default_id = configuration.servers[0].id
         self._settings.set(DEFAULT_KEY, configuration.default_id or "")
-        save_configuration(self._path, configuration)
+        self._save(configuration)
         return entry
 
     def remove_model(self, model_id: str) -> None:
@@ -207,7 +225,7 @@ class AiSettings:
         if configuration.default_id not in ids:
             configuration.default_id = configuration.servers[0].id if configuration.servers else None
         self._settings.set(DEFAULT_KEY, configuration.default_id or "")
-        save_configuration(self._path, configuration)
+        self._save(configuration)
 
     def _stored_for_update(self) -> StoredConfiguration:
         configuration = self._migrate_legacy(self.stored_configuration)
@@ -236,14 +254,14 @@ class AiSettings:
         configuration, target = self._legacy_target()
         target.api_key = key
         self._settings.set(DEFAULT_KEY, configuration.default_id or "")
-        save_configuration(self._path, configuration)
+        self._save(configuration)
 
     def clear_key(self) -> None:
         configuration = self._stored_for_update()
         target = next((entry for entry in configuration.servers if entry.provider == LEGACY_PROVIDER), None)
         if target is not None:
             target.api_key = ""
-            save_configuration(self._path, configuration)
+            self._save(configuration)
 
     @property
     def model(self) -> str:
@@ -260,7 +278,7 @@ class AiSettings:
         target.label = default_label(provider_of(LEGACY_PROVIDER), cleaned)
         self._settings.set(MODEL_KEY, cleaned)
         self._settings.set(DEFAULT_KEY, configuration.default_id or "")
-        save_configuration(self._path, configuration)
+        self._save(configuration)
 
     @property
     def configured(self) -> bool:

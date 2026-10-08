@@ -292,10 +292,9 @@ def test_models_can_be_added_edited_disabled_and_removed(api, fake, tmp_path):
     removed = api.delete(f"/api/admin/ai/servers/{model['id']}")
     assert removed.status_code == 200 and removed.parsed["models"] == []
     assert api.patch("/api/admin/ai/servers/ai_inexistente", {"label": "x"}).status_code == 422
-    assert (tmp_path / "ai.json").is_file()
 
 
-def test_the_key_is_stored_masked_and_never_returned(api, fake, tmp_path):
+def test_the_key_is_stored_masked_and_never_returned(api, fake, tmp_path, app):
     initial = api.get("/api/admin/ai").parsed
     assert initial["configured"] is False and initial["key_hint"] is None and initial["model"] == "claude-opus-5-5"
 
@@ -308,8 +307,8 @@ def test_the_key_is_stored_masked_and_never_returned(api, fake, tmp_path):
 
     models = saved.parsed["models"]
     assert len(models) == 1 and models[0]["model"] == "claude-sonnet-5-5" and models[0]["key_source"] == "file"
-    stored = json.loads((tmp_path / "ai.json").read_text(encoding="utf-8"))
-    assert stored["servers"][0]["api_key"] == KEY and stored["default"] == stored["servers"][0]["id"]
+    stored = app.extensions["sigma"].backend.settings_store().get("ai_models")
+    assert stored and KEY in stored  # the key is persisted in the database, never returned by the API
     assert KEY not in api.get("/api/admin/ai").get_data(as_text=True)
 
     cleared = api.put("/api/admin/ai", {"clear_key": True})

@@ -27,6 +27,7 @@ _INDEXES: dict[str, list[tuple[list[tuple[str, int]], bool]]] = {
     "import_drafts": [([("id", 1)], True), ([("user_id", 1), ("source_type", 1)], True)],
     "import_draft_files": [([("draft_id", 1), ("seq", 1)], True)],
     "report_templates": [([("id", 1)], True), ([("user_id", 1), ("name_key", 1)], True)],
+    "projects": [([("id", 1)], True), ([("user_id", 1), ("name_key", 1)], True)],
     "app_settings": [([("key", 1)], True)],
     "ai_usage": [([("id", 1)], True), ([("user_id", 1), ("created_at", 1)], False)],
     "notebooks": [([("id", 1)], True), ([("user_id", 1)], False)],

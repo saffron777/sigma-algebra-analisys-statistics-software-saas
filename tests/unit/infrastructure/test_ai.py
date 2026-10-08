@@ -63,8 +63,8 @@ def test_the_old_key_and_model_are_migrated_to_one_claude_entry(tmp_path):
     models = ai.models
     assert len(models) == 1 and models[0].provider == "anthropic" and models[0].model == "claude-sonnet-5-5"
     assert models[0].stored_key == KEY and ai.configured and ai.default_model().id == models[0].id
-    written = file_of(tmp_path)
-    assert written["version"] == 1 and written["servers"][0]["api_key"] == KEY
+    stored = SqlSettingsRepository(database).get("ai_models")
+    assert stored and KEY in stored  # the migrated entry now lives in the database
     assert (tmp_path / "ai_key.txt").is_file()  # left alone: the entry is the source of truth now
 
 
