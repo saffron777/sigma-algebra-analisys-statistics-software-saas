@@ -159,7 +159,11 @@ def test_odbc_values_cannot_inject_attributes():
     assert _odbc_value("pa;ss}word") == "{pa;ss}}word}"
 
 
-def test_sqlserver_engine_builds_url_without_connecting():
+def test_sqlserver_engine_builds_url_without_connecting(monkeypatch):
+    monkeypatch.setattr(
+        "sigma.infrastructure.importers.sqlserver_importer.installed_driver",
+        lambda _requested: "ODBC Driver 18 for SQL Server",
+    )
     engine = sqlserver_engine(
         {
             "server": "srv,1433",

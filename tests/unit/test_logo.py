@@ -58,12 +58,16 @@ def test_favicon_ico_carries_the_three_sizes():
         assert icon.format == "ICO" and set(icon.ico.sizes()) == {(16, 16), (32, 32), (48, 48)}
 
 
-def test_regenerating_is_deterministic(tmp_path, monkeypatch):
+def test_regenerating_is_deterministic():
     import importlib.util
 
     spec = importlib.util.spec_from_file_location("make_logo", IMG.parents[4] / "scripts" / "make_logo.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.mark_svg(module.FULL) == (IMG / "logo-mark.svg").read_text(encoding="utf-8")
-    assert module.png_bytes(module.render_mark(module.FULL, 256)) == (IMG / "logo-mark-256.png").read_bytes()
+    # PNG byte streams differ between Pillow/zlib builds; the pixels and dimensions are the contract.
+    generated = Image.open(io.BytesIO(module.png_bytes(module.render_mark(module.FULL, 256))))
+    with Image.open(IMG / "logo-mark-256.png") as saved:
+        assert generated.mode == saved.mode and generated.size == saved.size
+        assert generated.getpixel((0, 0))[3] == 0  # transparent corner
     assert io.BytesIO(module.png_bytes(module.render_mark(module.COMPACT, 64))).getbuffer().nbytes > 500

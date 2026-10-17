@@ -4,6 +4,7 @@ from sqlalchemy import inspect, text
 
 from sigma.infrastructure.persistence.database_settings import DatabaseSettings
 from sigma.infrastructure.persistence.sql import engine as engine_module
+from sigma.infrastructure.persistence.sql.schema import SCHEMA_VERSION
 
 
 class _FakeResult:
@@ -196,7 +197,7 @@ def test_a_column_that_already_exists_is_left_alone(monkeypatch):
 
 
 def test_the_upgrade_adds_the_column_to_a_real_table(tmp_path):
-    """End to end on a real engine (SQLite): the v8 step adds the column to an existing ``ai_usage``."""
+    """End to end on a real engine (SQLite): the pending upgrades reach the current schema version."""
     from sigma.infrastructure.persistence.sql.ai_repositories import SqlAiUsageRepository
     from sigma.infrastructure.persistence.sql.engine import Database
     from tests.support import add_user
@@ -219,7 +220,7 @@ def test_the_upgrade_adds_the_column_to_a_real_table(tmp_path):
     try:
         assert "provider" in {item["name"] for item in inspect(second.engine).get_columns("ai_usage")}
         with second.begin() as conn:
-            assert conn.execute(text("SELECT version FROM sigma_schema")).scalar() == 8
+            assert conn.execute(text("SELECT version FROM sigma_schema")).scalar() == SCHEMA_VERSION
     finally:
         second.dispose()
 
