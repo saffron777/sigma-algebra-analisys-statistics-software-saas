@@ -1,4 +1,4 @@
-"""Which database Sigma persists to, and how to reach it.
+"""Which database Sigma Algebra persists to, and how to reach it.
 
 The choice cannot live in the database itself, so it is read, in this order, from:
 
@@ -316,7 +316,7 @@ class DatabaseSettings:
     ) -> DatabaseSettings:
         """Settings typed into the setup wizard / administration page: strictly checked, never trusted.
 
-        SQLite always means the server's own file (the page cannot point Sigma at an arbitrary path).
+        SQLite always means the server's own file (the page cannot point Sigma Algebra at an arbitrary path).
         """
         engine = engine_of(str(data.get("engine") or ""))
         if engine == "sqlite":

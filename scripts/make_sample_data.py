@@ -87,7 +87,7 @@ def demo_notebook() -> None:
     notebook.cells = [
         new_markdown_cell(
             "# Análisis de ventas (demo)\n\n"
-            "Este notebook usa el dataset **ventas** de Sigma (cárguelo con `python scripts/load_sample_data.py`).\n"
+            "Este notebook usa el dataset **ventas** de Sigma Algebra (cárguelo con `python scripts/load_sample_data.py`).\n"
             "Ejecute las celdas con **Shift+Enter**."
         ),
         new_code_cell('ventas = sigma.load("ventas")\nventas.head()'),
@@ -115,7 +115,7 @@ def demo_notebook() -> None:
             "stats.ttest_ind(online, tienda, equal_var=False)"
         ),
         new_markdown_cell(
-            "## Guardar un resultado en Sigma\n\nEl DataFrame resultante aparece en la página **Datos**."
+            "## Guardar un resultado en Sigma Algebra\n\nEl DataFrame resultante aparece en la página **Datos**."
         ),
         new_code_cell(
             'resumen = ventas.groupby("region")["unidades"].mean().round(2).reset_index(name="unidades_promedio")\n'

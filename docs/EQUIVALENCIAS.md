@@ -1,7 +1,7 @@
-# Equivalencias: de Minitab, SPSS, EViews y SAS a Sigma
+# Equivalencias: de Minitab, SPSS, EViews y SAS a Sigma Algebra
 
-Esta guía responde «¿dónde está en Sigma lo que yo hacía en…?». Cada fila nombra la ruta del programa de origen y la página y el análisis de
-Sigma. Los análisis de las páginas de catálogo (`/transformar`, `/graficos`, `/pruebas`, `/potencia`, `/remuestreo`, `/modelos`,
+Esta guía responde «¿dónde está en Sigma Algebra lo que yo hacía en…?». Cada fila nombra la ruta del programa de origen y la página y el análisis de
+Sigma Algebra. Los análisis de las páginas de catálogo (`/transformar`, `/graficos`, `/pruebas`, `/potencia`, `/remuestreo`, `/modelos`,
 `/anova-avanzado`, `/series`, `/econometria`, `/multivariado`, `/aprendizaje`, `/supervivencia`, `/calidad`, `/encuestas`) se eligen en la
 lista de la izquierda de cada página; todos tienen el botón **Ver código** (Python equivalente, el mismo `sigma.load(...)` de la consola) y
 pueden guardar columnas nuevas como dataset.
@@ -12,12 +12,12 @@ pueden guardar columnas nuevas como dataset.
 > como alternativa.
 
 Convenciones: **M** = Minitab (menú *Stat*, *Calc*, *Graph*, *Data*), **S** = SPSS (menú *Analizar*, *Datos*, *Transformar*, *Gráficos*),
-**E** = EViews. «Página › Análisis» es la ruta dentro de Sigma. Los módulos que corresponden a SAS se listan en
+**E** = EViews. «Página › Análisis» es la ruta dentro de Sigma Algebra. Los módulos que corresponden a SAS se listan en
 [Módulos añadidos de SAS](#modulos-anadidos-de-sas); lo que aún no existe está al final, en [Lo que falta](#lo-que-falta).
 
 ## Datos: preparar y transformar (`/transformar`)
 
-| Tarea | Minitab | SPSS | EViews | Sigma |
+| Tarea | Minitab | SPSS | EViews | Sigma Algebra |
 |---|---|---|---|---|
 | Calcular una variable con una fórmula | Calc › Calculator | Transformar › Calcular variable | `genr` | Transformar › Calcular variable (fórmula) — evaluador propio y seguro, con `where`, `lag`, `rolling_*`, `zscore`… |
 | Recodificar | Data › Recode / Code | Transformar › Recodificar | `@recode` | Transformar › Recodificar valores · Agrupar en intervalos |
@@ -37,7 +37,7 @@ Convenciones: **M** = Minitab (menú *Stat*, *Calc*, *Graph*, *Data*), **S** = S
 
 ## Gráficos (`/graficos`)
 
-| Gráfico | Minitab | SPSS | EViews | Sigma |
+| Gráfico | Minitab | SPSS | EViews | Sigma Algebra |
 |---|---|---|---|---|
 | Histograma (con curva) | Graph › Histogram | Gráficos › Histograma | `hist` | Gráficos › Histograma |
 | Caja, violín, valores individuales | Graph › Boxplot · Individual Value Plot | Gráficos › Diagrama de caja | `boxplot` | Gráficos › Diagrama de caja, violín y valores individuales |
@@ -51,7 +51,7 @@ Convenciones: **M** = Minitab (menú *Stat*, *Calc*, *Graph*, *Data*), **S** = S
 
 ## Estadística básica
 
-| Análisis | Minitab | SPSS | EViews | Sigma |
+| Análisis | Minitab | SPSS | EViews | Sigma Algebra |
 |---|---|---|---|---|
 | Estadísticos descriptivos | Stat › Basic Statistics › Display Descriptive Statistics | Analizar › Estadísticos descriptivos › Frecuencias / Descriptivos / Explorar | View › Descriptive Statistics | Estadística descriptiva |
 | Distribuciones de probabilidad | Calc › Probability Distributions | Transformar › Calcular (funciones) | `@dnorm`… | Distribuciones |
@@ -75,7 +75,7 @@ Convenciones: **M** = Minitab (menú *Stat*, *Calc*, *Graph*, *Data*), **S** = S
 
 ## Modelos lineales, ANOVA y regresión
 
-| Análisis | Minitab | SPSS | EViews | Sigma |
+| Análisis | Minitab | SPSS | EViews | Sigma Algebra |
 |---|---|---|---|---|
 | Regresión lineal múltiple | Stat › Regression › Regression › Fit Regression Model | Analizar › Regresión › Lineal | Estimate Equation (LS) | Regresión lineal (con diagnósticos) |
 | Polinómica e interacciones | Fit Regression Model (términos) · Fitted Line Plot | Estimación curvilínea | Estimate (polinomios) | Modelos › Regresión polinómica e interacciones |
@@ -100,7 +100,7 @@ Convenciones: **M** = Minitab (menú *Stat*, *Calc*, *Graph*, *Data*), **S** = S
 
 ## Series de tiempo y econometría (`/series`, `/econometria`)
 
-| Análisis | Minitab | SPSS | EViews | Sigma |
+| Análisis | Minitab | SPSS | EViews | Sigma Algebra |
 |---|---|---|---|---|
 | Gráfico y estadísticos móviles | Time Series › Time Series Plot | Secuencia | Graph | Series › Gráfico de la serie y estadísticos móviles |
 | ACF, PACF, Ljung-Box | Autocorrelation · Partial Autocorrelation | Autocorrelaciones | Correlogram | Series › Autocorrelación (ACF, PACF y Ljung-Box) |
@@ -125,7 +125,7 @@ Convenciones: **M** = Minitab (menú *Stat*, *Calc*, *Graph*, *Data*), **S** = S
 
 ## Multivariado y ciencia de datos (`/multivariado`, `/aprendizaje`)
 
-| Análisis | Minitab | SPSS | EViews | Sigma |
+| Análisis | Minitab | SPSS | EViews | Sigma Algebra |
 |---|---|---|---|---|
 | Componentes principales | Stat › Multivariate › Principal Components | Reducción de dimensiones › Factor (componentes) | Group › Principal Components | Multivariado › Componentes principales (PCA) |
 | Análisis factorial | Factor Analysis | Reducción de dimensiones › Factor | Group › Factor | Multivariado › Análisis factorial |
@@ -150,9 +150,9 @@ Convenciones: **M** = Minitab (menú *Stat*, *Calc*, *Graph*, *Data*), **S** = S
 ## Módulos añadidos de SAS
 
 Además de lo que ya cubren las tablas (SAS/STAT descriptivo e inferencia, `PROC GLM/REG/LOGISTIC/FACTOR/CLUSTER/ARIMA/VAR`…, y SAS
-Enterprise Miner en `/aprendizaje`), Sigma añadió estos módulos típicos de SAS:
+Enterprise Miner en `/aprendizaje`), Sigma Algebra añadió estos módulos típicos de SAS:
 
-| Módulo SAS | PROC | Página de Sigma |
+| Módulo SAS | PROC | Página de Sigma Algebra |
 |---|---|---|
 | Supervivencia y confiabilidad | `LIFETEST`, `PHREG`, `LIFEREG`, `RELIABILITY` | `/supervivencia` — Kaplan-Meier + log-rank (Wilcoxon, Tarone-Ware), Cox y paramétrico (Weibull, exponencial, log-normal, log-logística) con censura |
 | Control estadístico de procesos | `SHEWHART`, `CAPABILITY`, `CUSUM` | `/calidad` — cartas I-MR, X̄-R, X̄-S, CUSUM y EWMA; capacidad Cp/Cpk/Pp/Ppk y PPM |
@@ -166,7 +166,7 @@ Enterprise Miner en `/aprendizaje`), Sigma añadió estos módulos típicos de S
 
 ## Lo que falta
 
-Sigma no cubre (todavía) estas áreas de los programas de origen; están en la hoja de ruta:
+Sigma Algebra no cubre (todavía) estas áreas de los programas de origen; están en la hoja de ruta:
 
 - **Calidad industrial (Minitab/SAS-QC):** acuerdo de atributos y muestreo de aceptación (cartas de control, capacidad y Gage R&R ya están en `/calidad`).
 - **Muestras complejas (SPSS/SAS):** prueba de Little, EM, y la corrección de conglomerados en la varianza de la regresión de encuestas (hoy se pondera sin corregir por conglomerados).

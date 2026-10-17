@@ -35,7 +35,7 @@ def init_maintenance(app: Flask) -> None:
     @app.before_request
     def maintenance_gate() -> None:
         if app.config.get(MAINTENANCE_KEY) and not request.path.startswith(_OPEN_PATHS):
-            raise MaintenanceError("Sigma está migrando la base de datos. Vuelva a intentarlo en unos minutos.")
+            raise MaintenanceError("Sigma Algebra está migrando la base de datos. Vuelva a intentarlo en unos minutos.")
 
 
 def _idle() -> dict[str, Any]:

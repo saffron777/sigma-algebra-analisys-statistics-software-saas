@@ -1,6 +1,6 @@
 # Avisos de terceros
 
-Sigma se distribuye bajo **AGPL-3.0-or-later** (ver `LICENSE`). Este archivo enumera los
+Sigma Algebra se distribuye bajo **AGPL-3.0-or-later** (ver `LICENSE`). Este archivo enumera los
 componentes de terceros que se incluyen en el repositorio, en el paquete de distribución o
 en los assets que genera la aplicación.
 
@@ -28,7 +28,7 @@ esos archivos.
 
 ## Dependencias de Python
 
-Se instalan por separado con `pip` (no se copian al repositorio). Sigma no las relicencia;
+Se instalan por separado con `pip` (no se copian al repositorio). Sigma Algebra no las relicencia;
 cada una conserva su licencia. Las principales:
 
 | Componente | Licencia |

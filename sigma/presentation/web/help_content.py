@@ -23,14 +23,14 @@ GUIDE: list[tuple[str, str]] = [
     (
         "Importar datos",
         """
-        <p>Sigma guarda cada dataset en su propia base de datos local. Para empezar, vaya a
+        <p>Sigma Algebra guarda cada dataset en su propia base de datos local. Para empezar, vaya a
         <strong>Datos → Importar</strong> (o el icono de subir de la barra de herramientas):</p>
         <ul>
           <li><strong>Excel, CSV o texto</strong>: elija el archivo, el delimitador, la codificación y si la
           primera fila son encabezados, y pulse <strong>Vista previa</strong>.</li>
           <li><strong>Bases de datos</strong> (SQL Server, MySQL/MariaDB, PostgreSQL, Oracle, MongoDB):
           complete la conexión, elija tabla o consulta y confirme la vista previa.</li>
-          <li><strong>API JSON</strong>: indique la URL, cabeceras y parámetros; Sigma aplana los objetos en columnas.</li>
+          <li><strong>API JSON</strong>: indique la URL, cabeceras y parámetros; Sigma Algebra aplana los objetos en columnas.</li>
         </ul>
         <p>Antes de guardar puede ajustar el tipo de cada columna (numérica, categórica, texto, fecha, lógica).
         El dataset activo se muestra en la barra de estado inferior.</p>
@@ -570,7 +570,7 @@ REFERENCE: list[tuple[str, list[tuple[str, str, str]]]] = [
 ]
 
 ABOUT = """
-<p><strong>Sigma</strong> es una plataforma web de análisis estadístico: importe datos, ejecute pruebas
+<p><strong>Sigma Algebra Analisys Statistics Software (SAAS)</strong> es una plataforma web de análisis estadístico: importe datos, ejecute pruebas
 rigurosas, genere gráficos e informes y conserve los resultados, todo ejecutado y guardado en su propio
 servidor, de forma privada por cuenta.</p>
 <p>Esta ayuda reúne una <strong>guía de uso</strong> y una <strong>referencia teórica</strong> escrita con

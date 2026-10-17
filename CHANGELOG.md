@@ -1,12 +1,12 @@
 # Changelog
 
-Todos los cambios relevantes de Sigma se documentan en este archivo. El formato sigue
+Todos los cambios relevantes de Sigma Algebra se documentan en este archivo. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa
 [versionado semántico](https://semver.org/lang/es/).
 
 ## [1.0.0] - 2026-10-17
 
-Primera versión pública de Sigma como software libre.
+Primera versión pública de Sigma Algebra como software libre.
 
 ### Añadido
 

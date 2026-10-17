@@ -5,7 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from scripts.check_versions import versions
-from sigma import __copyright__, __license__
+from sigma import (
+    __copyright__,
+    __license__,
+    __product_name__,
+    __product_short__,
+    __slug__,
+)
 from sigma.config import Config
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -14,6 +20,15 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 def test_version_is_the_same_everywhere():
     found = versions()
     assert len(set(found.values())) == 1, found
+
+
+def test_product_name_and_slug():
+    assert __product_name__ == "Sigma Algebra Analisys Statistics Software (SAAS)"
+    assert __product_short__ == "Sigma Algebra"
+    assert __slug__ == "sigma-algebra-analisys-statistics-software-saas"
+    for name in ("README.md", "README.es.md", "NOTICE"):
+        assert __product_name__ in (ROOT / name).read_text(encoding="utf-8"), name
+    assert __slug__ in (ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
 
 def test_license_metadata_and_files():

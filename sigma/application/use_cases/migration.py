@@ -1,4 +1,4 @@
-"""Copying everything Sigma stores from one database to another (SQLite ⇄ SQL Server ⇄ MySQL ⇄ … ⇄ MongoDB)."""
+"""Copying everything Sigma Algebra stores from one database to another (SQLite ⇄ SQL Server ⇄ MySQL ⇄ … ⇄ MongoDB)."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ class MigrateData:
     def execute(self, source: DataTransfer, target: DataTransfer, progress: Progress | None = None) -> MigrationReport:
         if not target.is_empty():
             raise InvalidInputError(
-                "La base de datos de destino ya contiene datos de Sigma. Para copiar, elija una base vacía."
+                "La base de datos de destino ya contiene datos de Sigma Algebra. Para copiar, elija una base vacía."
             )
         started = time.monotonic()
         expected = source.counts()

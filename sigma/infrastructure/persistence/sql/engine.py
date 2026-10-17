@@ -249,7 +249,7 @@ def _short(error: Exception) -> str:
 
 
 def ensure_schema(engine: Engine, settings: DatabaseSettings | None = None) -> None:
-    """Make the database current: create it (empty), upgrade it (older Sigma), or refuse one that is not Sigma's."""
+    """Make the database current: create it (empty), upgrade it (older Sigma Algebra), or refuse one that is not Sigma Algebra's."""
     if settings is not None:
         _create_schema_namespace(engine, settings)
     schema_name = settings.schema if settings and settings.engine in ("mssql", "postgresql", "oracle") else None
@@ -261,7 +261,7 @@ def ensure_schema(engine: Engine, settings: DatabaseSettings | None = None) -> N
     if "sigma_schema" in tables:
         version = _read_version(engine)
         if version > schema.SCHEMA_VERSION:
-            raise InvalidInputError("La base de datos fue creada por una versión más reciente de Sigma.")
+            raise InvalidInputError("La base de datos fue creada por una versión más reciente de Sigma Algebra.")
         for target in range(version + 1, schema.SCHEMA_VERSION + 1):
             _STEPS[target](engine)
             _stamp(engine, target)
@@ -271,7 +271,7 @@ def ensure_schema(engine: Engine, settings: DatabaseSettings | None = None) -> N
         _upgrade_sqlite_file(engine)
         return
     raise InvalidInputError(
-        "La base de datos elegida ya contiene tablas que no son de Sigma. "
+        "La base de datos elegida ya contiene tablas que no son de Sigma Algebra. "
         "Use una base vacía o indique un esquema propio."
     )
 

@@ -1,13 +1,13 @@
-"""What the administration pages learn about a database before Sigma is pointed at it."""
+"""What the administration pages learn about a database before Sigma Algebra is pointed at it."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-# what an inspected database contains, as far as Sigma is concerned
-STATE_EMPTY = "empty"  # nothing in it: Sigma creates its own tables
-STATE_SIGMA = "sigma"  # tables from a previous Sigma installation: its data is used as it is
-STATE_FOREIGN = "foreign"  # somebody else's tables: Sigma will not touch them
+# what an inspected database contains, as far as Sigma Algebra is concerned
+STATE_EMPTY = "empty"  # nothing in it: Sigma Algebra creates its own tables
+STATE_SIGMA = "sigma"  # tables from a previous Sigma Algebra installation: its data is used as it is
+STATE_FOREIGN = "foreign"  # somebody else's tables: Sigma Algebra will not touch them
 
 
 @dataclass(frozen=True)
@@ -24,7 +24,7 @@ class ConnectionReport:
     message: str  # the headline, in Spanish, ready to show
     server_version: str = ""
     state: str = ""  # STATE_* once the database could be inspected
-    counts: dict[str, int] | None = None  # users / datasets / results of an existing Sigma database
+    counts: dict[str, int] | None = None  # users / datasets / results of an existing Sigma Algebra database
     steps: tuple[CheckStep, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict:

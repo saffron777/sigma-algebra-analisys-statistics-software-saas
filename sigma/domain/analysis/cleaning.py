@@ -402,7 +402,7 @@ def _outliers_code(roles: dict[str, Any], p: dict[str, Any], dataset: str) -> st
         "iqr": f"q1, q3 = x.quantile([0.25, 0.75])\n    low, high = q1 - {k} * (q3 - q1), q3 + {k} * (q3 - q1)\n",
         "zscore": f"low, high = x.mean() - {k} * x.std(), x.mean() + {k} * x.std()\n",
         "mad": f"mad = (x - x.median()).abs().median()\n    low, high = x.median() - {k} * mad / 0.6745, x.median() + {k} * mad / 0.6745\n",
-        "grubbs": "# la prueba de Grubbs repetida está implementada en Sigma; aquí se muestra con límites de 3 desviaciones\n    low, high = x.mean() - 3 * x.std(), x.mean() + 3 * x.std()\n",
+        "grubbs": "# la prueba de Grubbs repetida está implementada en Sigma Algebra; aquí se muestra con límites de 3 desviaciones\n    low, high = x.mean() - 3 * x.std(), x.mean() + 3 * x.std()\n",
     }[p["method"]]
     action = {
         "report": "print(col, int(out.sum()), 'atípicos')\n",

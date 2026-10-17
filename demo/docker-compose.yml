@@ -1,0 +1,86 @@
+services:
+  sigma:
+    image: ghcr.io/saffron777/sigma-algebra-analisys-statistics-software-saas:latest
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: sigma-demo
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5001:5000"
+    environment:
+      SIGMA_HOST: 0.0.0.0
+      SIGMA_PORT: "5000"
+      SIGMA_INSTANCE_DIR: /app/instance
+      SIGMA_DEMO_MODE: "1"
+      SIGMA_DEMO_USER: demo
+      SIGMA_DEMO_URL: https://${DEMO_DOMAIN:-demo.example.org}
+      SIGMA_SOURCE_URL: https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas
+      SIGMA_ALLOWED_HOSTS: ${DEMO_DOMAIN:-demo.example.org}
+      SIGMA_SECURE_COOKIES: "1"
+      SIGMA_MAX_UPLOAD_MB: "10"
+      SIGMA_EXTERNAL_DB_HOSTS: disabled.invalid
+      SIGMA_ANALYSIS_MAX_PARALLEL: "1"
+      SIGMA_ANALYSIS_TIMEOUT_SECONDS: "60"
+      SIGMA_CELL_TIMEOUT_SECONDS: "30"
+    volumes:
+      - demo_data:/app/instance
+      - demo_seed:/seed:ro
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  seed:
+    image: ghcr.io/saffron777/sigma-algebra-analisys-statistics-software-saas:latest
+    profiles: ["tools"]
+    user: "0:0"
+    environment:
+      SIGMA_DEMO_MODE: "1"
+      SIGMA_DEMO_USER: demo
+      SIGMA_INSTANCE_DIR: /seed
+    volumes:
+      - demo_seed:/seed
+    command: ["python", "scripts/seed_demo.py"]
+
+  reset:
+    image: alpine:3.20
+    profiles: ["tools"]
+    user: "0:0"
+    volumes:
+      - demo_data:/data
+      - demo_seed:/seed:ro
+    command:
+      - sh
+      - -c
+      - |
+        rm -rf /data/* /data/.[!.]* /data/..?* 2>/dev/null || true
+        cp -a /seed/. /data/
+        chown -R 10001:10001 /data
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: sigma-demo-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DEMO_DOMAIN: ${DEMO_DOMAIN:-demo.example.org}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - sigma
+
+volumes:
+  demo_data:
+  demo_seed:
+  caddy_data:
+  caddy_config:

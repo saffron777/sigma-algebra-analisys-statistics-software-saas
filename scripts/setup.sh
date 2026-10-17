@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepara Sigma desde cero en Linux/macOS: entorno virtual, dependencias, frontend y datos de ejemplo.
+# Prepara Sigma Algebra desde cero en Linux/macOS: entorno virtual, dependencias, frontend y datos de ejemplo.
 #   bash scripts/setup.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -28,5 +28,5 @@ echo "Generando los archivos de ejemplo..."
 "$PYTHON" scripts/make_sample_data.py
 
 echo
-echo "Listo. Inicie Sigma con: ./scripts/run.sh"
+echo "Listo. Inicie Sigma Algebra con: ./scripts/run.sh"
 echo "La primera vez abra /setup para crear la cuenta de administrador."

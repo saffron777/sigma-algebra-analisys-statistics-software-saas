@@ -31,7 +31,7 @@ from sigma.infrastructure.persistence.mongo.transfer import MongoTransfer
 
 
 class _NoLegacyData:
-    """MongoDB never held the single-user data of the first Sigma versions: nothing to adopt."""
+    """MongoDB never held the single-user data of the first Sigma Algebra versions: nothing to adopt."""
 
     def adopt(self, user_id: int) -> dict[str, int]:
         return {"datasets": 0, "results": 0, "notebooks": 0}

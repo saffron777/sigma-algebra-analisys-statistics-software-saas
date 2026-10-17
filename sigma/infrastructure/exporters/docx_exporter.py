@@ -127,7 +127,7 @@ class DocxExporter:
             self._section(section)
         properties = self._doc.core_properties
         properties.title = document.title[:250]
-        properties.author = document.author or self._brand.organization or "Sigma"
+        properties.author = document.author or self._brand.organization or "Sigma Algebra"
         properties.subject = document.subtitle or ""
         self._ask_to_update_fields()
         buffer = io.BytesIO()
@@ -198,7 +198,7 @@ class DocxExporter:
         self._tab_stop(header)
         footer = section.footer.paragraphs[0]
         footer.text = ""
-        note = footer.add_run((self._brand.footer_text or "Generado con Sigma") + "\t")
+        note = footer.add_run((self._brand.footer_text or "Generado con Sigma Algebra") + "\t")
         note.font.size = Pt(8.5)
         note.font.color.rgb = RGBColor(0x64, 0x74, 0x8B)
         for run_text, instruction in (("Página ", "PAGE"), (" de ", "NUMPAGES")):

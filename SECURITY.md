@@ -17,7 +17,7 @@ versiones anteriores pueden no recibirlas; actualiza siempre a la última releas
 Usa el canal privado de GitHub Security Advisories del repositorio o escribe a
 `frank.alexis@gmail.com` con:
 
-- versión de Sigma y sistema operativo;
+- versión de Sigma Algebra y sistema operativo;
 - pasos para reproducir el problema;
 - impacto estimado;
 - cualquier prueba de concepto (sin datos reales de terceros).
@@ -27,7 +27,7 @@ formal.
 
 ## Modelo de seguridad
 
-- Sigma escucha en `127.0.0.1` por defecto. Para exponerlo en red usa HTTPS mediante un proxy
+- Sigma Algebra escucha en `127.0.0.1` por defecto. Para exponerlo en red usa HTTPS mediante un proxy
   inverso y revisa quién tiene acceso.
 - La **consola Python/R ejecuta código arbitrario** con los permisos del proceso del
   servidor. Está desactivada por defecto y solo se concede por usuario desde la
@@ -46,8 +46,8 @@ formal.
 ## Buenas prácticas de despliegue
 
 - Usa HTTPS y `SIGMA_SECURE_COOKIES=1` cuando el servicio no esté solo en localhost.
-- Define un `SIGMA_SECRET_KEY` fuerte o deja que Sigma genere y guarde uno.
+- Define un `SIGMA_SECRET_KEY` fuerte o deja que Sigma Algebra genere y guarde uno.
 - Restringe el acceso a `instance/` y haz copias de seguridad cifradas.
 - Mantén las dependencias actualizadas (Dependabot/Renovate) y revisa los avisos de
   seguridad de Python y npm.
-- No ejecutes Sigma como administrador/root; usa un usuario sin privilegios.
+- No ejecutes Sigma Algebra como administrador/root; usa un usuario sin privilegios.

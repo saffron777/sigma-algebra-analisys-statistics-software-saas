@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Imagen de Sigma: compila los assets del navegador y ejecuta la app con Waitress como usuario sin privilegios.
+# Imagen de Sigma Algebra Analisys Statistics Software (SAAS): compila los assets del navegador y ejecuta la app con Waitress como usuario sin privilegios.
 FROM node:22-bookworm-slim AS frontend
 WORKDIR /build
 COPY package.json package-lock.json ./
@@ -12,6 +12,11 @@ COPY sigma/presentation/web/static/img sigma/presentation/web/static/img
 RUN mkdir -p sigma/presentation/web/static/css && npm run build
 
 FROM python:3.13-slim-bookworm AS runtime
+LABEL org.opencontainers.image.title="Sigma Algebra Analisys Statistics Software (SAAS)" \
+      org.opencontainers.image.description="Self-hosted statistics and reporting web app" \
+      org.opencontainers.image.licenses="AGPL-3.0-or-later" \
+      org.opencontainers.image.source="https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas" \
+      org.opencontainers.image.documentation="https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas#readme"
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -31,7 +36,7 @@ RUN pip install --no-cache-dir -r requirements.lock \
 
 COPY sigma sigma
 COPY sample_data sample_data
-COPY scripts/load_sample_data.py scripts/make_sample_data.py scripts/
+COPY scripts/load_sample_data.py scripts/make_sample_data.py scripts/seed_demo.py scripts/
 COPY run.py wsgi.py ./
 COPY LICENSE NOTICE THIRD-PARTY-NOTICES.md TRADEMARKS.md PRIVACY.md SECURITY.md ./
 COPY LICENSES LICENSES

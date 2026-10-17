@@ -447,7 +447,7 @@ class AnalysisRunner(Protocol):
 
 
 class DatabaseAdministration(Protocol):
-    """Showing, testing and switching the database Sigma persists to (payloads are plain dictionaries)."""
+    """Showing, testing and switching the database Sigma Algebra persists to (payloads are plain dictionaries)."""
 
     def status(self) -> dict[str, Any]: ...
 

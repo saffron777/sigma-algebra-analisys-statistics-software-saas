@@ -89,7 +89,7 @@ class XlsxExporter:
         self._build_index(index, document, table_sheets, charts, data_sheets)
 
         workbook.properties.title = document.title[:250]
-        workbook.properties.creator = document.author or branding.organization or "Sigma"
+        workbook.properties.creator = document.author or branding.organization or "Sigma Algebra"
         workbook.active = 0
         buffer = io.BytesIO()
         workbook.save(buffer)

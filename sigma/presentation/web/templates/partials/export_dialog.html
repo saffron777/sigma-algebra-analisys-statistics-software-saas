@@ -29,7 +29,7 @@
           <input id="export-author" class="input" type="text" maxlength="120" placeholder="Su nombre" x-model="$store.export.author"></div>
         <div class="sm:col-span-2"><label class="label" for="export-template">Plantilla</label>
           <select id="export-template" class="input" x-model="$store.export.templateId">
-            <option value="" x-text="$store.export.defaultTemplateName ? `Predeterminada (${$store.export.defaultTemplateName})` : 'Sin plantilla (aspecto de Sigma)'"></option>
+            <option value="" x-text="$store.export.defaultTemplateName ? `Predeterminada (${$store.export.defaultTemplateName})` : 'Sin plantilla (aspecto de Sigma Algebra)'"></option>
             <template x-for="t in $store.export.templates" :key="t.id"><option :value="t.id" x-text="t.name"></option></template>
           </select>
           <p class="hint">Logotipo, colores y pie de página. <a class="font-medium text-brand-600 underline dark:text-brand-300" href="{{ url_for('pages.page_plantillas') }}">Gestionar plantillas</a></p></div>

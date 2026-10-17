@@ -1,17 +1,17 @@
 {
-  "name": "sigma",
+  "name": "sigma-algebra-analisys-statistics-software-saas",
   "version": "1.0.0",
   "private": true,
-  "description": "Sigma - plataforma web de estadística",
+  "description": "Sigma Algebra Analisys Statistics Software (SAAS) - plataforma web de estadística",
   "license": "AGPL-3.0-or-later",
   "author": "Frank Miranda",
-  "homepage": "https://github.com/saffron777/Sigma",
+  "homepage": "https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/saffron777/Sigma.git"
+    "url": "git+https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas.git"
   },
   "bugs": {
-    "url": "https://github.com/saffron777/Sigma/issues"
+    "url": "https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas/issues"
   },
   "engines": {
     "node": ">=20"

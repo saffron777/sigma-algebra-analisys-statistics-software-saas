@@ -55,11 +55,11 @@ class MongoCore:
         names = set(self.db.list_collection_names())
         if names and MARKER not in names:
             raise InvalidInputError(
-                "La base de datos elegida ya contiene colecciones que no son de Sigma. Use una base vacía."
+                "La base de datos elegida ya contiene colecciones que no son de Sigma Algebra. Use una base vacía."
             )
         marker = self.db[MARKER].find_one({"_id": 1})
         if marker and int(marker["version"]) > SCHEMA_VERSION:
-            raise InvalidInputError("La base de datos fue creada por una versión más reciente de Sigma.")
+            raise InvalidInputError("La base de datos fue creada por una versión más reciente de Sigma Algebra.")
         for collection, indexes in _INDEXES.items():
             for fields, unique in indexes:
                 self.db[collection].create_index([(f, d if d else ASCENDING) for f, d in fields], unique=unique)

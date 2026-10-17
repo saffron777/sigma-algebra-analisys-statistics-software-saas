@@ -45,7 +45,7 @@ from sigma.infrastructure.ai.servers import (
 DEFAULT_MODEL = DEFAULT_ANTHROPIC_MODEL
 ENABLED_KEY = "ai_enabled"
 DEFAULT_KEY = "ai_default_server"
-MODEL_KEY = "ai_model"  # what older versions of Sigma wrote and read
+MODEL_KEY = "ai_model"  # what older versions of Sigma Algebra wrote and read
 CONFIG_KEY = "ai_models"  # the whole model list (with keys), persisted in the database
 
 

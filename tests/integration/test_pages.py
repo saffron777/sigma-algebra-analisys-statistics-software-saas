@@ -13,7 +13,8 @@ def test_every_page_renders_with_layout_and_csrf_token(api, path):
     html = response.get_data(as_text=True)
     assert response.status_code == 200
     assert '<meta name="csrf-token" content="' in html
-    assert "Sigma" in html and 'x-data="shell"' in html
+    assert "Sigma Algebra" in html and 'x-data="shell"' in html
+    assert "Sigma Algebra Analisys Statistics Software (SAAS)" in html
     assert "{{" not in html and "{%" not in html  # no template syntax leaked
     token = re.search(r'name="csrf-token" content="([^"]+)"', html).group(1)
     with api.raw.session_transaction() as session:

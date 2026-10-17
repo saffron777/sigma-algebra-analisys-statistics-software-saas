@@ -1,11 +1,11 @@
-# Contribuir a Sigma
+# Contribuir a Sigma Algebra
 
-Gracias por querer mejorar Sigma. Este documento resume cómo preparar el entorno, qué
+Gracias por querer mejorar Sigma Algebra. Este documento resume cómo preparar el entorno, qué
 estilo seguimos y cómo aceptamos contribuciones.
 
 ## Licencia de las contribuciones
 
-Sigma se distribuye bajo **AGPL-3.0-or-later**. Al enviar una contribución aceptas que se
+Sigma Algebra se distribuye bajo **AGPL-3.0-or-later**. Al enviar una contribución aceptas que se
 publique bajo esa misma licencia y que tienes derecho a hacerlo. No pedimos un CLA: usamos
 el **Developer Certificate of Origin (DCO)**. Firma tus commits con:
 

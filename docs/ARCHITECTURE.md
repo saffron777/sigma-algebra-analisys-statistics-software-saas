@@ -1,6 +1,6 @@
-# Arquitectura de Sigma
+# Arquitectura de Sigma Algebra
 
-Sigma sigue **Clean Architecture** adaptada a Flask. La regla es una sola: **las dependencias apuntan hacia
+Sigma Algebra sigue **Clean Architecture** adaptada a Flask. La regla es una sola: **las dependencias apuntan hacia
 dentro**.
 
 ```
@@ -70,7 +70,7 @@ exportadores consumen los mismos bloques** que la pantalla.
 
 ## Persistencia
 
-Todo lo que Sigma guarda pasa por **puertos** (`application/ports.py`: `UserRepository`, `DatasetRepository`,
+Todo lo que Sigma Algebra guarda pasa por **puertos** (`application/ports.py`: `UserRepository`, `DatasetRepository`,
 `ResultRepository`, `WorkspaceRepository`, `SyncRepository`, `ImportDraftStore`, `TemplateRepository`,
 `SettingsRepository`, `AiUsageRepository`, `NotebookStore`…) y el conjunto de adaptadores de **una** base de datos es un
 `Backend` (`persistence/backend.py: create_backend(settings)`). El administrador elige el motor; `bootstrap.py` solo
@@ -168,7 +168,7 @@ tema claro (`Plotly.toImage`); `clean_blocks` sanea todo lo que llega (tipos con
 - `xlsx_exporter` (openpyxl): «Índice», «Informe», una hoja por tabla (números como números, texto nunca como fórmula),
   «Gráficos» y hojas de datos completos.
 
-`DocumentAssembler` aplica la plantilla del usuario (o la predeterminada, o la marca de Sigma) y las opciones del
+`DocumentAssembler` aplica la plantilla del usuario (o la predeterminada, o la marca de Sigma Algebra) y las opciones del
 diálogo. Casos de uso: `ExportReport` (resultado/informe combinado), `ExportDatasetReport` (ficha; Excel con todas las
 filas) y `ExportNotebookReport` (`domain/notebook_report.py`: texto, código y salidas —texto, tablas HTML, PNG—).
 La impresión usa CSS `@media print`, gráficos congelados como imágenes blancas y, para el notebook, un diálogo con
@@ -250,7 +250,7 @@ Los módulos «de catálogo» (`/transformar`, `/graficos`, `/potencia`, `/remue
   máximo (`SIGMA_ANALYSIS_TIMEOUT_SECONDS`, 120 s) y un tope de ejecuciones simultáneas (`SIGMA_ANALYSIS_MAX_PARALLEL`, 2); los
   errores de dominio cruzan la frontera con su tipo y las advertencias numéricas relevantes llegan como aviso. Los ligeros corren en el hilo
   de la petición.
-- **Presentación**: `charts/render.py` convierte las descripciones de gráficos a Plotly con el tema de Sigma; `reports/analysis.py`
+- **Presentación**: `charts/render.py` convierte las descripciones de gráficos a Plotly con el tema de Sigma Algebra; `reports/analysis.py`
   convierte la salida al contrato de bloques de informe (`ReportBuilder`: valores p, formato numérico, celdas con tono).
 - **Fórmulas** (`expressions.py`): las columnas calculadas y los filtros no usan `eval`: el texto se analiza con `ast` y solo se interpretan
   nodos y funciones de una lista blanca (sin atributos, índices, `lambda`, comprensiones ni f-strings), con tope de tamaño, profundidad,
@@ -305,7 +305,7 @@ tamaño de favicon.
   añadirlo a `ENGINES` (`database_settings.py`) y pasar la batería de `tests/conformance/` (se activa con su `SIGMA_TEST_*_URL`).
   Para un motor SQL basta, normalmente, con el dialecto de SQLAlchemy y un controlador.
 - **Cambiar el proveedor de IA**: añadir su `ProviderSpec` en `domain/ai.py` y, si su API no es ninguna de las tres
-  formas soportadas, un adaptador en `infrastructure/ai/`. El resto de Sigma usa el puerto `AiGateway`.
+  formas soportadas, un adaptador en `infrastructure/ai/`. El resto de Sigma Algebra usa el puerto `AiGateway`.
 
 ## Pruebas
 

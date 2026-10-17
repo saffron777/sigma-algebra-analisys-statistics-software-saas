@@ -1,8 +1,8 @@
 """The ``sigma`` helper object available inside console kernels (not used by the web app itself).
 
-sigma.datasets()                    # table of the datasets stored in Sigma
+sigma.datasets()                    # table of the datasets stored in Sigma Algebra
 df = sigma.load("ventas")           # a dataset as a pandas DataFrame
-sigma.save(df, "ventas_limpias")    # store a DataFrame as a new Sigma dataset
+sigma.save(df, "ventas_limpias")    # store a DataFrame as a new Sigma Algebra dataset
 df["total"] = sigma.calc(df, "precio * cantidad")   # the formulas of the *Calcular variable* page
 """
 
@@ -30,12 +30,12 @@ class SigmaHelper:
         if self._repository is None:
             url, user = os.environ.get("SIGMA_DATABASE_URL"), os.environ.get("SIGMA_USER_ID")
             if not url or not user:
-                raise RuntimeError("Este kernel no está conectado a una cuenta de Sigma.")
+                raise RuntimeError("Este kernel no está conectado a una cuenta de Sigma Algebra.")
             self._repository = create_backend(DatabaseSettings.from_url(url)).datasets(int(user))
         return self._repository
 
     def datasets(self) -> pd.DataFrame:
-        """Datasets stored in Sigma (name, rows, columns, source, creation date)."""
+        """Datasets stored in Sigma Algebra (name, rows, columns, source, creation date)."""
         return pd.DataFrame(
             [
                 {

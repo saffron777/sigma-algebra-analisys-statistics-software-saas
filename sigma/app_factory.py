@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from flask import Flask
 
-from sigma import __copyright__, __license__, __version__
+from sigma import (
+    __copyright__,
+    __license__,
+    __product_name__,
+    __product_short__,
+    __version__,
+)
 from sigma.bootstrap import build_container
 from sigma.config import Config
 from sigma.domain.analysis.modules import CATALOG_MODULES
@@ -68,6 +74,8 @@ def create_app(config: Config | None = None) -> Flask:
     app.json.ensure_ascii = False  # type: ignore[attr-defined]
     app.json.compact = True  # type: ignore[attr-defined]
     app.config["TEMPLATES_AUTO_RELOAD"] = config.debug
+    app.config["SIGMA_DEMO_MODE"] = config.demo_mode
+    app.config["SIGMA_DEMO_USER"] = config.demo_user
 
     container = build_container(config)
     app.extensions["sigma"] = container
@@ -104,9 +112,13 @@ def create_app(config: Config | None = None) -> Flask:
         nav_groups=nav,
         menu=menu,
         sigma_version=__version__,
+        product_name=__product_name__,
+        product_short=__product_short__,
         license_name=__license__,
         copyright_holder=__copyright__,
         source_url=config.source_url,
+        demo_mode=config.demo_mode,
+        demo_url=config.demo_url,
         catalog_modules=[(m.key, m.label, m.description) for m in CATALOG_MODULES],
         help_guide=help_content.GUIDE,
         help_reference=help_content.REFERENCE,

@@ -1,4 +1,4 @@
-"""Collect and check the third-party licenses shipped with Sigma.
+"""Collect and check the third-party licenses shipped with Sigma Algebra.
 
     python scripts/collect_licenses.py collect   # copy texts and write LICENSES/INVENTORY.md
     python scripts/collect_licenses.py check     # fail if a dependency has an unknown license

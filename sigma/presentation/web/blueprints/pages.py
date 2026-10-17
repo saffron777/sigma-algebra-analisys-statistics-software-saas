@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from flask import Blueprint, abort, jsonify, render_template, send_file
+from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, send_file, url_for
 
 from sigma import __version__
 from sigma.config import PROJECT_ROOT
 from sigma.domain.analysis.modules import CATALOG_MODULES
-from sigma.presentation.web.auth import require_admin, require_console
+from sigma.presentation.web.auth import login_user, require_admin, require_console
 
 bp = Blueprint("pages", __name__)
 
@@ -67,7 +67,21 @@ for _key, (_path, _title, _template) in PAGES.items():
 
 @bp.get("/health")
 def health():
-    return jsonify({"status": "ok", "app": "Sigma", "version": __version__})
+    return jsonify({"status": "ok", "app": "Sigma Algebra", "version": __version__})
+
+
+@bp.get("/demo")
+def demo_login():
+    """Log the public demo account in, so visitors can explore without a password."""
+    if not current_app.config.get("SIGMA_DEMO_MODE"):
+        abort(404)
+    container = current_app.extensions["sigma"]
+    username = str(current_app.config.get("SIGMA_DEMO_USER", "demo"))
+    user = next((u for u in container.list_users.execute() if u.username.lower() == username.lower()), None)
+    if user is None:
+        abort(503, description="La demo no está inicializada. Ejecute demo/seed.sh.")
+    login_user(user)
+    return redirect(url_for("pages.page_home"))
 
 
 def _legal_text(name: str):

@@ -1,7 +1,7 @@
 services:
   sigma:
     build: .
-    image: ghcr.io/saffron777/sigma:latest
+    image: ghcr.io/saffron777/sigma-algebra-analisys-statistics-software-saas:latest
     restart: unless-stopped
     ports:
       - "127.0.0.1:5000:5000"
@@ -9,7 +9,7 @@ services:
       SIGMA_HOST: 0.0.0.0
       SIGMA_PORT: "5000"
       SIGMA_INSTANCE_DIR: /app/instance
-      SIGMA_SOURCE_URL: ${SIGMA_SOURCE_URL:-https://github.com/saffron777/Sigma}
+      SIGMA_SOURCE_URL: ${SIGMA_SOURCE_URL:-https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas}
       SIGMA_SECRET_KEY: ${SIGMA_SECRET_KEY:-}
       SIGMA_SECURE_COOKIES: ${SIGMA_SECURE_COOKIES:-}
       SIGMA_DATABASE_URL: ${SIGMA_DATABASE_URL:-}

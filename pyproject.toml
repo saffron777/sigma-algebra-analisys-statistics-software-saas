@@ -1,7 +1,7 @@
 [project]
-name = "sigma"
+name = "sigma-algebra-analisys-statistics-software-saas"
 version = "1.0.0"
-description = "Sigma - plataforma web de estadística (Flask + Tailwind)"
+description = "Sigma Algebra Analisys Statistics Software (SAAS) - plataforma web de estadística (Flask + Tailwind)"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "AGPL-3.0-or-later"
@@ -23,10 +23,10 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Information Analysis",
 ]
 [project.urls]
-Homepage = "https://github.com/saffron777/Sigma"
-Source = "https://github.com/saffron777/Sigma"
-Issues = "https://github.com/saffron777/Sigma/issues"
-Changelog = "https://github.com/saffron777/Sigma/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas"
+Source = "https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas"
+Issues = "https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas/issues"
+Changelog = "https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas/blob/main/CHANGELOG.md"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

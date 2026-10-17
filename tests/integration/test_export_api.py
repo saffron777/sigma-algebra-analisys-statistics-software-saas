@@ -68,7 +68,7 @@ def test_every_format_downloads_a_valid_file(api, fmt):
     assert response.mimetype == CONTENT_TYPES[fmt]
     disposition = response.headers["Content-Disposition"]
     assert disposition.startswith("attachment;") and f".{fmt}" in disposition and "filename*=UTF-8''" in disposition
-    assert "Sigma - Informe de prueba - " in disposition
+    assert "Sigma Algebra - Informe de prueba - " in disposition
     assert response.headers["X-Content-Type-Options"] == "nosniff" and "no-store" in response.headers["Cache-Control"]
     data = response.get_data()
     if fmt == "pdf":
@@ -80,7 +80,7 @@ def test_every_format_downloads_a_valid_file(api, fmt):
         doc = Document(io.BytesIO(data))
         assert (
             "Regresión de ventas" in [p.text for p in doc.paragraphs] and len(doc.inline_shapes) == 2
-        )  # the chart and the Sigma mark on the cover (no template)
+        )  # the chart and the Sigma Algebra mark on the cover (no template)
     else:
         book = load_workbook(io.BytesIO(data))
         assert "T01 Coeficientes" in book.sheetnames and len(book["Gráficos"]._images) == 1
@@ -94,7 +94,7 @@ def test_json_body_without_images_also_works(api):
 
 def test_a_single_section_uses_its_title_for_the_file(api):
     response = api.post("/api/export/xlsx", {"sections": result_sections()[:1]})
-    assert "Sigma - Regresión de ventas - " in response.headers["Content-Disposition"].split("filename*=UTF-8''")[
+    assert "Sigma Algebra - Regresión de ventas - " in response.headers["Content-Disposition"].split("filename*=UTF-8''")[
         1
     ].replace("%20", " ").replace("%C3%B3", "ó")
 

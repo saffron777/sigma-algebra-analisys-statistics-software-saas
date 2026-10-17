@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sigma Algebra Analisys Statistics Software (SAAS)</title>
+  <meta name="description" content="Self-hosted, AGPL-licensed statistics and reporting web app. Import data, run tests and models, export reports. Docker-ready.">
+  <meta property="og:title" content="Sigma Algebra Analisys Statistics Software (SAAS)">
+  <meta property="og:description" content="Self-hosted statistics and reporting web app. AGPL-3.0-or-later, multi-user, Docker-ready.">
+  <meta property="og:image" content="assets/logo.png">
+  <link rel="icon" type="image/svg+xml" href="assets/logo-mark.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Sigma Algebra home">
+      <img src="assets/logo-mark.svg" alt="" width="30" height="30">
+      <span>Sigma Algebra</span>
+    </a>
+    <nav aria-label="Main navigation">
+      <a href="#features">Features</a>
+      <a href="#screenshots">Screenshots</a>
+      <a href="#deploy">Deploy</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#es">Español</a>
+      <a class="btn btn-small" href="https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Self-hosted · AGPL-3.0-or-later · Multi-user</p>
+        <h1>
+          <span class="brand-line">Sigma Algebra</span>
+          <span class="product-line">Analisys Statistics Software (SAAS)</span>
+        </h1>
+        <p class="lede">
+          A statistics and reporting web app you run on your own server. Import CSV, Excel, text,
+          databases or JSON APIs; run tests and models; build charts; export PDF, Word and Excel reports.
+        </p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://demo.tudominio.org">Try the demo</a>
+          <a class="btn" href="https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas">View source</a>
+        </div>
+        <p class="note">
+          Replace <code>demo.tudominio.org</code> with your public demo URL before publishing.
+          “SAAS” is part of the product name; Sigma Algebra is self-hosted software, not a hosted service.
+        </p>
+      </div>
+      <div class="hero-shot">
+        <img src="assets/demo.gif" alt="Sigma Algebra demo: data, categorical variables and reports" width="960" height="600">
+      </div>
+    </section>
+
+    <section class="strip" aria-label="Highlights">
+      <div><strong>16</strong><span>hypothesis tests</span></div>
+      <div><strong>15</strong><span>probability distributions</span></div>
+      <div><strong>8+</strong><span>data sources</span></div>
+      <div><strong>PDF · DOCX · XLSX</strong><span>reports</span></div>
+      <div><strong>AGPL</strong><span>free software</span></div>
+    </section>
+
+    <section id="features" class="section">
+      <div class="section-head">
+        <p class="eyebrow">What it does</p>
+        <h2>A statistics workbench, not a spreadsheet</h2>
+        <p>One data model, one result history and one place for teaching, surveys, quality and research.</p>
+      </div>
+      <div class="grid grid-3">
+        <article class="card">
+          <h3>Import anything practical</h3>
+          <p>CSV, Excel, text, SQL Server, MySQL/MariaDB, PostgreSQL, Oracle, MongoDB and JSON APIs. Preview, edit column types and define categorical variables with <strong>code + label</strong>.</p>
+        </article>
+        <article class="card">
+          <h3>Analyse with rigour</h3>
+          <p>Descriptive statistics, 16 hypothesis tests, regression, ANOVA, count/logistic/ordinal/survival models, SEM, multivariate and ML modules.</p>
+        </article>
+        <article class="card">
+          <h3>Surveys and quality</h3>
+          <p>Sample size and probabilistic sampling, margins of error, cross-tabs and Likert scales; control charts, capability, Gage R&amp;R and DOE.</p>
+        </article>
+        <article class="card">
+          <h3>Charts that explain</h3>
+          <p>Histograms, box/violin, Q-Q, scatter/bubble, correlation matrices, contours, 3D, lines, bars, Pareto and confidence intervals.</p>
+        </article>
+        <article class="card">
+          <h3>Reports people can use</h3>
+          <p>Save results and notes; export PDF, Word and Excel; print-ready views and reusable report templates.</p>
+        </article>
+        <article class="card">
+          <h3>Yours, private, multi-user</h3>
+          <p>Each account sees only its datasets, results and notebooks. No telemetry. Optional AI interpretation is per user and per click.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="screenshots" class="section section-alt">
+      <div class="section-head">
+        <p class="eyebrow">Screenshots</p>
+        <h2>From raw data to a report</h2>
+      </div>
+      <div class="shots">
+        <figure>
+          <img src="assets/datos.png" alt="Datasets and import page" loading="lazy">
+          <figcaption>Import and manage datasets, with sample data for teaching.</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/variables-categoricas.png" alt="Manual dataset editor with categorical codes and labels" loading="lazy">
+          <figcaption>Categorical variables with code and label (legend).</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/inicio.png" alt="Sigma Algebra home page with analysis modules" loading="lazy">
+          <figcaption>A complete catalogue of statistical modules in one workspace.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="deploy" class="section">
+      <div class="section-head">
+        <p class="eyebrow">Deploy</p>
+        <h2>Docker in minutes</h2>
+        <p>SQLite by default; SQL Server, MySQL/MariaDB, PostgreSQL, Oracle and MongoDB are supported.</p>
+      </div>
+      <div class="deploy-grid">
+        <div class="code-card">
+          <h3>From source</h3>
+          <pre><code>git clone https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas.git
+cd sigma-algebra-analisys-statistics-software-saas
+docker compose up --build -d</code></pre>
+        </div>
+        <div class="code-card">
+          <h3>Published image</h3>
+          <pre><code>docker run -d --name sigma \
+  -p 127.0.0.1:5000:5000 \
+  -v sigma_data:/app/instance \
+  ghcr.io/saffron777/sigma-algebra-analisys-statistics-software-saas:latest</code></pre>
+        </div>
+      </div>
+      <p class="note">Open <code>http://127.0.0.1:5000</code>. For production, use HTTPS and a reverse proxy; see the deployment guide.</p>
+    </section>
+
+    <section id="privacy" class="section section-alt">
+      <div class="section-head">
+        <p class="eyebrow">Privacy and license</p>
+        <h2>Your data stays on your server</h2>
+      </div>
+      <div class="grid grid-3">
+        <article class="card">
+          <h3>No telemetry</h3>
+          <p>No analytics, no update checks and no third-party requests from the app. The only optional outbound feature is AI interpretation.</p>
+        </article>
+        <article class="card">
+          <h3>AGPL-3.0-or-later</h3>
+          <p>Free software with source available. If you run a modified version as a network service, you must offer its corresponding source to users.</p>
+        </article>
+        <article class="card">
+          <h3>Private by account</h3>
+          <p>Local accounts, per-user isolation, CSRF protection and secure cookies behind HTTPS.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="es" class="section lang-es" lang="es">
+      <div class="section-head">
+        <p class="eyebrow">En español</p>
+        <h2>Estadística libre, en tu servidor</h2>
+        <p>
+          Sigma Algebra es una plataforma web de análisis estadístico autoalojada y libre
+          (AGPL-3.0-or-later): importa CSV, Excel, bases de datos o APIs; ejecuta pruebas, modelos y
+          encuestas; genera gráficos e informes PDF/Word/Excel. Cada cuenta ve solo sus datos.
+          Se instala con Docker, no tiene telemetría y la IA es opcional.
+        </p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://demo.tudominio.org">Probar la demo</a>
+          <a class="btn" href="https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas">Código fuente</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <p><strong>Sigma Algebra Analisys Statistics Software (SAAS)</strong> · Copyright (C) 2026 Frank Miranda · <a href="https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas/blob/main/LICENSE">AGPL-3.0-or-later</a></p>
+      <p><a href="https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas">Source</a> · <a href="https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas/blob/main/THIRD-PARTY-NOTICES.md">Third-party notices</a> · <a href="https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas/blob/main/TRADEMARKS.md">Trademarks</a> · <a href="https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas/blob/main/SECURITY.md">Security</a></p>
+    </div>
+  </footer>
+</body>
+</html>

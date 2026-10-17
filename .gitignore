@@ -5,6 +5,7 @@ __pycache__/
 .ruff_cache/
 node_modules/
 instance/
+instance-media/
 .env
 .env.local
 .env.*.local
@@ -12,8 +13,10 @@ sigma/presentation/web/static/vendor/
 sigma/presentation/web/static/css/app.css
 # temporales de instalación y ejecución (pip, R)
 .pip-*/
+.pw-tmp/
 .r-tmp/
-.uv-cache*/# temporales de pruebas (pytest, diagnóstico de permisos)
+.uv-cache*/
+# temporales de pruebas (pytest, diagnóstico de permisos)
 .tmp/
 .pytest-tmp/
 .pytest-tmp*/

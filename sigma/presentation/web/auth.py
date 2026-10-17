@@ -10,7 +10,7 @@ from __future__ import annotations
 import secrets
 from urllib.parse import quote
 
-from flask import Flask, g, jsonify, redirect, request, session
+from flask import Flask, abort, g, jsonify, redirect, request, session
 
 from sigma.bootstrap import Container, UserServices
 from sigma.domain.errors import PermissionDeniedError
@@ -20,6 +20,7 @@ PUBLIC_PATHS = frozenset(
     {
         "/login",
         "/setup",
+        "/demo",
         "/health",
         "/licencia",
         "/terceros",
@@ -35,6 +36,21 @@ PUBLIC_PATHS = frozenset(
     }
 )
 _AUTH_KEYS = ("uid", "epoch")
+_DEMO_BLOCKED_PREFIXES = (
+    "/api/datasets/import",
+    "/api/ai/interpret",
+    "/api/console",
+    "/api/users",
+    "/api/database",
+    "/api/setup/database",
+    "/api/auth/change-password",
+    "/api/auth/profile",
+)
+
+
+def _demo_forbidden(path: str, method: str) -> bool:
+    """The public demo may analyse and save results, but it cannot import, administer or destroy."""
+    return method in {"DELETE", "PATCH"} or path.startswith(_DEMO_BLOCKED_PREFIXES)
 
 
 def login_user(user: User) -> None:
@@ -112,6 +128,13 @@ def init_auth(app: Flask) -> None:
                 "unauthenticated", "Inicie sesión para continuar.", f"/login?next={quote(safe_next(target))}"
             )
         g.user, g.services = user, container.for_user(user)
+        demo_user = str(app.config.get("SIGMA_DEMO_USER", "demo")).lower()
+        if (
+            app.config.get("SIGMA_DEMO_MODE")
+            and user.username.lower() == demo_user
+            and _demo_forbidden(path, request.method)
+        ):
+            abort(403, description="La demo pública no permite importar, administrar ni borrar datos.")
         return None
 
     @app.context_processor

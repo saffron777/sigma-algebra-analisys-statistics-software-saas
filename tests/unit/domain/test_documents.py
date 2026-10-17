@@ -41,9 +41,9 @@ def test_colours_and_file_names():
     assert normalize_color("red", "#111111") == "#111111" and normalize_color(None, "#222222") == "#222222"
     assert (
         safe_filename("Informe: ventas/2024 <final>?", "pdf", "2026-10-01")
-        == "Sigma - Informe ventas 2024 final - 2026-10-01.pdf"
+        == "Sigma Algebra - Informe ventas 2024 final - 2026-10-01.pdf"
     )
-    assert safe_filename("   ", "xlsx", "2026-10-01") == "Sigma - Informe - 2026-10-01.xlsx"
+    assert safe_filename("   ", "xlsx", "2026-10-01") == "Sigma Algebra - Informe - 2026-10-01.xlsx"
     assert len(safe_filename("x" * 500, "pdf", "2026-10-01")) < 120
     assert ".." not in safe_filename("../../etc/passwd", "pdf", "d").replace("etc passwd", "")
 

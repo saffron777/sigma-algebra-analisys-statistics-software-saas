@@ -15,7 +15,7 @@ def test_language_maps_to_kernel_name():
 
 
 def test_rscript_script_bridges_sigma_and_persists_workspace():
-    ex = RscriptExecutor(Path("E:/Sigma"), "sqlite:///:memory:", Path("E:/Sigma/_nb"))
+    ex = RscriptExecutor(Path("E:/Sigma Algebra"), "sqlite:///:memory:", Path("E:/Sigma Algebra/_nb"))
     script = ex._script("u1:nb1", "x <- 1")
     assert 'reticulate::import("sigma.infrastructure.kernel.helpers")' in script
     assert "x <- 1" in script
@@ -25,7 +25,7 @@ def test_rscript_script_bridges_sigma_and_persists_workspace():
 
 
 def test_rscript_restart_clears_the_workspace():
-    ex = RscriptExecutor(Path("E:/Sigma"), "sqlite:///:memory:", Path("E:/Sigma/_nb"))
+    ex = RscriptExecutor(Path("E:/Sigma Algebra"), "sqlite:///:memory:", Path("E:/Sigma Algebra/_nb"))
     ws = ex._workspace("u1:nb1")
     ws.parent.mkdir(parents=True, exist_ok=True)
     ws.write_text("x", encoding="utf-8")
@@ -34,16 +34,16 @@ def test_rscript_restart_clears_the_workspace():
 
 
 def test_rscript_executor_status_is_running():
-    ex = RscriptExecutor(Path("E:/Sigma"), "sqlite:///:memory:", Path("E:/Sigma/_nb"))
+    ex = RscriptExecutor(Path("E:/Sigma Algebra"), "sqlite:///:memory:", Path("E:/Sigma Algebra/_nb"))
     assert ex.status("s").running is True
 
 
 @pytest.mark.skipif(not Path(RSCRIPT).is_file(), reason="R no está instalado")
 def test_rscript_executes_r_with_persistence():
-    work = Path("E:/Sigma/.test-r-console")
+    work = Path("E:/Sigma Algebra/.test-r-console")
     shutil.rmtree(work, ignore_errors=True)
     try:
-        ex = RscriptExecutor(Path("E:/Sigma"), "sqlite:///:memory:", work)
+        ex = RscriptExecutor(Path("E:/Sigma Algebra"), "sqlite:///:memory:", work)
         ex.execute("s1", "x <- 40\ny <- 2", 90, "u1", "ir")
         res = ex.execute("s1", "cat(x + y, '\\n')", 90, "u1", "ir")
         assert res.status == "ok"

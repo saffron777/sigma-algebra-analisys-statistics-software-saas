@@ -1,7 +1,7 @@
 """The AI gateway: picks the configured model, builds its adapter and answers.
 
 One place decides *which* model answers (the one asked for, else the server default) and one place keeps the
-adapters, so the rest of Sigma only knows the ``AiGateway`` port.
+adapters, so the rest of Sigma Algebra only knows the ``AiGateway`` port.
 """
 
 from __future__ import annotations

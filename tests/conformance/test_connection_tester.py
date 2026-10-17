@@ -48,7 +48,7 @@ def test_foreign_tables_are_refused(backend, tester):
         conn.execute(text("CREATE TABLE contabilidad (id INTEGER)"))
     engine.dispose()
     report = tester.test(settings)
-    assert not report.ok and report.state == STATE_FOREIGN and "no son de Sigma" in report.message
+    assert not report.ok and report.state == STATE_FOREIGN and "no son de Sigma Algebra" in report.message
     wipe(settings)
 
 
@@ -68,7 +68,7 @@ def test_a_missing_database_is_created_or_explained(backend, tester):
     if settings.is_sqlite or settings.engine == "mongodb":
         pytest.skip("not applicable")
     if settings.engine in _AUTO_CREATE:
-        # Sigma crea la base de datos automáticamente cuando no existe.
+        # Sigma Algebra crea la base de datos automáticamente cuando no existe.
         name = "sigma_no_existe_xyz"
         target = dataclasses.replace(settings, database=name)
         report = tester.test(target)

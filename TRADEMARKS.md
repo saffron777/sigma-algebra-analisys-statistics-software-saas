@@ -1,8 +1,9 @@
 # Marcas y nombres de terceros
 
-El logotipo y los iconos de Sigma son activos originales del proyecto y se distribuyen bajo
-la **AGPL-3.0-or-later**. La licencia de software **no** concede derechos de marca sobre el
-nombre «Sigma», el logotipo ni cualquier otro signo distintivo del proyecto.
+El logotipo y los iconos de Sigma Algebra Analisys Statistics Software (SAAS) son activos
+originales del proyecto y se distribuyen bajo la **AGPL-3.0-or-later**. La licencia de software
+**no** concede derechos de marca sobre el nombre «Sigma Algebra», el logotipo ni cualquier otro
+signo distintivo del proyecto.
 
 Este proyecto no está afiliado, patrocinado ni respaldado por Sigma Computing ni por
 ninguna otra empresa que use el nombre «Sigma».

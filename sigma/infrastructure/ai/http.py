@@ -1,6 +1,6 @@
 """The HTTP transport of the AI adapters: one POST that returns the status and the decoded body.
 
-Using ``requests`` (already a dependency of Sigma) keeps every provider on the same, inspectable path and adds no
+Using ``requests`` (already a dependency of Sigma Algebra) keeps every provider on the same, inspectable path and adds no
 new package to install. The client is injectable, so the adapters are tested without touching the network.
 """
 

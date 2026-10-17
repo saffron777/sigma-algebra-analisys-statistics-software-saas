@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Seguridad
-    url: https://github.com/saffron777/Sigma/security/policy
+    url: https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas/security/policy
     about: Reporta vulnerabilidades de forma privada; no abras una incidencia pública.
   - name: Documentación
-    url: https://github.com/saffron777/Sigma#readme
+    url: https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas#readme
     about: Instalación, Docker, privacidad y preguntas frecuentes.

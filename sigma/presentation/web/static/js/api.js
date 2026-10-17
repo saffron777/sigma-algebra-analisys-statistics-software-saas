@@ -32,7 +32,7 @@ export async function api(url, { method = "GET", json, form, signal, keepalive =
     response = await fetch(url, { method, headers, body, signal, keepalive, credentials: "same-origin" });
   } catch (error) {
     if (error.name === "AbortError") throw error;
-    throw new ApiError("No se pudo conectar con el servidor de Sigma. ¿Sigue en ejecución?");
+    throw new ApiError("No se pudo conectar con el servidor de Sigma Algebra. ¿Sigue en ejecución?");
   }
 
   const text = await response.text();
@@ -96,7 +96,7 @@ export async function fetchFile(url, { method = "GET", json, form, signal } = {}
     response = await fetch(url, { method, headers, body, signal, credentials: "same-origin" });
   } catch (error) {
     if (error.name === "AbortError") throw error;
-    throw new ApiError("No se pudo conectar con el servidor de Sigma. ¿Sigue en ejecución?");
+    throw new ApiError("No se pudo conectar con el servidor de Sigma Algebra. ¿Sigue en ejecución?");
   }
   if (response.status === 401) location.assign(`/login?next=${encodeURIComponent(location.pathname + location.search)}`);
   if (!response.ok) {

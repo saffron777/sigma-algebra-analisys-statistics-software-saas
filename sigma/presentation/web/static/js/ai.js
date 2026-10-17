@@ -44,7 +44,7 @@ export function defineAiStore() {
     async refresh() {
       try {
         this.status = await api("/api/ai/status");
-      } catch { /* the rest of Sigma works without it */ }
+      } catch { /* the rest of Sigma Algebra works without it */ }
       this.loaded = true;
     },
     get available() { return this.status.available; },

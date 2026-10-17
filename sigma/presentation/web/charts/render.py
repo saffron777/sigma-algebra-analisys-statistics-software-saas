@@ -1,4 +1,4 @@
-"""Draws the chart descriptions of ``domain/analysis/charts.py`` with Plotly, in Sigma's theme."""
+"""Draws the chart descriptions of ``domain/analysis/charts.py`` with Plotly, in Sigma Algebra's theme."""
 
 from __future__ import annotations
 

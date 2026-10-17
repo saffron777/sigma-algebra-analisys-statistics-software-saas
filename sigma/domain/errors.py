@@ -6,7 +6,7 @@ from typing import Any
 
 
 class SigmaError(Exception):
-    """Base class for every error raised on purpose by Sigma."""
+    """Base class for every error raised on purpose by Sigma Algebra."""
 
     code = "sigma_error"
 
@@ -107,6 +107,6 @@ class MigrationError(SigmaError):
 
 
 class MaintenanceError(SigmaError):
-    """Sigma is busy with an operation that needs exclusive use of the data (e.g. a database migration)."""
+    """Sigma Algebra is busy with an operation that needs exclusive use of the data (e.g. a database migration)."""
 
     code = "maintenance"

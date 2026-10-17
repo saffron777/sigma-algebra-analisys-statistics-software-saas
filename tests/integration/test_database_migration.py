@@ -1,4 +1,4 @@
-"""Moving a running Sigma to another database from the administration page: copy, switch, keep working."""
+"""Moving a running Sigma Algebra to another database from the administration page: copy, switch, keep working."""
 
 import os
 import time

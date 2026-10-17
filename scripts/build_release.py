@@ -1,4 +1,4 @@
-"""Build the Sigma release artifacts.
+"""Build the Sigma Algebra release artifacts.
 
     npm ci && npm run build
     python scripts/collect_licenses.py collect
@@ -34,6 +34,8 @@ EXCLUDED_DIRS = {
     ".uv-cache",
     "node_modules",
     "instance",
+    "instance-media",
+    ".pw-tmp",
     "dist",
     "__pycache__",
     ".pytest_cache",
@@ -68,7 +70,7 @@ def _ignore(directory: str, names: list[str]) -> set[str]:
         if (
             name in EXCLUDED_DIRS
             or name in EXCLUDED_FILES
-            or name.startswith((".gitconfig", ".uv-cache", ".acl-", ".pytest-tmp", ".chrome-"))
+            or name.startswith((".gitconfig", ".uv-cache", ".acl-", ".pytest-tmp", ".chrome-", ".pip-"))
             or relative.endswith("sigma/presentation/web/static/vendor")
             or relative.endswith("sigma/presentation/web/static/css/app.css")
             or (path.is_file() and name.endswith(EXCLUDED_SUFFIXES))
@@ -95,12 +97,12 @@ def _copy_tree(target: Path) -> None:
 
 
 def _write_release_note(target: Path) -> None:
-    note = f"""Sigma {version()}
+    note = f"""Sigma Algebra Analisys Statistics Software (SAAS) {version()}
 
 Copyright (C) 2026 Frank Miranda
 Licencia: AGPL-3.0-or-later. Texto completo en LICENSE; avisos en THIRD-PARTY-NOTICES.md.
 
-Código fuente: https://github.com/saffron777/Sigma
+Código fuente: https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas
 Instalación: consulte README.md (Docker, Windows o Linux/macOS).
 Este paquete se distribuye SIN GARANTÍA, según los términos de la AGPL.
 """
@@ -157,8 +159,8 @@ def main() -> int:
     if DIST.exists():
         shutil.rmtree(DIST)
     STAGING.mkdir(parents=True)
-    source = STAGING / f"sigma-{current}"
-    full = STAGING / f"sigma-{current}-full"
+    source = STAGING / f"sigma-algebra-analisys-statistics-software-saas-{current}"
+    full = STAGING / f"sigma-algebra-analisys-statistics-software-saas-{current}-full"
     _copy_tree(source)
     _copy_tree(full)
     for generated in (
@@ -181,11 +183,11 @@ def main() -> int:
                 print(f"Contenido prohibido en el artefacto: {path.relative_to(tree)}")
                 return 1
 
-    source_tar = DIST / f"sigma-{current}-source.tar.gz"
-    full_tar = DIST / f"sigma-{current}.tar.gz"
-    full_zip = DIST / f"sigma-{current}.zip"
-    _tarball(source, source_tar, f"sigma-{current}")
-    _tarball(full, full_tar, f"sigma-{current}")
+    source_tar = DIST / f"sigma-algebra-analisys-statistics-software-saas-{current}-source.tar.gz"
+    full_tar = DIST / f"sigma-algebra-analisys-statistics-software-saas-{current}.tar.gz"
+    full_zip = DIST / f"sigma-algebra-analisys-statistics-software-saas-{current}.zip"
+    _tarball(source, source_tar, f"sigma-algebra-analisys-statistics-software-saas-{current}")
+    _tarball(full, full_tar, f"sigma-algebra-analisys-statistics-software-saas-{current}")
     _zip(full, full_zip)
     _checksums([source_tar, full_tar, full_zip])
     shutil.rmtree(STAGING)

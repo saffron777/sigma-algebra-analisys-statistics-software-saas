@@ -1,4 +1,4 @@
-# Despliegue de Sigma
+# Despliegue de Sigma Algebra
 
 ## Docker (recomendado)
 
@@ -24,7 +24,7 @@ interpolar las variables del servicio. Las más importantes:
 | Variable | Uso |
 |---|---|
 | `SIGMA_SOURCE_URL` | URL pública del código fuente (se muestra en la interfaz). |
-| `SIGMA_SECRET_KEY` | Secreto de sesión. Si se deja vacío, Sigma genera `instance/secret.key`. |
+| `SIGMA_SECRET_KEY` | Secreto de sesión. Si se deja vacío, Sigma Algebra genera `instance/secret.key`. |
 | `SIGMA_DATABASE_URL` | Base de datos externa; vacío usa SQLite en `instance/sigma.db`. |
 | `SIGMA_HOST` / `SIGMA_PORT` | Escucha; en Docker se fija `0.0.0.0:5000`. |
 | `SIGMA_SECURE_COOKIES` | `1` cuando se sirve por HTTPS. |
@@ -67,4 +67,4 @@ Prueba periódicamente la restauración.
 4. Las migraciones de esquema se ejecutan al arrancar; revisa los mensajes del contenedor.
 
 Si usas una base externa, el administrador puede cambiar de motor desde **Base de datos**;
-haz copia antes de migrar y reinicia los procesos de Sigma que estén en ejecución.
+haz copia antes de migrar y reinicia los procesos de Sigma Algebra que estén en ejecución.

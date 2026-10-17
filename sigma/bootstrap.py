@@ -131,7 +131,7 @@ from sigma.infrastructure.security.password_hasher import WerkzeugPasswordHasher
 
 
 def _read_default_logo() -> bytes | None:
-    """The Sigma mark (PNG) that heads reports made without a template; reports still work if the file is missing."""
+    """The Sigma Algebra mark (PNG) that heads reports made without a template; reports still work if the file is missing."""
     path = PROJECT_ROOT / "sigma" / "presentation" / "web" / "static" / "img" / "logo-mark-256.png"
     try:
         return path.read_bytes()

@@ -1,7 +1,7 @@
 """The SQLite-only schema history (v1–v6) and the step that lifts such a file to the portable baseline (v7).
 
 New databases — on any engine, SQLite included — are created from ``schema.py`` and never run these scripts. They
-exist so that a ``sigma.db`` written by an earlier Sigma keeps working: ``upgrade_legacy_sqlite`` replays what is
+exist so that a ``sigma.db`` written by an earlier Sigma Algebra keeps working: ``upgrade_legacy_sqlite`` replays what is
 missing (tracked with ``PRAGMA user_version``) and then applies :data:`V7_SCRIPT`. Never edit a released script.
 """
 
@@ -229,7 +229,7 @@ _STAGED_TABLE = re.compile(r"^stg_[0-9a-f]{32}$")
 
 
 def upgrade_legacy_sqlite(conn: sqlite3.Connection) -> None:
-    """Lift a SQLite file written by an earlier Sigma (``user_version`` 0–6) to the portable v7 baseline."""
+    """Lift a SQLite file written by an earlier Sigma Algebra (``user_version`` 0–6) to the portable v7 baseline."""
     version = conn.execute("PRAGMA user_version").fetchone()[0]
     conn.execute("PRAGMA foreign_keys = OFF")  # rebuilding a table requires it
     for target, script in enumerate(MIGRATIONS, start=1):

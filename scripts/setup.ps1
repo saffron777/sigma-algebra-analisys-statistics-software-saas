@@ -1,6 +1,6 @@
-# Prepara Sigma desde cero: entorno virtual, dependencias, CSS/JS del frontend y archivos de ejemplo.
+# Prepara Sigma Algebra desde cero: entorno virtual, dependencias, CSS/JS del frontend y archivos de ejemplo.
 #   .\scripts\setup.ps1
-# La primera cuenta (administrador) se crea al abrir Sigma por primera vez en el navegador (/setup),
+# La primera cuenta (administrador) se crea al abrir Sigma Algebra por primera vez en el navegador (/setup),
 # o sin navegador con:  .\.venv\Scripts\python.exe scripts\create_user.py
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)
@@ -29,5 +29,5 @@ Write-Host "Generando los archivos de ejemplo (sample_data)..." -ForegroundColor
 & $python scripts\make_sample_data.py
 
 Write-Host ""
-Write-Host "Listo. Inicie Sigma con:  .\scripts\run.ps1" -ForegroundColor Green
+Write-Host "Listo. Inicie Sigma Algebra con:  .\scripts\run.ps1" -ForegroundColor Green
 Write-Host "Al abrirlo por primera vez cree la cuenta de administrador; luego, desde Datos, use 'Cargar datos de ejemplo'." -ForegroundColor Green

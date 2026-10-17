@@ -1,4 +1,4 @@
-"""Request-level protections. Sigma can execute code, so it must only answer its own local UI.
+"""Request-level protections. Sigma Algebra can execute code, so it must only answer its own local UI.
 
 * ``Host`` allow-list  → blocks DNS-rebinding attacks.
 * ``Origin`` check     → blocks cross-site requests from other web pages.

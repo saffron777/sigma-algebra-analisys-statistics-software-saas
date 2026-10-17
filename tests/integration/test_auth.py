@@ -151,7 +151,10 @@ def test_only_administrators_can_manage_accounts(api, make_client):
     ):
         assert call().status_code == 403
     forbidden = regular.raw.get("/usuarios")
-    assert forbidden.status_code == 403 and "<title>Error 403 · Sigma</title>" in forbidden.get_data(as_text=True)
+    assert forbidden.status_code == 403 and (
+        "<title>Error 403 · Sigma Algebra Analisys Statistics Software (SAAS)</title>"
+        in forbidden.get_data(as_text=True)
+    )
     assert api.raw.get("/usuarios").status_code == 200
     assert api.get("/api/users").status_code == 200
 

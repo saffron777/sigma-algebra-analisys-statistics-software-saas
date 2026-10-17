@@ -10,11 +10,11 @@
   </div>
 
   <p class="alert alert-success" role="status" x-show="applied" x-cloak>
-    Sigma usará <strong x-text="applied"></strong>. Cree ahora la cuenta de administrador.
+    Sigma Algebra usará <strong x-text="applied"></strong>. Cree ahora la cuenta de administrador.
   </p>
 
   <template x-if="status && !status.editable">
-    <p class="alert alert-warning">La base de datos se define con la variable de entorno <code class="font-mono">SIGMA_DATABASE_URL</code>; para cambiarla edite el entorno y reinicie Sigma.</p>
+    <p class="alert alert-warning">La base de datos se define con la variable de entorno <code class="font-mono">SIGMA_DATABASE_URL</code>; para cambiarla edite el entorno y reinicie Sigma Algebra.</p>
   </template>
 
   <template x-if="mode === 'setup' && status?.editable && !open">
@@ -30,7 +30,7 @@
         </template>
       </select>
       <p class="hint" x-show="meta.engine && !meta.driver_available" x-cloak>
-        Instale el controlador con <code class="font-mono" x-text="'pip install ' + meta.install_hint"></code> y reinicie Sigma.
+        Instale el controlador con <code class="font-mono" x-text="'pip install ' + meta.install_hint"></code> y reinicie Sigma Algebra.
       </p>
     </div>
 
@@ -55,18 +55,18 @@
         <label class="label" for="db-name" x-text="databaseLabel"></label>
         <input id="db-name" class="input" type="text" autocomplete="off" spellcheck="false" x-model="form.database" @input="edited()"
                :placeholder="form.engine === 'oracle' ? 'FREEPDB1' : 'sigma'">
-        <p class="hint" x-show="form.engine !== 'mongodb'" x-cloak>Debe existir y estar vacía (o contener datos de Sigma): Sigma crea sus propias tablas, sin tocar otras.</p>
-        <p class="hint" x-show="form.engine === 'mongodb'" x-cloak>Sigma crea sus colecciones en esta base.</p>
+        <p class="hint" x-show="form.engine !== 'mongodb'" x-cloak>Debe existir y estar vacía (o contener datos de Sigma Algebra): Sigma Algebra crea sus propias tablas, sin tocar otras.</p>
+        <p class="hint" x-show="form.engine === 'mongodb'" x-cloak>Sigma Algebra crea sus colecciones en esta base.</p>
       </div>
       <div x-show="supportsSchema" x-cloak>
         <label class="label" for="db-schema">Esquema (opcional)</label>
         <input id="db-schema" class="input" type="text" autocomplete="off" spellcheck="false" placeholder="sigma" x-model="form.schema" @input="edited()">
-        <p class="hint">Para compartir la base con otras aplicaciones: Sigma lo crea y guarda todo dentro de él.</p>
+        <p class="hint">Para compartir la base con otras aplicaciones: Sigma Algebra lo crea y guarda todo dentro de él.</p>
       </div>
 
       <label class="flex items-center gap-2 text-sm" x-show="form.engine === 'mssql'" x-cloak>
         <input type="checkbox" class="check" x-model="form.windows" @change="edited()">
-        Autenticación de Windows (la cuenta con la que se ejecuta Sigma)
+        Autenticación de Windows (la cuenta con la que se ejecuta Sigma Algebra)
       </label>
       <div class="grid grid-cols-2 gap-3" x-show="usesLogin" x-cloak>
         <div>
@@ -106,11 +106,11 @@
       <label class="flex items-start gap-2">
         <input type="checkbox" class="check mt-0.5" x-model="migrate">
         <span><strong>Copiar los datos actuales a la nueva base</strong> (cuentas, conjuntos de datos, resultados, notebooks y ajustes).
-          <span class="block text-xs text-slate-500">Sigma queda en mantenimiento mientras dura la copia. La base actual no se modifica.</span></span>
+          <span class="block text-xs text-slate-500">Sigma Algebra queda en mantenimiento mientras dura la copia. La base actual no se modifica.</span></span>
       </label>
     </div>
     <p class="alert alert-info" x-show="report?.ok && report?.state === 'sigma'" x-cloak>
-      La base ya contiene datos de Sigma: se usarán tal como están (no se copia nada).
+      La base ya contiene datos de Sigma Algebra: se usarán tal como están (no se copia nada).
     </p>
 
     <div class="flex flex-wrap items-center gap-2">
@@ -159,7 +159,7 @@
       </template>
     </ul>
     <p class="alert alert-success" role="status" x-show="migrated" x-cloak>
-      Migración completada. Sigma ya usa la nueva base de datos; la anterior queda intacta como copia de seguridad.
+      Migración completada. Sigma Algebra ya usa la nueva base de datos; la anterior queda intacta como copia de seguridad.
     </p>
   </section>
 </div>

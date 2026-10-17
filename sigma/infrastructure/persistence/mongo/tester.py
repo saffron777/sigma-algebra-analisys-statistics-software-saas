@@ -29,11 +29,11 @@ def test_mongo(settings: DatabaseSettings, timeout_seconds: int) -> ConnectionRe
         database = client[settings.database]
         collections = sorted(database.list_collection_names())
         if not collections:
-            state, detail = STATE_EMPTY, "Base vacía: Sigma creará sus colecciones."
+            state, detail = STATE_EMPTY, "Base vacía: Sigma Algebra creará sus colecciones."
         elif "sigma_schema" in collections:
-            state, detail = STATE_SIGMA, "Ya contiene datos de Sigma: se usarán tal como están."
+            state, detail = STATE_SIGMA, "Ya contiene datos de Sigma Algebra: se usarán tal como están."
         else:
-            state, detail = STATE_FOREIGN, f"Contiene {len(collections)} colecciones que no son de Sigma."
+            state, detail = STATE_FOREIGN, f"Contiene {len(collections)} colecciones que no son de Sigma Algebra."
         steps.append(CheckStep("Contenido", state != STATE_FOREIGN, detail))
         if state == STATE_SIGMA:
             counts = {
@@ -53,10 +53,10 @@ def test_mongo(settings: DatabaseSettings, timeout_seconds: int) -> ConnectionRe
         client.close()
     ok = state != STATE_FOREIGN
     headline = (
-        "Conexión correcta. La base ya contiene datos de Sigma."
+        "Conexión correcta. La base ya contiene datos de Sigma Algebra."
         if state == STATE_SIGMA
         else "Conexión correcta. La base está vacía y lista para usarse."
         if ok
-        else "La base de datos ya tiene colecciones que no son de Sigma. Use una base vacía."
+        else "La base de datos ya tiene colecciones que no son de Sigma Algebra. Use una base vacía."
     )
     return ConnectionReport(ok, "mongodb", headline, version, state, counts, tuple(steps))

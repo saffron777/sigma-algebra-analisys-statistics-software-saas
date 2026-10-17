@@ -151,7 +151,7 @@
               </template>
             </select>
             <p class="hint" x-show="engineInfo && !engineInfo.driver_available" x-cloak>
-              Instale el controlador con <code class="font-mono" x-text="'pip install ' + engineInfo?.install_hint"></code> y reinicie Sigma.
+              Instale el controlador con <code class="font-mono" x-text="'pip install ' + engineInfo?.install_hint"></code> y reinicie Sigma Algebra.
             </p>
           </div>
         </div>
@@ -355,7 +355,7 @@
       </div>
     </div>
     <div class="card-body">
-      <p class="text-sm text-slate-500" x-show="$store.datasets.loaded && !$store.datasets.list.length" x-cloak>Todavía no hay datasets. Importe uno arriba o pulse <strong>Cargar datos de ejemplo</strong> para probar Sigma.</p>
+      <p class="text-sm text-slate-500" x-show="$store.datasets.loaded && !$store.datasets.list.length" x-cloak>Todavía no hay datasets. Importe uno arriba o pulse <strong>Cargar datos de ejemplo</strong> para probar Sigma Algebra.</p>
       <div class="table-wrap" x-show="$store.datasets.list.length" x-cloak>
         <table class="tbl">
           <thead><tr><th>Nombre</th><th>Origen</th><th class="text-right">Filas</th><th class="text-right">Columnas</th><th>Creado</th><th class="text-right">Acciones</th></tr></thead>

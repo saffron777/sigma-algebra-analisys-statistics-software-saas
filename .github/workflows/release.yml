@@ -53,5 +53,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/sigma:${{ github.ref_name }}
-            ghcr.io/${{ github.repository_owner }}/sigma:latest
+            ghcr.io/${{ github.repository_owner }}/sigma-algebra-analisys-statistics-software-saas:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/sigma-algebra-analisys-statistics-software-saas:latest

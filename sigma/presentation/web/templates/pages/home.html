@@ -10,7 +10,7 @@
   ("regresion", "Regresión lineal", "Simple y múltiple con diagnóstico de supuestos y predicción."),
   ("anova", "ANOVA", "Uno y dos factores, supuestos, post-hoc de Tukey y tamaños de efecto."),
   ("mercados", "Análisis de mercados", "Encuestas y sondeos: tamaño de muestra, muestreo aleatorio y márgenes de error."),
-  ("consola", "Consola (Python y R)", "Ejecute código Python o R y abra notebooks Jupyter (.ipynb) con sus datos de Sigma."),
+  ("consola", "Consola (Python y R)", "Ejecute código Python o R y abra notebooks Jupyter (.ipynb) con sus datos de Sigma Algebra."),
 ] + catalog_modules %}
 
 {% block content %}
@@ -20,8 +20,8 @@
       <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="44" height="44" class="size-11">
       <div class="min-w-0 flex-1">
         <p class="text-xs font-medium text-brand-600 dark:text-brand-300">Plataforma de análisis estadístico</p>
-        <h2 class="mt-0.5 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Sigma</h2>
-        <p class="mt-1 max-w-2xl text-[13px] text-slate-600 dark:text-slate-400">Importe sus datos, analícelos con pruebas rigurosas y conserve los resultados. Todo se ejecuta y se guarda en su servidor Sigma, y es privado para cada cuenta.</p>
+        <h2 class="mt-0.5 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">{{ product_short }}</h2>
+        <p class="mt-1 max-w-2xl text-[13px] text-slate-600 dark:text-slate-400">Importe sus datos, analícelos con pruebas rigurosas y conserve los resultados. Todo se ejecuta y se guarda en su servidor {{ product_short }}, y es privado para cada cuenta.</p>
       </div>
     </div>
     <div class="mt-4 flex flex-wrap gap-2">

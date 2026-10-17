@@ -1,4 +1,4 @@
-"""Chart descriptions (plain data) that the web layer draws with Plotly in Sigma's theme.
+"""Chart descriptions (plain data) that the web layer draws with Plotly in Sigma Algebra's theme.
 
 Each constructor returns a dict with a ``kind`` and the data; values may be numpy arrays. ``raw_chart`` is the escape
 hatch for anything unusual: Plotly ``data`` traces and ``layout`` as plain dictionaries.

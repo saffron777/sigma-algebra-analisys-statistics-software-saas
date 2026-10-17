@@ -3,7 +3,7 @@
 The rows go to a table with a generated name (``ds_<24 hex>`` / ``stg_<24 hex>`` — short enough for Oracle), columns
 ``c0 … cN`` (so odd, long or duplicate-looking column names never meet an engine's identifier rules) and a ``_row``
 key that gives a stable order for paging. The original column names live in the metadata row (``col_map`` / dtypes).
-Tables created by older Sigma versions (SQLite, original column names, implicit ``rowid`` order) are read as they are.
+Tables created by older Sigma Algebra versions (SQLite, original column names, implicit ``rowid`` order) are read as they are.
 """
 
 from __future__ import annotations

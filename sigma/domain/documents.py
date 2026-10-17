@@ -117,10 +117,10 @@ def normalize_color(value: str | None, fallback: str) -> str:
 
 
 def safe_filename(title: str, extension: str, date: str) -> str:
-    """«Sigma - <título> - AAAA-MM-DD.<ext>» with nothing that a file system or a header could object to."""
+    """«Sigma Algebra - <título> - AAAA-MM-DD.<ext>» with nothing that a file system or a header could object to."""
     cleaned = re.sub(r'[\\/:*?"<>|\x00-\x1f]+', " ", title)
     cleaned = " ".join(cleaned.split())[:80].strip(" .") or "Informe"
-    return f"Sigma - {cleaned} - {date}.{extension}"
+    return f"Sigma Algebra - {cleaned} - {date}.{extension}"
 
 
 # ------------------------------------------------------------------ sanitising blocks that come from the browser

@@ -1,11 +1,11 @@
-"""Copies everything Sigma stores from one database to another (ids included); the source is only read.
+"""Copies everything Sigma Algebra stores from one database to another (ids included); the source is only read.
 
     python scripts/migrate_database.py --to "postgresql+psycopg://user:pass@host/sigma"
     python scripts/migrate_database.py --from "sqlite:///instance/sigma.db" --to "mysql+pymysql://u:p@host/sigma" --use
 
-The destination must be empty (Sigma creates its tables there). Without ``--from`` the database currently configured
-for Sigma is the source. With ``--use`` the destination is also saved as the database Sigma starts with
-(``instance/database.json``); stop Sigma before migrating so nobody writes while the data is copied.
+The destination must be empty (Sigma Algebra creates its tables there). Without ``--from`` the database currently configured
+for Sigma Algebra is the source. With ``--use`` the destination is also saved as the database Sigma Algebra starts with
+(``instance/database.json``); stop Sigma Algebra before migrating so nobody writes while the data is copied.
 
 URLs: sqlite:///path.db · mssql+pyodbc://user:pass@host/db?driver=ODBC+Driver+18+for+SQL+Server ·
 mysql+pymysql://user:pass@host/db · postgresql+psycopg://user:pass@host/db ·
@@ -33,7 +33,7 @@ def main() -> int:
     parser.add_argument("--from", dest="source", help="URL de la base de origen (por defecto, la configurada)")
     parser.add_argument("--to", dest="target", required=True, help="URL de la base de destino (debe estar vacía)")
     parser.add_argument("--notebooks", type=Path, help="carpeta de notebooks (por defecto, la configurada)")
-    parser.add_argument("--use", action="store_true", help="dejar el destino como base de datos de Sigma al terminar")
+    parser.add_argument("--use", action="store_true", help="dejar el destino como base de datos de Sigma Algebra al terminar")
     args = parser.parse_args()
 
     config = Config.from_env()

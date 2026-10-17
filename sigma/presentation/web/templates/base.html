@@ -10,7 +10,7 @@
     {% elif item.kind == "__logout__" %}
       {% if current_user %}<button type="button" class="menu-item" @click="logout()">{{ icon("logout", "size-4") }} Cerrar sesión</button>{% endif %}
     {% elif item.kind == "__about__" %}
-      <div class="menu-label">Sigma v{{ sigma_version }}</div>
+      <div class="menu-label">{{ current_user.display_name if current_user else product_short }} · {{ product_short }} v{{ sigma_version }}</div>
     {% elif item.kind == "__help__" %}
       <a class="menu-item" href="{{ item.href }}">{{ icon("help", "size-4") }} {{ item.label }}</a>
     {% elif item.key == "consola" and not (current_user and current_user.can_use_console) %}
@@ -27,7 +27,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="color-scheme" content="light dark">
-  <title>{{ page_title }} · Sigma</title>
+  <title>{{ page_title }} · {{ product_name }}</title>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
   <link rel="icon" type="image/x-icon" sizes="any" href="{{ url_for('static', filename='img/favicon.ico') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
@@ -41,12 +41,17 @@
   <script defer src="{{ url_for('static', filename='vendor/alpine.min.js') }}"></script>
 </head>
 <body class="flex h-dvh flex-col overflow-hidden" x-data="shell" @keydown.escape.window="openMenu = null; menuOpen = false">
+  {% if demo_mode %}
+  <div class="border-b border-amber-300 bg-amber-50 px-4 py-1.5 text-center text-[12px] font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+    Demo pública de {{ product_short }} · datos de ejemplo · se reinicia periódicamente · no suba datos reales
+  </div>
+  {% endif %}
 
   {# ===================== menu bar ===================== #}
   <nav class="menubar" aria-label="Menú principal" @click.outside="openMenu = null">
     <button type="button" class="toolbar-btn lg:hidden" @click="menuOpen = true" aria-label="Abrir menú">{{ icon("menu", "size-4") }}</button>
     <a href="{{ url_for('pages.page_home') }}" @click="openMenu = null" class="flex items-center gap-1.5 px-2 text-[13px] font-bold text-slate-800 dark:text-slate-100">
-      <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="16" height="16" class="size-4"> Sigma
+      <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="16" height="16" class="size-4"> {{ product_short }}
     </a>
     <div class="hidden lg:flex">
       {% for group in menu %}
@@ -71,7 +76,7 @@
     <div class="absolute inset-y-0 left-0 w-64 overflow-y-auto border-r border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900" @click.stop>
       <div class="flex h-12 items-center justify-between border-b border-slate-300 px-4 dark:border-slate-700">
         <span class="flex items-center gap-1.5 text-sm font-bold text-slate-800 dark:text-slate-100">
-          <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="16" height="16" class="size-4"> Sigma</span>
+          <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="16" height="16" class="size-4"> {{ product_short }}</span>
         <button type="button" class="toolbar-btn" @click="menuOpen = false" aria-label="Cerrar menú">{{ icon("close", "size-4") }}</button>
       </div>
       <nav class="space-y-3 p-2">
@@ -106,9 +111,10 @@
 
   {# ===================== status bar ===================== #}
   <footer class="statusbar" aria-label="Barra de estado">
-    <span class="statusbar-cell">Sigma listo</span>
+    <span class="statusbar-cell">{{ product_short }} listo</span>
+    <span class="statusbar-cell">{{ current_user.display_name if current_user else '' }}</span>
     <span class="statusbar-cell" x-text="$store.datasets.active ? `${$store.datasets.active.name} · ${$store.datasets.active.n_rows} filas × ${$store.datasets.active.n_cols} col.` : 'Sin dataset activo'"></span>
-    <span class="statusbar-cell ml-auto">Sigma v{{ sigma_version }} · <a class="underline" href="/licencia">{{ license_name }}</a> · sin garantía · <a class="underline" href="{{ source_url }}" target="_blank" rel="noopener noreferrer">Código fuente</a></span>
+    <span class="statusbar-cell ml-auto">{{ product_short }} v{{ sigma_version }} · <a class="underline" href="/licencia">{{ license_name }}</a> · sin garantía · <a class="underline" href="{{ source_url }}" target="_blank" rel="noopener noreferrer">Código fuente</a></span>
   </footer>
 
   {% include "partials/save_dialog.html" %}

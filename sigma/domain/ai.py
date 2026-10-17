@@ -14,7 +14,7 @@ from uuid import uuid4
 
 from sigma.domain.errors import InvalidInputError
 
-DEFAULT_ANTHROPIC_MODEL = "claude-opus-5-5"  # the model older versions of Sigma used unless told otherwise
+DEFAULT_ANTHROPIC_MODEL = "claude-opus-5-5"  # the model older versions of Sigma Algebra used unless told otherwise
 MAX_AI_MODELS = 12  # a configured model per provider is plenty; more is usually a mistake
 DEFAULT_MAX_TOKENS = 8000
 TEST_MAX_TOKENS = 1500

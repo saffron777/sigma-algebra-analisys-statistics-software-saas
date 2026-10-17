@@ -1,4 +1,4 @@
-"""Choosing the database Sigma persists to: the administration page and the first-run wizard's step."""
+"""Choosing the database Sigma Algebra persists to: the administration page and the first-run wizard's step."""
 
 from __future__ import annotations
 

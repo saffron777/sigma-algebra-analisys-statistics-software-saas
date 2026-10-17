@@ -1,4 +1,4 @@
-"""Copying a whole Sigma database to another engine and back: every record arrives intact, ids included."""
+"""Copying a whole Sigma Algebra database to another engine and back: every record arrives intact, ids included."""
 
 import json
 import uuid

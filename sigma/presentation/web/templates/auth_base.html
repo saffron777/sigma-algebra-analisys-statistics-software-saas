@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="color-scheme" content="light dark">
-  <title>{{ page_title }} · Sigma</title>
+  <title>{{ page_title }} · {{ product_name }}</title>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
   <link rel="icon" type="image/x-icon" sizes="any" href="{{ url_for('static', filename='img/favicon.ico') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
@@ -15,17 +15,22 @@
   <script defer src="{{ url_for('static', filename='vendor/alpine.min.js') }}"></script>
 </head>
 <body class="min-h-full bg-[#eef1f4] dark:bg-[#1b1b1f]">
+  {% if demo_mode %}
+  <div class="border-b border-amber-300 bg-amber-50 px-4 py-1.5 text-center text-[12px] font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+    Demo pública de {{ product_short }} · datos de ejemplo · no suba datos reales
+  </div>
+  {% endif %}
   <main class="grid min-h-screen place-items-center px-4 py-10">
     <div class="w-full max-w-md space-y-6">
       <div class="flex flex-col items-center gap-3 text-center">
         <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="72" height="72" class="size-[4.5rem]">
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Sigma</h1>
+          <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ product_short }}</h1>
           <p class="text-sm text-slate-500 dark:text-slate-400">Plataforma de análisis estadístico</p>
         </div>
       </div>
       {% block content %}{% endblock %}
-      <p class="text-center text-xs text-slate-400">Sigma v{{ sigma_version }} · <a class="underline" href="/licencia">{{ license_name }}</a> · sin garantía · <a class="underline" href="{{ source_url }}" target="_blank" rel="noopener noreferrer">Código fuente</a></p>
+      <p class="text-center text-xs text-slate-400">{{ product_short }} v{{ sigma_version }} · <a class="underline" href="/licencia">{{ license_name }}</a> · sin garantía · <a class="underline" href="{{ source_url }}" target="_blank" rel="noopener noreferrer">Código fuente</a>{% if demo_url %} · <a class="underline" href="{{ demo_url }}">Demo</a>{% endif %}</p>
     </div>
   </main>
 </body>

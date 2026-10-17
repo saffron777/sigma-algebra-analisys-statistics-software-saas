@@ -1,4 +1,4 @@
-"""Tries a database setting before Sigma is pointed at it, and explains any failure in plain Spanish."""
+"""Tries a database setting before Sigma Algebra is pointed at it, and explains any failure in plain Spanish."""
 
 from __future__ import annotations
 
@@ -97,13 +97,13 @@ class ConnectionTester:
     @staticmethod
     def _describe_state(state: str, tables: list[str]) -> str:
         if state == STATE_EMPTY:
-            return "Base vacía: Sigma creará sus tablas."
+            return "Base vacía: Sigma Algebra creará sus tablas."
         if state == STATE_SIGMA:
-            return "Ya contiene datos de Sigma: se usarán tal como están."
-        return f"Contiene {len(tables)} tablas que no son de Sigma."
+            return "Ya contiene datos de Sigma Algebra: se usarán tal como están."
+        return f"Contiene {len(tables)} tablas que no son de Sigma Algebra."
 
     def _probe_write(self, conn: Connection, settings: DatabaseSettings, steps: list[CheckStep]) -> bool:
-        """Creates, fills and drops a throw-away table: what Sigma needs to be able to do."""
+        """Creates, fills and drops a throw-away table: what Sigma Algebra needs to be able to do."""
         if settings.schema and not inspect(conn).has_schema(settings.schema):
             steps.append(CheckStep("Permisos", True, "El esquema se creará al aplicar."))
             return True
@@ -140,12 +140,12 @@ class ConnectionTester:
     def _headline(ok: bool, state: str, writable: bool) -> str:
         if state == STATE_FOREIGN:
             return (
-                "La base de datos ya tiene tablas que no son de Sigma. Use una base vacía o indique un esquema propio."
+                "La base de datos ya tiene tablas que no son de Sigma Algebra. Use una base vacía o indique un esquema propio."
             )
         if not writable:
             return "Se pudo conectar, pero el usuario no puede crear tablas."
         if state == STATE_SIGMA:
-            return "Conexión correcta. La base ya contiene datos de Sigma."
+            return "Conexión correcta. La base ya contiene datos de Sigma Algebra."
         return "Conexión correcta. La base está vacía y lista para usarse."
 
     def _test_document_database(self, settings: DatabaseSettings) -> ConnectionReport:

@@ -28,7 +28,7 @@ def main() -> int:
     users = container.list_users.execute()
     if not users:
         print(
-            "Todavía no hay cuentas: abra Sigma en el navegador y cree el administrador (o use scripts/create_user.py)."
+            "Todavía no hay cuentas: abra Sigma Algebra en el navegador y cree el administrador (o use scripts/create_user.py)."
         )
         return 1
     if args.user:

@@ -228,7 +228,7 @@ class JupyterKernelPool:
             elif msg["msg_type"] == "status" and msg["content"]["execution_state"] == "idle":
                 break
         if failure:
-            raise KernelError(f"El kernel no pudo preparar el entorno de Sigma ({failure}).")
+            raise KernelError(f"El kernel no pudo preparar el entorno de Sigma Algebra ({failure}).")
 
     def _discard(self, session_id: str, session: _Session) -> None:
         with self._pool_lock:

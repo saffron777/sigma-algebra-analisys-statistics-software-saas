@@ -3,7 +3,7 @@
 `LICENSE` (en la raíz) es la licencia del proyecto: **AGPL-3.0-or-later**.
 
 Este directorio contiene los textos de licencia de componentes de terceros distribuidos
-con Sigma:
+con Sigma Algebra:
 
 - `frontend/`: bibliotecas JavaScript que se copian a
   `sigma/presentation/web/static/vendor/`.

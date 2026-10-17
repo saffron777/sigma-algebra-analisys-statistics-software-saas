@@ -1,4 +1,4 @@
-# Configuración de gitleaks para Sigma.
+# Configuración de gitleaks para Sigma Algebra.
 # Los valores marcados son contraseñas de prueba de la suite, no credenciales reales.
 [allowlist]
 description = "Contraseñas de prueba y placeholders de ejemplo"

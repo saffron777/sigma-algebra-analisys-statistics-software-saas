@@ -49,7 +49,7 @@ let manualResizeHandler = null;
 let manualKeydownHandler = null;
 let manualClickHandler = null;
 
-// Sigma variable kind -> Jspreadsheet v5 column definition
+// Sigma Algebra variable kind -> Jspreadsheet v5 column definition
 function manualColumn(variable, index) {
   const title = (variable.name || "").trim() || `V${index + 1}`;
   const base = { title, width: 140 };

@@ -1,4 +1,4 @@
-# Publicar una versión de Sigma
+# Publicar una versión de Sigma Algebra
 
 Checklist para el mantenedor. Sustituye `1.0.0` por la versión correspondiente.
 
@@ -19,7 +19,9 @@ Checklist para el mantenedor. Sustituye `1.0.0` por la versión correspondiente.
    ```
 
 4. Comprueba que `git status` no incluye `.env`, `instance/`, `.gitconfig.backup`, bases de
-   datos ni archivos temporales.
+   datos ni archivos temporales. Si toca reescribir el historial, haz copia con
+   `git bundle create ... --all` y verifica después que `.gitconfig.backup` no aparece en
+   ningún commit.
 5. Construye y prueba Docker:
 
    ```bash
@@ -44,23 +46,23 @@ Para verificar las sumas:
 
 ```bash
 cd dist && sha256sum -c SHA256SUMS && cd ..
-gpg --detach-sign --armor dist/sigma-1.0.0.tar.gz
+gpg --detach-sign --armor dist/sigma-algebra-analisys-statistics-software-saas-1.0.0.tar.gz
 ```
 
 ## Publicar
 
-1. `git commit -s` con los cambios; `git tag -s v1.0.0 -m "Sigma 1.0.0"`.
+1. `git commit -s` con los cambios; `git tag -s v1.0.0 -m "Sigma Algebra 1.0.0"`.
 2. `git push origin main --tags`.
 3. En GitHub, crea la release `v1.0.0` y adjunta los archivos de `dist/` y `SHA256SUMS`.
 4. Opcional: publica la imagen en GHCR:
 
    ```bash
-   docker buildx build --push -t ghcr.io/saffron777/sigma:1.0.0 -t ghcr.io/saffron777/sigma:latest .
+   bash scripts/publish_docker.sh 1.0.0
    ```
 
 5. Opcional: archiva la release en Zenodo para obtener un DOI y añade el badge al README.
-6. Difunde: Free Software Directory, GitHub, r/statistics, r/selfhosted, Hacker News
-   («Show HN»), Lobsters y tus redes. Incluye el quick start de Docker.
+6. Difunde siguiendo [docs/launch/checklist.md](launch/checklist.md): demo estable, Show HN,
+   LinkedIn, Reddit y las fichas de directorios. Incluye el quick start de Docker.
 
 ## Después
 

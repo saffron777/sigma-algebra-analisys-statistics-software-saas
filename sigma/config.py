@@ -44,7 +44,7 @@ class Config:
     host: str = "127.0.0.1"
     port: int = 5000
     secret_key: str = ""
-    source_url: str = "https://github.com/saffron777/Sigma"
+    source_url: str = "https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas"
     instance_dir: Path = PROJECT_ROOT / "instance"
     db_path: Path = PROJECT_ROOT / "instance" / "sigma.db"  # the SQLite file used when no other database is chosen
     database: DatabaseSettings | None = None  # which database to persist to (None = SQLite at db_path)
@@ -63,6 +63,9 @@ class Config:
     ai_requests_per_hour: int = 20
     secure_cookies: bool = False
     allowed_hosts: tuple[str, ...] = ("127.0.0.1", "localhost", "[::1]", "::1")
+    demo_mode: bool = False
+    demo_user: str = "demo"
+    demo_url: str = ""
     testing: bool = False
     debug: bool = False
 
@@ -73,7 +76,7 @@ class Config:
         values = {
             "host": os.environ.get("SIGMA_HOST", "127.0.0.1"),
             "port": int(os.environ.get("SIGMA_PORT", "5000")),
-            "source_url": os.environ.get("SIGMA_SOURCE_URL", "https://github.com/saffron777/Sigma").strip(),
+            "source_url": os.environ.get("SIGMA_SOURCE_URL", "https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas").strip(),
             "instance_dir": instance_dir,
             "db_path": Path(os.environ.get("SIGMA_DB_PATH", instance_dir / "sigma.db")),
             "notebooks_dir": Path(os.environ.get("SIGMA_NOTEBOOKS_DIR", instance_dir / "notebooks")),
@@ -91,6 +94,9 @@ class Config:
             "draft_retention_days": int(os.environ.get("SIGMA_DRAFT_RETENTION_DAYS", "14")),
             "ai_requests_per_hour": int(os.environ.get("SIGMA_AI_REQUESTS_PER_HOUR", "20")),
             "secure_cookies": os.environ.get("SIGMA_SECURE_COOKIES", "").lower() in {"1", "true", "yes"},
+            "demo_mode": os.environ.get("SIGMA_DEMO_MODE", "").lower() in {"1", "true", "yes", "on"},
+            "demo_user": os.environ.get("SIGMA_DEMO_USER", "demo").strip() or "demo",
+            "demo_url": os.environ.get("SIGMA_DEMO_URL", "").strip(),
             "debug": os.environ.get("SIGMA_DEBUG", "").lower() in {"1", "true", "yes"},
         }
         extra_hosts = tuple(h.strip() for h in os.environ.get("SIGMA_ALLOWED_HOSTS", "").split(",") if h.strip())

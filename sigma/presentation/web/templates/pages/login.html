@@ -17,6 +17,9 @@
     <button type="submit" class="btn btn-primary w-full" :disabled="busy || !username || !password">
       <span x-text="busy ? 'Verificando…' : 'Entrar'"></span>
     </button>
+    {% if demo_mode %}
+    <a class="btn w-full text-center" href="{{ url_for('pages.demo_login') }}">Probar la demo pública</a>
+    {% endif %}
   </div>
 </form>
 {% endblock %}

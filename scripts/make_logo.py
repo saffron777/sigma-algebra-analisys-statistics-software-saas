@@ -1,11 +1,11 @@
-"""Generates the Sigma logo (SVG, PNG and ICO) from one geometry definition.
+"""Generates the Sigma Algebra logo (SVG, PNG and ICO) from one geometry definition.
 
     python scripts/make_logo.py
 
 The mark is a sample space Ω (the ring), an event A inside it (the disc, with a Σ — the σ-algebra) and Pollux, the
 four-pointed orange star, as one outcome ω in the complement. A compact variant without the Σ and with heavier strokes
 is used at favicon sizes, where the full mark loses detail. Pillow (already a dependency) draws the PNG/ICO files and
-matplotlib's font outlines draw the «Sigma» lettering, so nothing new is needed.
+matplotlib's font outlines draw the «Sigma Algebra» lettering, so nothing new is needed.
 """
 
 from __future__ import annotations
@@ -103,7 +103,7 @@ def mark_svg_body(g: dict, uid: str = "") -> str:
     return "".join(parts)
 
 
-def mark_svg(g: dict, title: str = "Sigma") -> str:
+def mark_svg(g: dict, title: str = "Sigma Algebra") -> str:
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" '
         f'aria-label="{title}"><title>{title}</title>{mark_svg_body(g)}</svg>\n'
@@ -132,11 +132,11 @@ def lettering_path(text: str, height: float) -> tuple[str, float]:
 
 
 def wordmark_svg() -> str:
-    text, width = lettering_path("Sigma", 118)
+    text, width = lettering_path("Sigma Algebra", 118)
     total_width = 256 + 36 + width
     return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {total_width:.0f} 256" role="img" aria-label="Sigma">'
-        f"<title>Sigma</title>{mark_svg_body(FULL, 'w')}"
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {total_width:.0f} 256" role="img" aria-label="Sigma Algebra">'
+        f"<title>Sigma Algebra</title>{mark_svg_body(FULL, 'w')}"
         f'<g transform="translate(292 188)"><path d="{text}" fill="{INK}"/></g></svg>\n'
     )
 
@@ -207,12 +207,12 @@ def render_wordmark(height: int = 256) -> Image.Image:
     from PIL import ImageFont
 
     face = ImageFont.truetype(font, int(height * 0.58))
-    left, top, right, bottom = face.getbbox("Sigma")
+    left, top, right, bottom = face.getbbox("Sigma Algebra")
     width = height + int(height * 0.14) + right
     canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     canvas.alpha_composite(mark, (0, 0))
     ImageDraw.Draw(canvas).text(
-        (height + int(height * 0.14), int(height * 0.73) - bottom), "Sigma", font=face, fill=_rgb(INK) + (255,)
+        (height + int(height * 0.14), int(height * 0.73) - bottom), "Sigma Algebra", font=face, fill=_rgb(INK) + (255,)
     )
     return canvas
 

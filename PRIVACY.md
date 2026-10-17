@@ -1,6 +1,6 @@
 # Privacidad y tratamiento de datos
 
-Sigma está diseñado para ejecutarse en un servidor propio. Esta página describe qué datos
+Sigma Algebra está diseñado para ejecutarse en un servidor propio. Esta página describe qué datos
 se guardan y cuándo pueden salir del servidor.
 
 ## Qué se guarda y dónde
@@ -20,7 +20,7 @@ sistema de archivos.
 
 ## Qué sale del servidor
 
-- **No hay telemetría, analítica ni comprobación de actualizaciones.** Sigma no llama a
+- **No hay telemetría, analítica ni comprobación de actualizaciones.** Sigma Algebra no llama a
   servicios externos por su cuenta.
 - Las **importaciones desde bases de datos o APIs** solo se ejecutan cuando el usuario las
   pide.
@@ -35,11 +35,11 @@ sistema de archivos.
 
 ## Cookies y sesión
 
-Sigma usa una cookie de sesión para mantener la cuenta autenticada y una preferencia local
+Sigma Algebra usa una cookie de sesión para mantener la cuenta autenticada y una preferencia local
 del navegador para el tema claro/oscuro. No usa cookies publicitarias ni de seguimiento.
 
 ## Derechos y contacto
 
-Para ejercer derechos sobre los datos alojados en una instalación de Sigma, contacta con el
+Para ejercer derechos sobre los datos alojados en una instalación de Sigma Algebra, contacta con el
 administrador de esa instalación. Para cuestiones sobre el proyecto, abre una incidencia en
 el repositorio público.

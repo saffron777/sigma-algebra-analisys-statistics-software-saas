@@ -83,7 +83,7 @@ class DocumentAssembler:
 
     def __init__(self, templates: TemplateRepository, default_logo: bytes | None = None) -> None:
         self._templates = templates
-        self._default_logo = default_logo  # the Sigma mark: the look of a report that has no template
+        self._default_logo = default_logo  # the Sigma Algebra mark: the look of a report that has no template
 
     def build(
         self,

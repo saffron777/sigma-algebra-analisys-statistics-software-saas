@@ -209,18 +209,18 @@ document.addEventListener("alpine:init", () => {
 
     confirmText(target) {
       if (this.willMigrate) {
-        return `Se copiarán a «${target}» todos los datos de Sigma (cuentas, conjuntos de datos, resultados, notebooks…).\n\n`
-          + "• Mientras dure la copia Sigma no estará disponible para nadie (minutos, según el volumen).\n"
+        return `Se copiarán a «${target}» todos los datos de Sigma Algebra (cuentas, conjuntos de datos, resultados, notebooks…).\n\n`
+          + "• Mientras dure la copia Sigma Algebra no estará disponible para nadie (minutos, según el volumen).\n"
           + "• Se cerrarán las consolas de Python en ejecución; las sesiones se conservan.\n"
           + "• La base actual no se modifica ni se borra: queda como copia de seguridad.\n\n¿Continuar?";
       }
-      return `Sigma pasará a guardar todo en «${target}».\n\n`
+      return `Sigma Algebra pasará a guardar todo en «${target}».\n\n`
         + "• Los datos de la base actual NO se copian: se usa lo que ya haya en la nueva base (si está vacía, deberá crear de nuevo la cuenta de administrador).\n"
         + "• Se cerrarán las sesiones y las consolas de Python en ejecución.\n"
         + "• La base actual no se borra: puede volver a ella cuando quiera.\n\n¿Continuar?";
     },
 
-    /** Follows the background migration until it ends (the page keeps working while Sigma is in maintenance). */
+    /** Follows the background migration until it ends (the page keeps working while Sigma Algebra is in maintenance). */
     async poll() {
       while (this.migrating) {
         await new Promise((resolve) => setTimeout(resolve, 800));

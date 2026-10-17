@@ -167,9 +167,9 @@ class PdfExporter:
             topMargin=margin,
             bottomMargin=margin,
             title=document.title,
-            author=document.author or brand.organization or "Sigma",
+            author=document.author or brand.organization or "Sigma Algebra",
             subject=document.subtitle or "",
-            creator="Sigma",
+            creator="Sigma Algebra",
         )
         header_space, footer_space = 9 * mm, 7 * mm
         body = Frame(
@@ -242,7 +242,7 @@ class PdfExporter:
         canvas.line(x0, self._footer_y + 4 * mm, x1, self._footer_y + 4 * mm)
         canvas.setFont(_FONT, 7.5)
         canvas.setFillColor(colors.HexColor(_GRAY))
-        canvas.drawString(x0, self._footer_y, (self._brand.footer_text or "Generado con Sigma")[:140])
+        canvas.drawString(x0, self._footer_y, (self._brand.footer_text or "Generado con Sigma Algebra")[:140])
         canvas.showOutline()
         canvas.restoreState()
 
