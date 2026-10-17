@@ -20,7 +20,9 @@
 
 1. **Lanzamiento suave (semana -1):** envía el enlace a 15–20 profesores/analistas, uno a uno.
    Corrige la fricción de instalación y los errores de onboarding.
-2. **Directorios:** envía las fichas a awesome-selfhosted, selfh.st y Free Software Directory.
+2. **Directorios:** envía las fichas a [awesome-selfhosted](../listings/awesome-selfhosted.md),
+   [selfh.st](../listings/selfh.st.md) y
+   [Free Software Directory](../listings/free-software-directory.md).
 3. **Show HN:** martes–jueves, 8–10 h (hora de la costa este de EE. UU.). Responde durante 48 h.
 4. **LinkedIn y Mastodon/Bluesky:** el mismo día o el siguiente, en español, con GIF.
 5. **Reddit:** r/selfhosted primero; r/Python al día siguiente; r/statistics solo si las reglas lo
