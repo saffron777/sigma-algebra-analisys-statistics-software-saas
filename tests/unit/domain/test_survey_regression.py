@@ -1,7 +1,6 @@
 """Regresión de encuestas: los modelos ponderados se ajustan y reportan coeficientes."""
 
 import numpy as np
-import pandas as pd
 
 from tests.analysis_data import run, standard_frame
 

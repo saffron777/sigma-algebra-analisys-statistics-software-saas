@@ -9,8 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from sigma.domain.ai import ANTHROPIC_KIND, GEMINI_KIND, OPENAI_KIND
-from sigma.domain.ai import AiModel
+from sigma.domain.ai import ANTHROPIC_KIND, GEMINI_KIND, OPENAI_KIND, AiModel
 from sigma.domain.errors import AiUnavailableError
 from sigma.domain.interpretation import InterpretationOutput, Prompt
 from sigma.infrastructure.ai.http import JsonClient

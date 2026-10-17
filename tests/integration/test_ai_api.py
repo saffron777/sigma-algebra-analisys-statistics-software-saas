@@ -1,7 +1,5 @@
 """Optional AI interpretation: availability, limits, privacy of what is sent, storage and model administration."""
 
-import json
-
 import pytest
 
 from sigma.app_factory import create_app

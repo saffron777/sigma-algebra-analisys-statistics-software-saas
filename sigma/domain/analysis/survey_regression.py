@@ -11,10 +11,18 @@ import statsmodels.formula.api as smf
 
 from sigma.domain.analysis import registry
 from sigma.domain.analysis.charts import scatter_chart
-from sigma.domain.analysis.modeling import PREDICTORS, coefficient_table, dropped_note, encode_binary, need_enough, prediction_frame, build_design
+from sigma.domain.analysis.modeling import (
+    PREDICTORS,
+    build_design,
+    coefficient_table,
+    dropped_note,
+    encode_binary,
+    need_enough,
+    prediction_frame,
+)
 from sigma.domain.analysis.output import Output
 from sigma.domain.analysis.spec import AnalysisSpec, FieldSpec, OutputSpec, RoleSpec
-from sigma.domain.errors import ComputationError, InvalidInputError
+from sigma.domain.errors import ComputationError
 
 MODULE = "encuestas"
 GROUP_REGRESSION = "Regresión de encuestas"

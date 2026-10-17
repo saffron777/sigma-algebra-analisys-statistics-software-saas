@@ -13,10 +13,16 @@ $python = ".\.venv\Scripts\python.exe"
 
 Write-Host "Instalando dependencias de Python..." -ForegroundColor Cyan
 & $python -m pip install --upgrade pip
-& $python -m pip install -r requirements-dev.txt
+if (Test-Path "requirements-dev.lock") {
+    & $python -m pip install -r requirements-dev.lock
+} elseif (Test-Path "requirements-dev.txt") {
+    & $python -m pip install -r requirements-dev.txt
+} else {
+    & $python -m pip install -r requirements.lock
+}
 
-Write-Host "Instalando y compilando el frontend (Tailwind, Plotly, Alpine)..." -ForegroundColor Cyan
-npm install
+Write-Host "Instalando y compilando el frontend (Tailwind, Plotly, Alpine, KaTeX)..." -ForegroundColor Cyan
+npm ci
 npm run build
 
 Write-Host "Generando los archivos de ejemplo (sample_data)..." -ForegroundColor Cyan

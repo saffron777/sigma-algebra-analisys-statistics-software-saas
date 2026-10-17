@@ -2,9 +2,20 @@
 
 # Sigma
 
+[![Licencia: AGPL-3.0-or-later](https://img.shields.io/badge/licencia-AGPL--3.0--or--later-blue.svg)](LICENSE)
+[![CI](https://github.com/saffron777/Sigma/actions/workflows/ci.yml/badge.svg)](https://github.com/saffron777/Sigma/actions/workflows/ci.yml)
+[![Docker](https://img.shields.io/badge/docker-disponible-2496ED.svg)](Dockerfile)
+
 Plataforma web de análisis estadístico, hecha con **Flask** y **Tailwind CSS**, con arquitectura limpia.
 Funciona con **cuentas de usuario**: cada persona ve únicamente sus propios datasets, resultados y notebooks.
-Todo se ejecuta y se guarda en su propio servidor; nada sale de él.
+Todo se ejecuta y se guarda en su propio servidor. La única función que puede enviar datos fuera es la
+**interpretación con IA opcional**, que solo se activa al pulsar el botón y envía el resumen del resultado al
+proveedor configurado (ver [Privacidad](PRIVACY.md)).
+
+> **Software libre**: Sigma se distribuye bajo la **GNU Affero General Public License v3.0 o posterior**
+> (`AGPL-3.0-or-later`). Copyright (C) 2026 Frank Miranda. Si ejecutas una versión modificada como servicio
+> de red, debes ofrecer el código fuente correspondiente a sus usuarios. Consulta [LICENSE](LICENSE),
+> [NOTICE](NOTICE) y los [avisos de terceros](THIRD-PARTY-NOTICES.md).
 
 | Módulo | Qué hace |
 |---|---|
@@ -59,34 +70,67 @@ tablas y gráficos). Para que un dataset grande (decenas de MB, cientos de miles
 
 ## Instalación
 
+### Windows
+
 ```powershell
 .\scripts\setup.ps1
 ```
 
-El script crea `.venv`, instala las dependencias, compila Tailwind, copia las librerías del navegador
-(Plotly, Alpine, marked, DOMPurify) a `static/vendor` —así funciona sin internet— y genera los archivos de ejemplo.
+### Linux / macOS
 
-Manual, paso a paso:
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-npm install
-npm run build
-.\.venv\Scripts\python.exe scripts\make_sample_data.py
+```bash
+bash scripts/setup.sh
 ```
+
+Ambos scripts crean `.venv`, instalan las dependencias, compilan Tailwind, copian las librerías
+del navegador (Plotly, Alpine, marked, DOMPurify, KaTeX, JSpreadsheet) a `static/vendor`
+—así funciona sin internet— y generan los archivos de ejemplo.
+
+### Docker (recomendado para servidores)
+
+```bash
+docker compose up --build -d
+```
+
+La aplicación queda en <http://127.0.0.1:5000> y los datos persistentes en el volumen
+`sigma_instance`. Para cambiar la URL del código fuente, la base de datos o el secreto, copia
+`.env.example` a `.env` y ajusta los valores. En producción, pon Sigma detrás de un proxy
+inverso con HTTPS; no expongas el puerto de la consola sin autenticación. Lee
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) para HTTPS, copias de seguridad y actualizaciones.
+
+### Manual, paso a paso
+
+```bash
+python -m venv .venv
+# Windows:
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.lock
+# Linux/macOS:
+./.venv/bin/python -m pip install -r requirements-dev.lock
+npm ci
+npm run build
+python scripts/make_sample_data.py
+```
+
+`requirements-dev.lock` incluye el runtime y las herramientas de desarrollo. Para un
+despliegue de producción sin pytest/ruff usa `requirements.lock` (es el que utiliza la
+imagen Docker). Si no existe el lock, usa `requirements-dev.txt` mientras se regenera.
+Node.js solo hace falta para compilar los assets; el runtime es Python.
 
 ## Ejecución
 
 ```powershell
-.\scripts\run.ps1            # o:  .\.venv\Scripts\python.exe run.py
+.\scripts\run.ps1            # Windows
+```
+
+```bash
+bash scripts/run.sh             # Linux/macOS
 ```
 
 Abra <http://127.0.0.1:5000>. La primera vez Sigma pide **crear la cuenta de administrador** (`/setup`); si ya había
 datos de la versión de un solo usuario, esa cuenta los hereda. Para un servidor más robusto:
 
-```powershell
-.\.venv\Scripts\waitress-serve.exe --listen=127.0.0.1:5000 wsgi:app
+```bash
+waitress-serve --listen=127.0.0.1:5000 wsgi:app
 ```
 
 Variables de entorno (opcionales, también en un archivo `.env`, ver `.env.example`):
@@ -356,12 +400,15 @@ tests/              unit/ (dominio, infraestructura), conformance/ (la misma bat
 ## Desarrollo
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest              # 771 pruebas con SQLite y MongoDB en memoria (la consola arranca kernels reales: ~5 min)
+.\.venv\Scripts\python.exe -m pytest              # suite completa (SQLite y MongoDB en memoria; ~5 min)
 .\.venv\Scripts\python.exe -m ruff check .        # lint
 .\.venv\Scripts\python.exe -m ruff format .       # formato
 npm run watch:css                                 # recompila Tailwind al editar plantillas/JS
 $env:SIGMA_DEBUG = "1"; .\.venv\Scripts\python.exe run.py   # recarga automática
 ```
+
+Para publicar una versión (versionado, licencias, artefactos y Docker), sigue
+[docs/RELEASING.md](docs/RELEASING.md).
 
 **Probar otros motores de base de datos.** La batería `tests/conformance/` corre siempre en SQLite y en MongoDB en memoria;
 para ejecutarla contra servidores reales levante los contenedores de prueba y defina las URL (ver
@@ -394,3 +441,44 @@ Las bases de esas URL deben estar vacías y ser desechables: cada prueba empieza
   no tiene transacciones entre documentos, así que borrar una cuenta o un dataset es una secuencia de operaciones (con limpieza si falla).
   Cambiar de base desde la página afecta a este proceso: si ejecuta varios procesos de Sigma, reinicie los demás. La migración copia
   las importaciones pendientes sin su vista previa (se vuelve a generar desde el archivo).
+
+## Licencia
+
+Sigma es software libre bajo la **GNU Affero General Public License, versión 3 o posterior**
+(`AGPL-3.0-or-later`).
+
+- Texto completo: [LICENSE](LICENSE).
+- Copyright: `Copyright (C) 2026 Frank Miranda`.
+- Código fuente: <https://github.com/saffron777/Sigma>.
+- Avisos de terceros y textos de licencias: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)
+  y [LICENSES/](LICENSES/).
+- Marcas y nombres de terceros: [TRADEMARKS.md](TRADEMARKS.md).
+
+La AGPL exige que, si modificas Sigma y lo ofreces como servicio de red, pongas a disposición
+de sus usuarios el código fuente de tu versión. La aplicación muestra un enlace
+«Código fuente» en el pie y en «Acerca de»; configura `SIGMA_SOURCE_URL` si publicas tu
+propia versión en otra dirección.
+
+El software se distribuye **sin garantía**, según los términos de la AGPL.
+
+## Privacidad y seguridad
+
+- [PRIVACY.md](PRIVACY.md): qué se guarda, qué no sale del servidor y cómo funciona la IA
+  opcional.
+- [SECURITY.md](SECURITY.md): cómo reportar vulnerabilidades y el modelo de seguridad. La
+  consola Python/R ejecuta código arbitrario y está desactivada por defecto; no la concedas a
+  cuentas no confiables.
+- No hay telemetría. Las importaciones externas y la IA solo se ejecutan por acción del
+  usuario.
+
+## Contribuir
+
+Lee [CONTRIBUTING.md](CONTRIBUTING.md). Usamos el **DCO** (`git commit -s`), no un CLA.
+Al participar aceptas el [Código de Conducta](CODE_OF_CONDUCT.md). Las contribuciones se
+publican bajo AGPL-3.0-or-later.
+
+## Créditos
+
+Sigma se apoya en Flask, pandas, NumPy, SciPy, statsmodels, scikit-learn, Plotly, Alpine.js,
+JSpreadsheet, KaTeX, Tailwind CSS y muchas otras bibliotecas libres. Sus licencias y autores
+figuran en [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

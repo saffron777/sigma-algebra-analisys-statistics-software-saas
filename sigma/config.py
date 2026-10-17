@@ -35,11 +35,16 @@ def _load_or_create_secret(instance_dir: Path) -> str:
     return key
 
 
+# Values copied from the example file: they are not a real secret, so they are ignored.
+PLACEHOLDER_SECRETS = frozenset({"cambia-esta-clave", "cambiame", "changeme", "change-me", "secret"})
+
+
 @dataclass(frozen=True)
 class Config:
     host: str = "127.0.0.1"
     port: int = 5000
     secret_key: str = ""
+    source_url: str = "https://github.com/saffron777/Sigma"
     instance_dir: Path = PROJECT_ROOT / "instance"
     db_path: Path = PROJECT_ROOT / "instance" / "sigma.db"  # the SQLite file used when no other database is chosen
     database: DatabaseSettings | None = None  # which database to persist to (None = SQLite at db_path)
@@ -68,6 +73,7 @@ class Config:
         values = {
             "host": os.environ.get("SIGMA_HOST", "127.0.0.1"),
             "port": int(os.environ.get("SIGMA_PORT", "5000")),
+            "source_url": os.environ.get("SIGMA_SOURCE_URL", "https://github.com/saffron777/Sigma").strip(),
             "instance_dir": instance_dir,
             "db_path": Path(os.environ.get("SIGMA_DB_PATH", instance_dir / "sigma.db")),
             "notebooks_dir": Path(os.environ.get("SIGMA_NOTEBOOKS_DIR", instance_dir / "notebooks")),
@@ -98,6 +104,8 @@ class Config:
                 else load_settings(values["instance_dir"], values["db_path"])
             )
         secret = values.pop("secret_key", None) or os.environ.get("SIGMA_SECRET_KEY") or ""
+        if secret.strip().lower() in PLACEHOLDER_SECRETS:
+            secret = ""  # copied example value: not a real secret
         if not secret:
             secret = secrets.token_hex(32) if values.get("testing") else _load_or_create_secret(values["instance_dir"])
         return cls(secret_key=secret, **values)

@@ -20,9 +20,12 @@
         <input class="input" type="search" placeholder="Buscar en título, notas o dataset" x-model="filters.search" @input="debouncedSearch()">
         <div class="flex items-center justify-between gap-1">
           <button type="button" class="btn btn-ghost btn-sm" @click="toggleAll()">Marcar todos</button>
-          <button type="button" class="btn btn-primary btn-sm" :disabled="!selectedCount" @click="exportSelected()"
-                  title="Reúne los resultados marcados en un único documento">
-            {{ icon("download", "size-3.5") }} <span x-text="selectedCount ? `Exportar (${selectedCount})` : 'Exportar'"></span></button>
+          <div class="flex items-center gap-1">
+            {{ clear_button("loading") }}
+            <button type="button" class="btn btn-primary btn-sm" :disabled="!selectedCount" @click="exportSelected()"
+                    title="Exportar informe: reúne los resultados marcados en un único documento">
+              {{ icon("download", "size-3.5") }} <span x-text="selectedCount ? `Exportar (${selectedCount})` : 'Exportar'"></span></button>
+          </div>
         </div>
       </div>
 

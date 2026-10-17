@@ -1,0 +1,56 @@
+name: Error o problema
+description: Reportar un fallo reproducible de Sigma
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por reportar. **No incluyas datos personales, contraseñas ni claves.**
+        Para vulnerabilidades de seguridad usa el canal privado de SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Versión de Sigma
+      description: La ves en el pie de página o en /health.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Instalación
+      options:
+        - Docker
+        - Windows (setup.ps1)
+        - Linux/macOS (setup.sh)
+        - Manual
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+      placeholder: |
+        1. Ir a ...
+        2. Pulsar ...
+        3. Ver el error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamiento esperado
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Mensajes de error o registro
+      description: Recorta y elimina cualquier dato sensible.
+      render: text
+  - type: input
+    id: environment
+    attributes:
+      label: Entorno
+      placeholder: "Windows 11, Python 3.13, Chrome 140; o Docker 29"

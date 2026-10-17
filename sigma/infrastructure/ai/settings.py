@@ -39,7 +39,6 @@ from sigma.infrastructure.ai.servers import (
     load_configuration,
     new_model_id,
     require_room,
-    save_configuration,
     stored_models,
 )
 

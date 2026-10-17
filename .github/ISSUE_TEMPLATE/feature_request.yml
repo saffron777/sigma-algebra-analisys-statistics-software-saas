@@ -1,0 +1,28 @@
+name: Mejora o funcionalidad
+description: Proponer una mejora para Sigma
+title: "[Mejora]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: ¿Qué problema resuelve?
+      description: Describe el caso de uso y a quién afecta.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Propuesta
+      description: Cómo imaginas la solución, con alternativas si las hay.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+  - type: input
+    id: references
+    attributes:
+      label: Referencias
+      description: Enlaces a documentación, otros programas u hojas de cálculo equivalentes.

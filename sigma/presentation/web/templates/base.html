@@ -1,7 +1,7 @@
 <!doctype html>
 {% from "partials/macros.html" import icon %}
 
-{% macro menu_items(items) %}
+{% macro menu_items(items, mark_active=True) %}
   {% for item in items %}
     {% if item.kind == "__sep__" %}
       <div class="menu-separator"></div>
@@ -16,7 +16,7 @@
     {% elif item.key == "consola" and not (current_user and current_user.can_use_console) %}
     {% elif item.key in ("usuarios", "basedatos") and not (current_user and current_user.is_admin) %}
     {% else %}
-      <a class="menu-item" href="{{ item.href }}">{{ icon(item.key) }} {{ item.label }}</a>
+      <a class="menu-item" href="{{ item.href }}"{% if mark_active and item.key == active %} aria-current="page"{% endif %}>{{ icon(item.key) }} {{ item.label }}</a>
     {% endif %}
   {% endfor %}
 {% endmacro %}
@@ -78,7 +78,7 @@
         {% for group in menu %}
         <div>
           <p class="menu-label">{{ group.title }}</p>
-          {{ menu_items(group["items"]) }}
+          {{ menu_items(group["items"], False) }}
         </div>
         {% endfor %}
         <button type="button" class="menu-item" @click="toggleTheme()"><span x-show="!dark">{{ icon("moon", "size-4") }}</span><span x-show="dark" x-cloak>{{ icon("sun", "size-4") }}</span> Tema claro/oscuro</button>
@@ -108,7 +108,7 @@
   <footer class="statusbar" aria-label="Barra de estado">
     <span class="statusbar-cell">Sigma listo</span>
     <span class="statusbar-cell" x-text="$store.datasets.active ? `${$store.datasets.active.name} · ${$store.datasets.active.n_rows} filas × ${$store.datasets.active.n_cols} col.` : 'Sin dataset activo'"></span>
-    <span class="statusbar-cell ml-auto">Sigma v{{ sigma_version }}</span>
+    <span class="statusbar-cell ml-auto">Sigma v{{ sigma_version }} · <a class="underline" href="/licencia">{{ license_name }}</a> · sin garantía · <a class="underline" href="{{ source_url }}" target="_blank" rel="noopener noreferrer">Código fuente</a></span>
   </footer>
 
   {% include "partials/save_dialog.html" %}

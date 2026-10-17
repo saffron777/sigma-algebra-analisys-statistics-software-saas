@@ -427,12 +427,13 @@
       <div x-show="viewer.mode === 'variables'" x-cloak class="space-y-3">
         <div class="table-wrap max-h-[60vh] overflow-auto">
           <table class="tbl">
-            <thead><tr><th>Nombre</th><th>Tipo</th><th class="text-right">Vacíos</th></tr></thead>
+            <thead><tr><th>Nombre</th><th>Tipo</th><th>Categorías</th><th class="text-right">Vacíos</th></tr></thead>
             <tbody>
               <template x-for="c in viewer.dataset?.columns ?? []" :key="c.name">
                 <tr>
                   <td class="font-medium" x-text="c.name"></td>
                   <td class="w-56">{{ kind_select("viewer.kinds[c.name]") }}<span class="mt-0.5 block text-xs text-slate-400" x-text="kindLabels[c.kind]"></span></td>
+                  <td class="max-w-sm truncate text-xs text-slate-500 dark:text-slate-400" :title="variableLabels(c.name)" x-text="variableLabels(c.name) || '—'"></td>
                   <td class="text-right" x-text="c.n_missing.toLocaleString('es')"></td>
                 </tr>
               </template>
@@ -470,14 +471,14 @@
         <div x-show="editor.tab === 'variables'" class="space-y-2 overflow-y-auto">
           <div class="flex flex-wrap items-center gap-2">
             <button type="button" class="btn btn-secondary btn-sm" x-show="editor.mode === 'create'" @click="addVariable()">{{ icon("plus", "size-4") }} Añadir variable</button>
-            <p class="hint" x-show="editor.mode === 'create'">Defina el nombre y el tipo de cada variable; luego pase a la pestaña <strong>Datos</strong> para escribir los valores.</p>
+            <p class="hint" x-show="editor.mode === 'create'">Defina el nombre, el tipo y, si es categórica, sus categorías (código y etiqueta); luego pase a la pestaña <strong>Datos</strong> para escribir los valores.</p>
             <p class="hint" x-show="editor.mode === 'edit'" x-cloak>Las variables son de solo lectura; corrija los valores en la pestaña <strong>Datos</strong>.</p>
           </div>
           <div class="table-wrap">
             <table class="tbl">
-              <thead><tr><th class="w-10">#</th><th>Nombre</th><th>Tipo</th><th>Opciones</th><th class="w-16 text-right"></th></tr></thead>
-              <tbody>
-                <template x-for="(v, i) in editor.variables" :key="i">
+              <thead><tr><th class="w-10">#</th><th>Nombre</th><th>Tipo</th><th>Definición</th><th class="w-16 text-right"></th></tr></thead>
+              <template x-for="(v, i) in editor.variables" :key="i">
+                <tbody>
                   <tr>
                     <td class="text-slate-400" x-text="i + 1"></td>
                     <td><input class="input" type="text" maxlength="120" x-model="v.name" placeholder="nombre de la variable" :disabled="editor.mode === 'edit'"></td>
@@ -493,14 +494,49 @@
                           <input class="input !py-1 text-xs w-16" type="number" min="0" max="10" step="1" x-model.number="v.decimals" :aria-label="`Decimales de ${v.name || 'variable'}`">
                           <span class="text-xs text-slate-500">decimales</span></span>
                       </div>
-                      <div x-show="editor.mode === 'create' && v.kind === 'categorical'" x-cloak>
-                        <input class="input !py-1 text-xs" type="text" maxlength="500" x-model="v.categories" placeholder="Bajo, Medio, Alto">
+                      <div x-show="editor.mode === 'create' && v.kind === 'categorical'" x-cloak class="space-y-1">
+                        <button type="button" class="btn btn-secondary btn-sm" @click="toggleCategories(v)" :aria-expanded="v.showCategories ? 'true' : 'false'">
+                          {{ icon("pencil", "size-4") }} <span x-text="categoriesCount(v) ? `Categorías (${categoriesCount(v)})` : 'Definir categorías'"></span>
+                        </button>
+                        <p class="hint max-w-[16rem] truncate" x-show="categoriesCount(v)" :title="categoriesTitle(v)" x-text="categoriesSummary(v)"></p>
+                        <p class="hint text-amber-700 dark:text-amber-400" x-show="!categoriesCount(v)">Sin categorías: añada código y etiqueta.</p>
                       </div>
+                      <p class="hint" x-show="editor.mode === 'edit' && v.kind === 'categorical'" x-cloak :title="categoriesTitle(v)" x-text="categoriesCount(v) ? categoriesSummary(v) : 'Sin categorías definidas.'"></p>
                     </td>
                     <td class="text-right"><button x-show="editor.mode === 'create'" type="button" class="btn btn-ghost btn-sm text-red-600 dark:text-red-400" @click="removeVariable(i)" :aria-label="`Quitar variable ${i + 1}`">{{ icon("trash", "size-4") }}</button></td>
                   </tr>
-                </template>
-              </tbody>
+                  <tr x-show="editor.mode === 'create' && v.kind === 'categorical' && v.showCategories" x-cloak>
+                    <td></td>
+                    <td colspan="4">
+                      <div class="rounded-sm border border-slate-300 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-800">
+                        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                          <p class="label">Categorías de <span class="font-semibold" x-text="v.name.trim() || 'la variable'"></span></p>
+                          <button type="button" class="btn btn-ghost btn-sm" @click="v.showCategories = false">Listo</button>
+                        </div>
+                        <div class="space-y-1.5">
+                          <div class="flex items-center gap-2 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                            <span class="w-16 shrink-0">Código</span>
+                            <span class="min-w-0 flex-1">Etiqueta (leyenda)</span>
+                            <span class="w-7 shrink-0"></span>
+                          </div>
+                          <template x-for="(c, ci) in v.categories" :key="ci">
+                            <div class="flex items-center gap-2">
+                              <input class="input !py-1 text-xs w-16" type="text" maxlength="40" x-model="c.code" placeholder="1" :aria-label="`Código de la categoría ${ci + 1} de ${v.name || 'la variable'}`">
+                              <input class="input !py-1 text-xs min-w-0 flex-1" type="text" maxlength="200" x-model="c.label" @focus="rememberCategoryLabel(c)" @change="onCategoryLabelChange(v, c)" placeholder="Masculino" :aria-label="`Etiqueta de la categoría ${ci + 1} de ${v.name || 'la variable'}`">
+                              <button type="button" class="btn btn-ghost btn-sm shrink-0 text-red-600 dark:text-red-400" @click="removeCategory(v, ci)" :aria-label="`Quitar categoría ${ci + 1}`">{{ icon("trash", "size-4") }}</button>
+                            </div>
+                          </template>
+                        </div>
+                        <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+                          <button type="button" class="btn btn-secondary btn-sm" @click="addCategory(v)">{{ icon("plus", "size-4") }} Añadir categoría</button>
+                          <p class="hint mt-0">Cada categoría necesita código y etiqueta. En Datos podrá elegir la etiqueta o escribir el código.</p>
+                        </div>
+                        <p class="alert alert-warning mt-2" role="alert" x-show="categoryIssue(v)" x-cloak x-text="categoryIssue(v)"></p>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </template>
             </table>
           </div>
           <div class="flex justify-end" x-show="editor.mode === 'create'"><button type="button" class="btn btn-primary" @click="setEditorTab('datos')">Continuar a Datos</button></div>
@@ -519,6 +555,7 @@
             <button type="button" class="toolbar-btn" @click="sheetAction('deleteRow')" data-tip="Eliminar fila" aria-label="Eliminar fila">{{ icon("delete-row", "size-4") }}</button>
           </div>
           <div x-ref="manualSheet" class="min-h-0 flex-1 w-full"></div>
+          <p class="hint">En las variables categóricas elija una etiqueta de la lista o escriba su código; se guarda la etiqueta.</p>
           <p class="hint">Atajos: Ctrl+C copiar · Ctrl+V pegar · Ctrl+Z deshacer · clic derecho para insertar/eliminar filas y columnas.</p>
         </div>
 

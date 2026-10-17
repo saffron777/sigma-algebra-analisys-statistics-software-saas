@@ -1,0 +1,12 @@
+# Configuración de gitleaks para Sigma.
+# Los valores marcados son contraseñas de prueba de la suite, no credenciales reales.
+[allowlist]
+description = "Contraseñas de prueba y placeholders de ejemplo"
+regexes = [
+  '''Clave-Segura-2024!''',
+  '''cambia-esta-clave''',
+]
+paths = [
+  '''tests/.*''',
+  '''\.env\.example''',
+]

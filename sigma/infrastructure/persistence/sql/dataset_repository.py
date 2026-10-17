@@ -69,24 +69,27 @@ class SqlDatasetRepository:
             raise
         return self.get_info(dataset_id)
 
-    def replace_data(self, dataset_id: str, frame: pd.DataFrame) -> DatasetInfo:
+    def replace_data(
+        self, dataset_id: str, frame: pd.DataFrame, source_meta: dict[str, Any] | None = None
+    ) -> DatasetInfo:
         new_table = table_io.new_table_name("ds")
         try:
             with self._db.begin() as conn:
                 row = self._row(conn, dataset_id)
                 col_map = table_io.write_frame(conn, new_table, frame)
                 dtypes, columns = self._frame_metadata(frame)
+                values: dict[str, Any] = {
+                    "n_rows": len(frame),
+                    "n_cols": frame.shape[1],
+                    "dtypes": dtypes,
+                    "columns_info": columns,
+                    "table_name": new_table,
+                    "col_map": json.dumps(col_map),
+                }
+                if source_meta is not None:
+                    values["source_meta"] = json.dumps(source_meta, ensure_ascii=False, default=str)
                 conn.execute(
-                    update(_d)
-                    .where(_d.c.id == dataset_id, _d.c.user_id == self._user)
-                    .values(
-                        n_rows=len(frame),
-                        n_cols=frame.shape[1],
-                        dtypes=dtypes,
-                        columns_info=columns,
-                        table_name=new_table,
-                        col_map=json.dumps(col_map),
-                    )
+                    update(_d).where(_d.c.id == dataset_id, _d.c.user_id == self._user).values(**values)
                 )
                 table_io.drop_table(conn, row.table_name)
                 bump_sync(conn, self._user, "datasets")

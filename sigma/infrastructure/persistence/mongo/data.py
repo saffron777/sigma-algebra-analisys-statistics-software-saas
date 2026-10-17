@@ -65,24 +65,24 @@ class MongoDatasetRepository:
         self._core.bump_sync(self._user, "datasets")
         return self.get_info(dataset_id)
 
-    def replace_data(self, dataset_id: str, frame: pd.DataFrame) -> DatasetInfo:
+    def replace_data(
+        self, dataset_id: str, frame: pd.DataFrame, source_meta: dict[str, Any] | None = None
+    ) -> DatasetInfo:
         doc = self._doc(dataset_id)
         new_owner = frames.new_owner("ds")
         try:
             frames.write_frame(self._core, new_owner, frame)
             dtypes, columns = self._frame_metadata(frame)
-            self._datasets.update_one(
-                {"id": dataset_id, "user_id": self._user},
-                {
-                    "$set": {
-                        "n_rows": len(frame),
-                        "n_cols": frame.shape[1],
-                        "dtypes": dtypes,
-                        "columns_info": columns,
-                        "data_id": new_owner,
-                    }
-                },
-            )
+            fields: dict[str, Any] = {
+                "n_rows": len(frame),
+                "n_cols": frame.shape[1],
+                "dtypes": dtypes,
+                "columns_info": columns,
+                "data_id": new_owner,
+            }
+            if source_meta is not None:
+                fields["source_meta"] = json.dumps(source_meta, ensure_ascii=False, default=str)
+            self._datasets.update_one({"id": dataset_id, "user_id": self._user}, {"$set": fields})
         except BaseException:
             frames.drop_frame(self._core, new_owner)
             raise

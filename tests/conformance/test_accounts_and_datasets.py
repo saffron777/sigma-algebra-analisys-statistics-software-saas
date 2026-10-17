@@ -223,7 +223,8 @@ def test_create_manual_dataset_with_typed_variables(backend, uid):
     assert kinds == {"edad": "numeric", "grupo": "categorical", "activo": "boolean", "fecha": "datetime"}
     data = backend.datasets(uid).get(info.id).data
     assert data["edad"].iloc[0] == 25.0 and pd.isna(data["edad"].iloc[1])
-    assert data["activo"].iloc[0] is True and data["activo"].iloc[1] is False and pd.isna(data["activo"].iloc[2])
+    assert bool(data["activo"].iloc[0]) is True and bool(data["activo"].iloc[1]) is False
+    assert pd.isna(data["activo"].iloc[2])
     assert data["grupo"].tolist()[:2] == ["A", "B"]
     assert data["fecha"].iloc[0] == pd.Timestamp("2024-01-15") and pd.isna(data["fecha"].iloc[2])
 
@@ -243,3 +244,35 @@ def test_create_manual_dataset_validations(backend, uid):
     # empty dataset is allowed when there is at least one variable
     info = create.execute("vacio", [{"name": "a", "kind": "numeric"}], [])
     assert info.n_rows == 0 and info.n_cols == 1
+
+
+def test_manual_dataset_value_labels_and_data_updates(backend, uid):
+    from sigma.application.use_cases.datasets import CreateManualDataset, UpdateDatasetData
+
+    repo = backend.datasets(uid)
+    categories = [{"code": "1", "label": "Masculino"}, {"code": "2", "label": "Femenino"}]
+    info = CreateManualDataset(repo).execute(
+        "estudio", [{"name": "sexo", "kind": "categorical", "categories": categories}], [{"sexo": "1"}]
+    )
+    assert info.source_meta["variables"] == [{"name": "sexo", "kind": "categorical", "categories": categories}]
+    assert repo.get(info.id).data["sexo"].astype(object).tolist() == ["Masculino"]
+
+    updated = UpdateDatasetData(repo).execute(
+        info.id,
+        [{"name": "sexo", "kind": "categorical", "categories": categories[:1]}],
+        [{"sexo": "Masculino"}],
+    )
+    assert updated.source_meta["variables"][0]["categories"] == categories[:1]
+
+
+def test_replace_data_updates_source_meta_only_when_given(backend, uid):
+    repo = backend.datasets(uid)
+    info = repo.add("x", pd.DataFrame({"a": [1]}), "csv", {"file_name": "x.csv"})
+
+    kept = repo.replace_data(info.id, pd.DataFrame({"b": [2]}))
+    assert kept.source_meta == {"file_name": "x.csv"}
+
+    updated = repo.replace_data(
+        info.id, pd.DataFrame({"b": [3]}), {"file_name": "x.csv", "variables": []}
+    )
+    assert updated.source_meta == {"file_name": "x.csv", "variables": []}

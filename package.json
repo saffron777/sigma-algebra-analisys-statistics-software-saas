@@ -1,8 +1,21 @@
 {
   "name": "sigma",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Sigma - plataforma web de estadística",
+  "license": "AGPL-3.0-or-later",
+  "author": "Frank Miranda",
+  "homepage": "https://github.com/saffron777/Sigma",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saffron777/Sigma.git"
+  },
+  "bugs": {
+    "url": "https://github.com/saffron777/Sigma/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "copy:vendor": "node scripts/copy_vendor.mjs",
     "build:css": "tailwindcss -i sigma/presentation/web/static/src/input.css -o sigma/presentation/web/static/css/app.css --minify",

@@ -23,8 +23,28 @@ def test_every_page_renders_with_layout_and_csrf_token(api, path):
 @pytest.mark.parametrize("path", PAGE_PATHS)
 def test_pages_load_only_local_assets(api, path):
     html = api.raw.get(path).get_data(as_text=True)
-    external = re.findall(r'(?:src|href)="(https?://[^"]+)"', html)
+    external = re.findall(r'<(?:script|img)[^>]+src="(https?://[^"]+)"', html)
+    external += re.findall(r'<link[^>]+href="(https?://[^"]+)"', html)
     assert external == [], f"external resources would break offline use / the CSP: {external}"
+
+
+def test_legal_pages_are_public(app):
+    client = app.test_client()
+    license_page = client.get("/licencia")
+    assert license_page.status_code == 200
+    assert "GNU AFFERO GENERAL PUBLIC LICENSE" in license_page.get_data(as_text=True)
+    notices = client.get("/terceros")
+    assert notices.status_code == 200 and "Avisos de terceros" in notices.get_data(as_text=True)
+    marks = client.get("/marcas")
+    assert marks.status_code == 200 and "Marcas" in marks.get_data(as_text=True)
+
+
+def test_license_and_source_are_visible(api):
+    home = api.raw.get("/").get_data(as_text=True)
+    assert 'href="/licencia"' in home and "AGPL-3.0-or-later" in home and "Código fuente" in home
+    about = api.raw.get("/ayuda").get_data(as_text=True)
+    assert "Copyright (C) 2026 Frank Miranda" in about
+    assert "/licencia" in about and "/terceros" in about and "/marcas" in about
 
 
 def test_navigation_marks_the_active_page(api):

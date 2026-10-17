@@ -363,13 +363,10 @@ def _gage_rr(frame: pd.DataFrame, roles: dict[str, Any], p: dict[str, Any]):
     f_int = ms_int / ms_error if ms_error > 0 else float("inf")
     p_int = float(stats.f.sf(f_int, df_int, df_error)) if ms_error > 0 else 1.0
 
+    var_repeatability = ms_error
     if p_int < 0.25:  # interacción significativa (criterio AIAG)
-        var_interaction = max((ms_int - ms_error) / r, 0.0)
-        var_repeatability = ms_error
         var_operator = max((ms_op - ms_int) / (n_parts * r), 0.0)
     else:
-        var_interaction = 0.0
-        var_repeatability = ms_error
         var_operator = max((ms_op - ms_error) / (n_parts * r), 0.0)
     var_part = max((ms_part - ms_int) / (n_ops * r), 0.0)
 

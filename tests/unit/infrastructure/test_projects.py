@@ -1,8 +1,5 @@
 """Survey project use cases on SQL repositories."""
 
-import itertools
-from pathlib import Path
-
 import pytest
 
 from sigma.application.use_cases.projects import (
@@ -13,24 +10,20 @@ from sigma.application.use_cases.projects import (
     RunProjectAnalysis,
     SaveProject,
 )
-from sigma.domain.errors import ProjectNotFoundError
+from sigma.domain.errors import InvalidInputError, ProjectNotFoundError
 from sigma.infrastructure.persistence.sql.dataset_repository import SqlDatasetRepository
 from sigma.infrastructure.persistence.sql.engine import Database
 from sigma.infrastructure.persistence.sql.project_repository import SqlProjectRepository
 from tests.support import add_user
 
-_counter = itertools.count(1)
-
 
 @pytest.fixture()
-def repos():
-    path = Path(f"E:/Sigma/.test-projects-{next(_counter)}.db")
-    path.unlink(missing_ok=True)
+def repos(tmp_path):
+    path = tmp_path / "projects.db"
     database = Database(path)
     uid = add_user(database)
     yield SqlProjectRepository(database, uid), SqlDatasetRepository(database, uid)
     database.dispose()
-    path.unlink(missing_ok=True)
 
 
 def test_project_lifecycle(repos):
@@ -67,5 +60,5 @@ def test_project_lifecycle(repos):
 def test_duplicate_project_name_rejected(repos):
     projects, _ = repos
     CreateProject(projects).execute("Único", design=[{"name": "a", "kind": "numeric"}])
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidInputError):
         CreateProject(projects).execute("único", design=[{"name": "b", "kind": "text"}])

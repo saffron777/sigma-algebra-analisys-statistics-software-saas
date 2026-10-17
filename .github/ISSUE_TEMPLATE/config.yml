@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Seguridad
+    url: https://github.com/saffron777/Sigma/security/policy
+    about: Reporta vulnerabilidades de forma privada; no abras una incidencia pública.
+  - name: Documentación
+    url: https://github.com/saffron777/Sigma#readme
+    about: Instalación, Docker, privacidad y preguntas frecuentes.

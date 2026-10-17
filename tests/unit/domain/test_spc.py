@@ -20,7 +20,6 @@ def test_imr_limits_match_the_shewhart_formula():
 
 def test_xbar_r_limits_use_a2_d3_d4():
     # three subgroups of size 4 with known means and ranges
-    rng = np.random.default_rng(0)
     g = np.repeat(["A", "B", "C"], 4)
     x = np.array([2, 3, 4, 5, 10, 11, 12, 13, 6, 7, 8, 9], dtype=float)
     frame = pd.DataFrame({"x": x, "g": g})

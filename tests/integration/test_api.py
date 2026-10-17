@@ -99,6 +99,54 @@ def test_dataset_lifecycle(api, sales_dataset):
     assert api.get(f"/api/datasets/{sales_dataset['id']}").status_code == 404
 
 
+def test_manual_dataset_with_value_labels(api):
+    categories = [{"code": "1", "label": "Masculino"}, {"code": "2", "label": "Femenino"}]
+    response = api.post(
+        "/api/datasets/manual",
+        {
+            "name": "estudio",
+            "columns": [
+                {"name": "sexo", "kind": "categorical", "categories": categories},
+                {"name": "edad", "kind": "numeric"},
+            ],
+            "rows": [{"sexo": "1", "edad": "30"}, {"sexo": "Femenino", "edad": "25"}],
+        },
+    )
+    assert response.status_code == 201, response.get_data(as_text=True)
+    dataset = response.parsed["dataset"]
+    assert dataset["source_meta"]["variables"] == [
+        {"name": "sexo", "kind": "categorical", "categories": categories}
+    ]
+    preview = api.get(f"/api/datasets/{dataset['id']}/preview?limit=50&offset=0").parsed
+    assert [row[0] for row in preview["rows"]] == ["Masculino", "Femenino"]
+    assert preview["dataset"]["source_meta"]["variables"][0]["categories"] == categories
+
+    updated = api.put(
+        f"/api/datasets/{dataset['id']}/data",
+        {
+            "columns": [
+                {"name": "sexo", "kind": "categorical", "categories": categories[:1]},
+                {"name": "edad", "kind": "numeric"},
+            ],
+            "rows": [{"sexo": "1", "edad": "31"}],
+        },
+    )
+    assert updated.status_code == 200, updated.get_data(as_text=True)
+    assert updated.parsed["dataset"]["source_meta"]["variables"][0]["categories"] == categories[:1]
+    preview = api.get(f"/api/datasets/{dataset['id']}/preview?limit=50&offset=0").parsed
+    assert preview["rows"][0][0] == "Masculino"
+
+    invalid = api.post(
+        "/api/datasets/manual",
+        {
+            "name": "malo",
+            "columns": [{"name": "sexo", "kind": "categorical", "categories": [{"code": "1", "label": ""}]}],
+            "rows": [],
+        },
+    )
+    assert invalid.status_code == 422 and "código y una etiqueta" in invalid.parsed["error"]["message"]
+
+
 def test_import_errors_are_reported(api):
     bad = api.post("/api/datasets/import/preview", {"source_type": "ftp", "options": {}})
     assert bad.status_code == 422 and "no soportada" in bad.parsed["error"]["message"]

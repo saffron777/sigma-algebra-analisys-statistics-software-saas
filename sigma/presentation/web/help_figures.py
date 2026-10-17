@@ -29,7 +29,7 @@ def _wrap(w: int, h: int, body: str) -> str:
 def _line(xs, ys, x0, y0, w, h, xmin, xmax, ymin, ymax) -> str:
     sx = x0 + (np.asarray(xs) - xmin) / (xmax - xmin) * w
     sy = y0 + h - (np.asarray(ys) - ymin) / (ymax - ymin) * h
-    return " ".join(f"{x:.1f},{y:.1f}" for x, y in zip(sx, sy))
+    return " ".join(f"{x:.1f},{y:.1f}" for x, y in zip(sx, sy, strict=True))
 
 
 def _axis(x0, y0, w, h, color=GRAY) -> str:
@@ -120,7 +120,7 @@ def _pmf(ks, ps):
     ymax = max(ps) * 1.15 or 1.0
     body = _axis(x0, y0, pw, ph)
     bar_w = pw / span * 0.7
-    for k, p in zip(ks, ps):
+    for k, p in zip(ks, ps, strict=True):
         cx = x0 + (k - kmin + 0.5) / span * pw
         bh = p / ymax * ph
         body += f'<rect x="{cx - bar_w / 2:.1f}" y="{y0 + ph - bh:.1f}" width="{bar_w:.1f}" height="{bh:.1f}" fill="{BRAND}" opacity="0.85"/>'
@@ -167,7 +167,7 @@ def regression_scatter() -> str:
     body = _axis(x0, y0, pw, ph)
     sx = x0 + (x - 0) / 10 * pw
     sy = y0 + ph - (y - 0) / (max(y) + 3) * ph
-    for xi, yi in zip(sx, sy):
+    for xi, yi in zip(sx, sy, strict=True):
         body += f'<circle cx="{xi:.1f}" cy="{yi:.1f}" r="2.6" fill="{BRAND}" opacity="0.75"/>'
     fit = a + b * x
     body += f'<polyline points="{_line(x, fit, x0, y0, pw, ph, 0, 10, 0, max(y)+3)}" fill="none" stroke="{RED}" stroke-width="2"/>'
@@ -266,7 +266,7 @@ def control_chart() -> str:
         body += _label(x0 + 4, sy - 3, lbl, c, "start", 9)
     xs = x0 + np.arange(n) / (n - 1) * pw
     ys = y0 + ph - (x - lo) / (hi - lo) * ph
-    pts = " ".join(f"{px:.1f},{py:.1f}" for px, py in zip(xs, ys))
+    pts = " ".join(f"{px:.1f},{py:.1f}" for px, py in zip(xs, ys, strict=True))
     body += f'<polyline points="{pts}" fill="none" stroke="{GRAY}" stroke-width="1.5"/>'
     body += f'<circle cx="{xs[15]:.1f}" cy="{ys[15]:.1f}" r="3.5" fill="{RED}"/>'
     body += _label(xs[15], ys[15] - 10, "fuera de control", RED, "middle", 9)

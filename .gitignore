@@ -6,16 +6,35 @@ __pycache__/
 node_modules/
 instance/
 .env
+.env.local
+.env.*.local
 sigma/presentation/web/static/vendor/
 sigma/presentation/web/static/css/app.css
 # temporales de instalación y ejecución (pip, R)
 .pip-*/
 .r-tmp/
-# temporales de pruebas (pytest, diagnóstico de permisos)
+.uv-cache*/# temporales de pruebas (pytest, diagnóstico de permisos)
 .tmp/
 .pytest-tmp/
+.pytest-tmp*/
+pytest_pre/
+pytest_tmp/
+tests/.ai-tmp/
 pytest-cache-files-*/
 .acl-out/
+.acl-*/
+.tailwind-check.css
+# textos de licencias de Python generados por scripts/collect_licenses.py (van en el release)
+LICENSES/python/
+# artefactos de release y registros
+dist/
+*.log
+*.db
+*.sqlite
+*.sqlite3
+# datos personales que nunca deben publicarse
+.gitconfig*
+ticket-it-bantrab/
 sample_data/ventas.csv
 sample_data/encuesta.csv
 sample_data/analisis_demo.ipynb

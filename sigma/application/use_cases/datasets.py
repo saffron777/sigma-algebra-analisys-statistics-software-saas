@@ -18,9 +18,11 @@ from sigma.application.ports import (
 )
 from sigma.domain.datasets import (
     CONVERTIBLE_KINDS,
+    KIND_CATEGORICAL,
     ColumnInfo,
     Dataset,
     DatasetInfo,
+    clean_value_labels,
     convert_column,
     describe_columns,
     infer_dates,
@@ -330,10 +332,43 @@ def _build_manual_frame(columns: list[dict[str, Any]], rows: list[dict[str, Any]
     # drop rows where every cell is blank (the grid's spare rows must not be persisted)
     if not frame.empty:
         frame = frame[~frame.apply(lambda col: col.map(_is_blank)).all(axis=1)].reset_index(drop=True)
-    for name, column in zip(names, columns):
+    for name, column in zip(names, columns, strict=True):
         series = frame[name].astype("string")
         frame[name], _ = convert_column(series, str(column.get("kind") or "text"))
     return normalize_columns(frame)
+
+
+def _manual_variable_metadata(columns: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The code → label definitions to keep with the dataset (only categorical variables that have them)."""
+    variables: list[dict[str, Any]] = []
+    for column in columns:
+        kind = str(column.get("kind") or "")
+        if kind != KIND_CATEGORICAL:
+            continue
+        name = str(column.get("name") or "").strip()
+        categories = clean_value_labels(column.get("categories"), name)
+        if categories:
+            variables.append({"name": name, "kind": kind, "categories": categories})
+    return variables
+
+
+def _apply_value_labels(columns: list[dict[str, Any]], rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Store the readable label when the client sent a category code (the data never keeps the code)."""
+    normalized = [dict(row) for row in rows]
+    for column in columns:
+        if str(column.get("kind") or "") != KIND_CATEGORICAL:
+            continue
+        name = str(column.get("name") or "").strip()
+        categories = clean_value_labels(column.get("categories"), name)
+        if not categories:
+            continue
+        by_code = {category["code"].casefold(): category["label"] for category in categories}
+        for row in normalized:
+            value = row.get(name)
+            if value is None:
+                continue
+            row[name] = by_code.get(str(value).strip().casefold(), value)
+    return normalized
 
 
 class CreateManualDataset:
@@ -343,8 +378,12 @@ class CreateManualDataset:
         self._datasets = datasets
 
     def execute(self, name: str | None, columns: list[dict[str, Any]], rows: list[dict[str, Any]]) -> DatasetInfo:
-        frame = _build_manual_frame(columns, rows)
-        return self._datasets.add(clean_dataset_name(name, "dataset"), frame, "manual", {"source_type": "manual"})
+        variables = _manual_variable_metadata(columns)
+        frame = _build_manual_frame(columns, _apply_value_labels(columns, rows))
+        source_meta: dict[str, Any] = {"source_type": "manual"}
+        if variables:
+            source_meta["variables"] = variables
+        return self._datasets.add(clean_dataset_name(name, "dataset"), frame, "manual", source_meta)
 
 
 class UpdateDatasetData:
@@ -354,5 +393,12 @@ class UpdateDatasetData:
         self._datasets = datasets
 
     def execute(self, dataset_id: str, columns: list[dict[str, Any]], rows: list[dict[str, Any]]) -> DatasetInfo:
-        frame = _build_manual_frame(columns, rows)
-        return self._datasets.replace_data(dataset_id, frame)
+        info = self._datasets.get_info(dataset_id)
+        variables = _manual_variable_metadata(columns)
+        frame = _build_manual_frame(columns, _apply_value_labels(columns, rows))
+        source_meta = dict(info.source_meta)
+        if variables:
+            source_meta["variables"] = variables
+        else:
+            source_meta.pop("variables", None)
+        return self._datasets.replace_data(dataset_id, frame, source_meta)

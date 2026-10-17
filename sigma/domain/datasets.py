@@ -99,6 +99,10 @@ def normalize_columns(frame: pd.DataFrame) -> pd.DataFrame:
 CONVERTIBLE_KINDS = (KIND_NUMERIC, KIND_TEXT, KIND_CATEGORICAL, KIND_DATETIME, KIND_BOOLEAN)
 _TRUE_WORDS = {"true", "t", "yes", "y", "si", "sí", "s", "1", "verdadero", "v"}
 _FALSE_WORDS = {"false", "f", "no", "n", "0", "falso"}
+MAX_CATEGORY_CODE_LENGTH = 40
+MAX_CATEGORY_LABEL_LENGTH = 200
+MAX_CATEGORY_COUNT = 1000
+_CATEGORY_FORBIDDEN = (";", "\r", "\n")
 
 
 def convert_column(series: pd.Series, kind: str) -> tuple[pd.Series, int]:
@@ -122,6 +126,77 @@ def convert_column(series: pd.Series, kind: str) -> tuple[pd.Series, int]:
         converted = series.astype("string").astype(object).where(series.notna(), None)
     failed = before - int(converted.notna().sum())
     return converted, max(failed, 0)
+
+
+def clean_value_labels(value: Any, variable: str = "") -> list[dict[str, str]]:
+    """Normalise the code → label definitions of a categorical variable.
+
+    Empty rows are ignored; every other row needs both a code and a label. Codes and labels must be unique
+    (case-insensitive) and must not collide with each other, so the mapping used by the data editor is unambiguous.
+    A legacy comma-separated string (the survey design format) becomes ``1..n`` codes with those labels.
+    """
+    subject = f"«{variable}»" if variable else "la variable"
+    if value is None:
+        return []
+    if isinstance(value, str):
+        labels = [part.strip() for part in value.split(",") if part.strip()]
+        entries: list[dict[str, str]] = [
+            {"code": str(position), "label": label} for position, label in enumerate(labels, start=1)
+        ]
+    elif isinstance(value, (list, tuple)):
+        entries = []
+        for item in value:
+            if hasattr(item, "model_dump"):
+                item = item.model_dump()
+            if not isinstance(item, dict):
+                raise InvalidInputError(f"Las categorías de {subject} deben tener un código y una etiqueta.")
+            code = str(item.get("code") or "").strip()
+            label = str(item.get("label") or "").strip()
+            if not code and not label:
+                continue
+            entries.append({"code": code, "label": label})
+    else:
+        raise InvalidInputError(f"Las categorías de {subject} no tienen un formato válido.")
+
+    cleaned: list[dict[str, str]] = []
+    codes: set[str] = set()
+    labels: set[str] = set()
+    for entry in entries:
+        if len(cleaned) >= MAX_CATEGORY_COUNT:
+            raise InvalidInputError(f"Se admiten como máximo {MAX_CATEGORY_COUNT} categorías en {subject}.")
+        code, label = entry["code"], entry["label"]
+        if not code or not label:
+            raise InvalidInputError(f"Cada categoría de {subject} debe tener un código y una etiqueta.")
+        if len(code) > MAX_CATEGORY_CODE_LENGTH:
+            raise InvalidInputError(
+                f"El código «{code[:20]}…» de {subject} es demasiado largo (máximo {MAX_CATEGORY_CODE_LENGTH})."
+            )
+        if len(label) > MAX_CATEGORY_LABEL_LENGTH:
+            raise InvalidInputError(
+                f"La etiqueta «{label[:30]}…» de {subject} es demasiado larga (máximo {MAX_CATEGORY_LABEL_LENGTH})."
+            )
+        if any(char in code for char in _CATEGORY_FORBIDDEN) or any(char in label for char in _CATEGORY_FORBIDDEN):
+            raise InvalidInputError(
+                f"Los códigos y las etiquetas de {subject} no pueden contener «;» ni saltos de línea."
+            )
+        code_key, label_key = code.casefold(), label.casefold()
+        if code_key in codes:
+            raise InvalidInputError(f"El código «{code}» está repetido en {subject}.")
+        if label_key in labels:
+            raise InvalidInputError(f"La etiqueta «{label}» está repetida en {subject}.")
+        codes.add(code_key)
+        labels.add(label_key)
+        cleaned.append({"code": code, "label": label})
+
+    label_owner = {entry["label"].casefold(): position for position, entry in enumerate(cleaned)}
+    for position, entry in enumerate(cleaned):
+        owner = label_owner.get(entry["code"].casefold())
+        if owner is not None and owner != position:
+            raise InvalidInputError(
+                f"El código «{entry['code']}» coincide con una etiqueta de {subject}; "
+                "use códigos y etiquetas distintos."
+            )
+    return cleaned
 
 
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?)?$")

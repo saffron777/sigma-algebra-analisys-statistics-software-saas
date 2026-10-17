@@ -4,13 +4,21 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from flask import Blueprint, jsonify, render_template
+from flask import Blueprint, abort, jsonify, render_template, send_file
 
 from sigma import __version__
+from sigma.config import PROJECT_ROOT
 from sigma.domain.analysis.modules import CATALOG_MODULES
 from sigma.presentation.web.auth import require_admin, require_console
 
 bp = Blueprint("pages", __name__)
+
+# Public legal texts (also linked from the login page: the AGPL notice must be visible without a session).
+LEGAL_FILES = {
+    "licencia": "LICENSE",
+    "terceros": "THIRD-PARTY-NOTICES.md",
+    "marcas": "TRADEMARKS.md",
+}
 
 PAGES = {
     "home": ("/", "Inicio", "pages/home.html"),
@@ -60,3 +68,26 @@ for _key, (_path, _title, _template) in PAGES.items():
 @bp.get("/health")
 def health():
     return jsonify({"status": "ok", "app": "Sigma", "version": __version__})
+
+
+def _legal_text(name: str):
+    """Serve one of the fixed legal files; no user input is ever used as a path."""
+    path = PROJECT_ROOT / LEGAL_FILES[name]
+    if not path.is_file():
+        abort(404)
+    return send_file(path, mimetype="text/plain", max_age=0)
+
+
+@bp.get("/licencia")
+def license_text():
+    return _legal_text("licencia")
+
+
+@bp.get("/terceros")
+def third_party_notices():
+    return _legal_text("terceros")
+
+
+@bp.get("/marcas")
+def trademarks():
+    return _legal_text("marcas")

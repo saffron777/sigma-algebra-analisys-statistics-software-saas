@@ -58,15 +58,53 @@ function manualColumn(variable, index) {
     case "datetime": return { ...base, type: "calendar", options: { format: "YYYY-MM-DD" } };
     case "boolean": return { ...base, type: "dropdown", source: ["Sí", "No"] };
     case "categorical": {
-      const categories = (variable.categories || "").split(",").map((s) => s.trim()).filter(Boolean);
-      return categories.length ? { ...base, type: "dropdown", source: categories } : { ...base, type: "text" };
+      const pairs = categoryPairs(variable);
+      if (!pairs.length) return { ...base, type: "text" };
+      // The cell value is the label (id); the grid shows “code — label” (name). A typed code is mapped to its label.
+      return {
+        ...base,
+        type: "dropdown",
+        autocomplete: true,
+        source: pairs.map((pair) => ({ id: pair.label, name: `${pair.code} — ${pair.label}` })),
+      };
     }
     default: return { ...base, type: "text" }; // text is free entry
   }
 }
 
+const MAX_DERIVED_CATEGORIES = 100;
+
+// Raw code/label rows, trimmed (a completely blank row is ignored later).
+function categoryRows(variable) {
+  const rows = Array.isArray(variable?.categories) ? variable.categories : [];
+  return rows.map((row) => ({ code: String(row?.code ?? "").trim(), label: String(row?.label ?? "").trim() }));
+}
+
+// Rows that are ready to use: both code and label.
+function categoryPairs(variable) {
+  return categoryRows(variable)
+    .filter((row) => row.code && row.label)
+    .map((row) => ({ code: row.code, label: row.label }));
+}
+
+// The category a typed value refers to: the label wins, then the code (validation forbids cross collisions).
+function matchCategory(variable, value) {
+  const text = String(value ?? "").trim().toLowerCase();
+  if (!text) return null;
+  const pairs = categoryPairs(variable);
+  return pairs.find((pair) => pair.label.toLowerCase() === text)
+    ?? pairs.find((pair) => pair.code.toLowerCase() === text)
+    ?? null;
+}
+
+function categorySummaryText(variable, limit = 2) {
+  const pairs = categoryPairs(variable);
+  const parts = pairs.slice(0, limit).map((pair) => `${pair.code} = ${pair.label}`);
+  return parts.join(" · ") + (pairs.length > limit ? " …" : "");
+}
+
 function defaultVariable() {
-  return { name: "", kind: "numeric", numericType: "decimal", decimals: 2, categories: "" };
+  return { name: "", kind: "numeric", numericType: "decimal", decimals: 2, categories: [], showCategories: false };
 }
 
 // stored (typed) value -> the string shown in the editor grid
@@ -411,6 +449,13 @@ document.addEventListener("alpine:init", () => {
     // ------------------------------------------------------------------ dataset management
     sourceLabel(type) { return SOURCE_LABELS[type] ?? type; },
     kindLabel(kind) { return KIND_LABELS[kind] ?? kind; },
+    /** The saved codebook of a categorical column, e.g. "1 = Masculino · 2 = Femenino". */
+    variableLabels(name) {
+      const info = (this.viewer.dataset?.source_meta?.variables ?? []).find((entry) => entry.name === name);
+      const column = (this.viewer.dataset?.columns ?? []).find((entry) => entry.name === name);
+      if (!column || column.kind !== "categorical" || !(info?.categories?.length)) return "";
+      return info.categories.map((entry) => `${entry.code} = ${entry.label}`).join(" · ");
+    },
     formatCell(value) {
       if (value === null || value === undefined) return "";
       return typeof value === "number" ? String(Math.round(value * 1e6) / 1e6) : String(value);
@@ -533,20 +578,66 @@ document.addEventListener("alpine:init", () => {
     async openEdit(dataset) {
       manualSheet = null;
       manualSheetData = null;
+      const stored = new Map((dataset.source_meta?.variables ?? []).map((entry) => [entry.name, entry.categories ?? []]));
       const variables = (dataset.columns ?? []).map((c) => ({
-        name: c.name, kind: c.kind, numericType: "decimal", decimals: 2, categories: "",
+        name: c.name,
+        kind: c.kind,
+        numericType: "decimal",
+        decimals: 2,
+        categories: (stored.get(c.name) ?? []).map((entry) => ({
+          code: String(entry.code ?? ""),
+          label: String(entry.label ?? ""),
+        })),
+        showCategories: false,
       }));
       this.editor = { open: true, tab: "datos", name: dataset.name, variables, busy: false, error: "", mode: "edit", datasetId: dataset.id };
       this._attachResize();
       try {
         const res = await api(`/api/datasets/${dataset.id}/preview?limit=${dataset.n_rows || 100000}&offset=0`);
-        const kinds = (res.dataset?.columns ?? []).map((c) => c.kind);
-        const names = variables.map((v) => v.name);
-        manualSheetData = (res.rows ?? []).map((row) => Object.fromEntries(names.map((name, j) => [name, gridCell(kinds[j], row[j])])));
+        const kinds = (res.dataset?.columns ?? dataset.columns ?? []).map((c) => c.kind);
+        const rows = (res.rows ?? []).map((row) => [...row]);
+        this.editor.variables.forEach((variable, index) => this._adoptObservedCategories(variable, rows, index));
+        const names = this.editor.variables.map((v) => v.name);
+        manualSheetData = rows.map((row) => Object.fromEntries(
+          names.map((name, j) => [name, gridCell(kinds[j] ?? this.editor.variables[j].kind, row[j])])
+        ));
         this.$nextTick(() => this._buildSheet());
       } catch (error) {
         this.editor.error = error.message;
       }
+    },
+
+    /** Restore the value labels of an edited dataset: codes become labels and observed values are added to the list. */
+    _adoptObservedCategories(variable, rows, index) {
+      if (variable.kind !== "categorical") return;
+      const pairs = categoryPairs(variable);
+      const labels = new Set(pairs.map((pair) => pair.label.toLowerCase()));
+      const byCode = new Map(pairs.map((pair) => [pair.code.toLowerCase(), pair.label]));
+      if (byCode.size) {
+        for (const row of rows) {
+          const value = String(row[index] ?? "").trim();
+          const code = value.toLowerCase();
+          if (byCode.has(code) && !labels.has(code)) row[index] = byCode.get(code);
+        }
+      }
+      const observed = [...new Set(rows.map((row) => String(row[index] ?? "").trim()).filter(Boolean))];
+      if (!pairs.length) {
+        if (observed.length && observed.length <= MAX_DERIVED_CATEGORIES) {
+          variable.categories = observed.map((label, position) => ({ code: String(position + 1), label }));
+        }
+        return;
+      }
+      if (observed.length > MAX_DERIVED_CATEGORIES) return;
+      let next = 1;
+      const usedCodes = new Set(pairs.map((pair) => pair.code.toLowerCase()));
+      for (const label of observed) {
+        if (labels.has(label.toLowerCase())) continue;
+        while (usedCodes.has(String(next).toLowerCase())) next += 1;
+        pairs.push({ code: String(next), label });
+        usedCodes.add(String(next).toLowerCase());
+        labels.add(label.toLowerCase());
+      }
+      variable.categories = pairs;
     },
 
     closeEditor() {
@@ -558,6 +649,130 @@ document.addEventListener("alpine:init", () => {
     setEditorTab(tab) {
       this.editor.tab = tab;
       if (tab === "datos") this.$nextTick(() => this._buildSheet());
+    },
+
+    // ------------------------------------------------------------------ categorical value labels (code + label)
+    categoriesCount(variable) {
+      return categoryPairs(variable).length;
+    },
+
+    categoriesSummary(variable) {
+      return categorySummaryText(variable, 2);
+    },
+
+    categoriesTitle(variable) {
+      return categorySummaryText(variable, 1000);
+    },
+
+    /** First validation problem of the definition (empty when it is usable). */
+    categoryIssue(variable) {
+      const name = (variable.name || "").trim() || "la variable";
+      const rows = categoryRows(variable);
+      for (let index = 0; index < rows.length; index++) {
+        const row = rows[index];
+        if (!row.code && !row.label) continue; // an added row that was left empty is ignored on save
+        if (!row.code || !row.label) {
+          return `Complete el código y la etiqueta de la categoría ${index + 1} de «${name}».`;
+        }
+        if (/[;\r\n]/.test(row.code) || /[;\r\n]/.test(row.label)) {
+          return `Los códigos y las etiquetas de «${name}» no pueden contener «;» ni saltos de línea.`;
+        }
+      }
+      const codes = new Set();
+      for (const row of rows) {
+        if (!row.code || !row.label) continue;
+        const code = row.code.toLowerCase();
+        if (codes.has(code)) return `El código «${row.code}» está repetido en «${name}».`;
+        codes.add(code);
+      }
+      const labels = new Set();
+      for (const row of rows) {
+        if (!row.code || !row.label) continue;
+        const label = row.label.toLowerCase();
+        if (labels.has(label)) return `La etiqueta «${row.label}» está repetida en «${name}».`;
+        labels.add(label);
+      }
+      const labelOwner = new Map();
+      rows.forEach((row, index) => {
+        if (row.label) labelOwner.set(row.label.toLowerCase(), index);
+      });
+      for (let index = 0; index < rows.length; index++) {
+        const row = rows[index];
+        if (!row.code || !row.label) continue;
+        const owner = labelOwner.get(row.code.toLowerCase());
+        if (owner !== undefined && owner !== index) {
+          return `El código «${row.code}» coincide con una etiqueta de «${name}»; use códigos y etiquetas distintos.`;
+        }
+      }
+      return "";
+    },
+
+    toggleCategories(variable) {
+      variable.showCategories = !variable.showCategories;
+      if (variable.showCategories && !(variable.categories ?? []).length) this.addCategory(variable);
+    },
+
+    /** Add a new value to the definition (used while editing data, so every typed value stays visible). */
+    _addCategoryValue(variable, value) {
+      const label = String(value ?? "").trim();
+      if (!label) return null;
+      const pairs = categoryPairs(variable);
+      const used = new Set(pairs.map((pair) => pair.code.toLowerCase()));
+      let next = 1;
+      while (used.has(String(next).toLowerCase())) next += 1;
+      const pair = { code: String(next), label };
+      variable.categories = [...pairs, pair];
+      return pair;
+    },
+
+    /** Keep a live Jspreadsheet column in sync after a new category is inferred from the data. */
+    _syncColumnSource(instance, colIndex, variable) {
+      const column = instance?.options?.columns?.[colIndex];
+      if (!column) return;
+      column.type = "dropdown";
+      column.autocomplete = true;
+      column.source = categoryPairs(variable).map((pair) => ({ id: pair.label, name: `${pair.code} — ${pair.label}` }));
+    },
+
+    addCategory(variable) {
+      if (!Array.isArray(variable.categories)) variable.categories = [];
+      const used = new Set(
+        variable.categories.map((row) => String(row?.code ?? "").trim().toLowerCase()).filter(Boolean)
+      );
+      let next = 1;
+      while (used.has(String(next))) next += 1;
+      variable.categories.push({ code: String(next), label: "" });
+      variable.showCategories = true;
+    },
+
+    removeCategory(variable, index) {
+      variable.categories.splice(index, 1);
+    },
+
+    rememberCategoryLabel(category) {
+      category._previousLabel = category.label;
+    },
+
+    /** Renaming a label also renames the values already typed, so no cell is left outside the list. */
+    onCategoryLabelChange(variable, category) {
+      const previous = String(category._previousLabel ?? "").trim();
+      const next = String(category.label ?? "").trim();
+      category._previousLabel = category.label;
+      if (!previous || previous === next || !manualSheet) return;
+      this._snapshotSheet();
+      const name = this._sheetNames()[this.editor.variables.indexOf(variable)];
+      for (const row of manualSheetData ?? []) {
+        if (String(row[name] ?? "") === previous) row[name] = next;
+      }
+      this._buildSheet();
+    },
+
+    /** Point the editor at the offending variable and explain the problem. */
+    _categoryError(variable, message) {
+      this.editor.tab = "variables";
+      variable.showCategories = true;
+      this.editor.error = message;
+      return false;
     },
 
     addVariable() {
@@ -651,10 +866,34 @@ document.addEventListener("alpine:init", () => {
       const data = (manualSheetData ?? [{}]).map((obj) => names.map((name) => obj[name] ?? ""));
       const height = this.$refs.manualSheet.clientHeight || 560;
       manualSheet = jspreadsheet(this.$refs.manualSheet, {
-        // Round/truncate numeric values on commit (no visible mask while typing).
+        // Round/truncate numeric values on commit (no visible mask while typing); map category codes to labels.
         onbeforechange: (instance, cell, colIndex, rowIndex, newValue) => {
           const variable = this.editor.variables[Number(colIndex)];
-          if (!variable || variable.kind !== "numeric") return undefined;
+          if (!variable) return undefined;
+          if (variable.kind === "categorical") {
+            const pairs = categoryPairs(variable);
+            if (!pairs.length) return undefined;
+            const text = String(newValue ?? "").trim();
+            if (!text) return undefined;
+            const pair = matchCategory(variable, text);
+            if (pair) return pair.label;
+            // Editing data may introduce new categories: add them so the value stays visible.
+            if (this.editor.mode === "edit") {
+              const added = this._addCategoryValue(variable, text);
+              if (added) {
+                this._syncColumnSource(instance, Number(colIndex), variable);
+                return added.label;
+              }
+            }
+            // In creation only the defined categories can be typed: keep the previous value otherwise.
+            Alpine.store("toast").show(
+              `«${text}» no es una categoría definida de «${variable.name || "la variable"}»; use el código o elija una etiqueta.`,
+              "info",
+              5000
+            );
+            return instance.getValueFromCoords(Number(colIndex), Number(rowIndex)) ?? "";
+          }
+          if (variable.kind !== "numeric") return undefined;
           if (this.editor.mode === "edit") return undefined; // editing preserves existing precision
           if (newValue === null || newValue === undefined || newValue === "") return undefined;
           const num = Number(String(newValue).replace(",", "."));
@@ -663,6 +902,38 @@ document.addEventListener("alpine:init", () => {
           const decimals = Math.max(0, Math.min(10, Number(variable.decimals) || 0));
           const factor = Math.pow(10, decimals);
           return Math.round(num * factor) / factor;
+        },
+        // A paste bypasses onbeforechange: normalise pasted codes to their labels.
+        onafterchanges: (instance, changes) => {
+          const unknown = new Set();
+          for (const change of changes ?? []) {
+            const variable = this.editor.variables[Number(change.x)];
+            if (!variable || variable.kind !== "categorical") continue;
+            const pairs = categoryPairs(variable);
+            if (!pairs.length) continue;
+            const value = String(change.value ?? "").trim();
+            if (!value) continue;
+            const pair = matchCategory(variable, value);
+            if (!pair) {
+              if (this.editor.mode === "edit") {
+                const added = this._addCategoryValue(variable, value);
+                if (added) {
+                  this._syncColumnSource(instance, Number(change.x), variable);
+                  instance.setValue({ x: change.x, y: change.y, value: added.label });
+                }
+                continue;
+              }
+              unknown.add(value);
+              continue;
+            }
+            if (pair.label !== change.value) instance.setValue({ x: change.x, y: change.y, value: pair.label });
+          }
+          if (unknown.size) {
+            const sample = [...unknown].slice(0, 3).map((value) => `«${value}»`).join(", ");
+            Alpine.store("toast").show(
+              `Valores que no son categorías definidas: ${sample}. Añada la categoría o corrija la celda.`, "info", 7000
+            );
+          }
         },
         worksheets: [
           {
@@ -695,7 +966,26 @@ document.addEventListener("alpine:init", () => {
       const isEdit = this.editor.mode === "edit";
       const name = (this.editor.name || "").trim();
       if (!isEdit && !name) { this.editor.error = "Escriba un nombre para el dataset."; return; }
-      const columns = this.editor.variables.filter((v) => v.name.trim()).map((v) => ({ name: v.name.trim(), kind: v.kind }));
+      const columns = [];
+      for (const variable of this.editor.variables) {
+        const variableName = (variable.name || "").trim();
+        if (!variableName) continue;
+        if (variable.kind !== "categorical") {
+          columns.push({ name: variableName, kind: variable.kind });
+          continue;
+        }
+        const issue = this.categoryIssue(variable);
+        if (issue) return this._categoryError(variable, issue);
+        const pairs = categoryPairs(variable);
+        if (!isEdit && !pairs.length) {
+          return this._categoryError(
+            variable,
+            `La variable categórica «${variableName}» necesita al menos una categoría con código y etiqueta.`
+          );
+        }
+        variable.categories = pairs.map((pair) => ({ code: pair.code, label: pair.label }));
+        columns.push({ name: variableName, kind: variable.kind, categories: pairs });
+      }
       if (!columns.length) { this.editor.error = "Defina al menos una variable con nombre."; return; }
       const names = columns.map((c) => c.name);
       if (new Set(names.map((n) => n.toLowerCase())).size !== names.length) {
@@ -705,6 +995,43 @@ document.addEventListener("alpine:init", () => {
       const rows = (manualSheetData ?? [])
         .map((obj) => Object.fromEntries(names.map((n) => [n, obj[n] ?? ""])))
         .filter((row) => names.some((n) => String(row[n] ?? "").trim() !== ""));
+      // Codes are always saved as their labels; values outside the definitions would be unreadable categories.
+      for (const variable of this.editor.variables) {
+        if (variable.kind !== "categorical" || !(variable.name || "").trim()) continue;
+        const variableName = variable.name.trim();
+        const pairs = categoryPairs(variable);
+        if (!pairs.length) continue;
+        const labels = new Set(pairs.map((pair) => pair.label.toLowerCase()));
+        const unknown = new Set();
+        for (const row of rows) {
+          const text = String(row[variableName] ?? "").trim();
+          if (!text) { row[variableName] = ""; continue; }
+          const label = matchCategory(variable, text)?.label;
+          if (!label || !labels.has(label.toLowerCase())) { unknown.add(text); continue; }
+          row[variableName] = label;
+        }
+        if (unknown.size) {
+          if (!isEdit) {
+            const sample = [...unknown].slice(0, 3).map((value) => `«${value}»`).join(", ");
+            return this._categoryError(
+              variable,
+              `En «${variableName}» hay valores que no son categorías definidas: ${sample}. Añada la categoría o corrija la celda.`
+            );
+          }
+          // Editing data adopts the new values so correcting a cell never gets stuck on a missing category.
+          for (const value of unknown) this._addCategoryValue(variable, value);
+          const updated = categoryPairs(variable);
+          const column = columns.find((entry) => entry.name === variableName);
+          if (column) column.categories = updated;
+          if (manualSheet?.[0]) {
+            this._syncColumnSource(manualSheet[0], this.editor.variables.indexOf(variable), variable);
+          }
+          for (const row of rows) {
+            const label = matchCategory(variable, row[variableName])?.label;
+            if (label) row[variableName] = label;
+          }
+        }
+      }
       this.editor.busy = true;
       this.editor.error = "";
       try {

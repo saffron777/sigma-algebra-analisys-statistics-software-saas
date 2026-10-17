@@ -1,8 +1,5 @@
 """Manual dataset creation (SPSS/Minitab-style data editor backend)."""
 
-import itertools
-from pathlib import Path
-
 import pandas as pd
 import pytest
 
@@ -12,18 +9,16 @@ from sigma.infrastructure.persistence.sql.dataset_repository import SqlDatasetRe
 from sigma.infrastructure.persistence.sql.engine import Database
 from tests.support import add_user
 
-_counter = itertools.count(1)
+CATEGORIES = [{"code": "1", "label": "Masculino"}, {"code": "2", "label": "Femenino"}]
 
 
 @pytest.fixture()
-def datasets():
-    path = Path(f"E:/Sigma/.test-manual-{next(_counter)}.db")
-    path.unlink(missing_ok=True)
+def datasets(tmp_path):
+    path = tmp_path / "manual.db"
     database = Database(path)
     uid = add_user(database)
     yield SqlDatasetRepository(database, uid)
     database.dispose()
-    path.unlink(missing_ok=True)
 
 
 def test_create_manual_dataset_with_typed_variables(datasets):
@@ -100,3 +95,66 @@ def test_empty_rows_are_dropped(datasets):
     data = datasets.get(info.id).data
     assert data["a"].tolist()[:2] == [1.0, 2.0] and pd.isna(data["a"].iloc[2])
     assert data["b"].tolist() == ["x", "", "y"]
+
+
+def test_create_manual_dataset_keeps_value_labels(datasets):
+    create = CreateManualDataset(datasets)
+    info = create.execute(
+        "estudio",
+        [
+            {"name": "sexo", "kind": "categorical", "categories": CATEGORIES},
+            {"name": "edad", "kind": "numeric"},
+        ],
+        [
+            {"sexo": "1", "edad": "30"},
+            {"sexo": "Femenino", "edad": "25"},
+            {"sexo": 1, "edad": "40"},
+        ],
+    )
+    assert info.source_meta["variables"] == [
+        {"name": "sexo", "kind": "categorical", "categories": CATEGORIES}
+    ]
+    # The data stores the labels; a typed code (as text or number) is translated before it reaches the frame.
+    assert datasets.get(info.id).data["sexo"].astype(object).tolist() == [
+        "Masculino", "Femenino", "Masculino"
+    ]
+
+
+def test_manual_value_label_validations(datasets):
+    create = CreateManualDataset(datasets)
+    invalid = [
+        ([{"code": "1", "label": ""}], "código y una etiqueta"),
+        ([{"code": "1", "label": "A"}, {"code": "1", "label": "B"}], "repetido"),
+        ([{"code": "1", "label": "A"}, {"code": "2", "label": "a"}], "repetida"),
+        ([{"code": "1", "label": "A"}, {"code": "A", "label": "B"}], "coincide"),
+        ([{"code": "1", "label": "A;B"}], "no pueden contener"),
+    ]
+    for categories, message in invalid:
+        with pytest.raises(InvalidInputError, match=message):
+            create.execute("x", [{"name": "sexo", "kind": "categorical", "categories": categories}], [])
+
+
+def test_update_dataset_data_updates_value_labels(datasets):
+    from sigma.application.use_cases.datasets import UpdateDatasetData
+
+    create = CreateManualDataset(datasets)
+    info = create.execute(
+        "estudio", [{"name": "sexo", "kind": "categorical", "categories": CATEGORIES}], [{"sexo": "1"}]
+    )
+    updated = UpdateDatasetData(datasets).execute(
+        info.id,
+        [{"name": "sexo", "kind": "categorical", "categories": CATEGORIES[:1]}],
+        [{"sexo": "Masculino"}],
+    )
+    assert updated.source_meta["source_type"] == "manual"
+    assert updated.source_meta["variables"][0]["categories"] == CATEGORIES[:1]
+    assert datasets.get(info.id).data["sexo"].astype(object).tolist() == ["Masculino"]
+
+
+def test_updating_imported_data_keeps_the_rest_of_source_meta(datasets):
+    from sigma.application.use_cases.datasets import UpdateDatasetData
+
+    info = datasets.add("importado", pd.DataFrame({"a": [1]}), "csv", {"file_name": "x.csv"})
+    updated = UpdateDatasetData(datasets).execute(info.id, [{"name": "a", "kind": "numeric"}], [{"a": "2"}])
+    assert updated.source_meta == {"file_name": "x.csv"}
+    assert "variables" not in updated.source_meta

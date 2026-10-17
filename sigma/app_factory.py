@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from flask import Flask
 
-from sigma import __version__
+from sigma import __copyright__, __license__, __version__
 from sigma.bootstrap import build_container
 from sigma.config import Config
 from sigma.domain.analysis.modules import CATALOG_MODULES
+from sigma.presentation.web import help_content
 from sigma.presentation.web.auth import init_auth
 from sigma.presentation.web.blueprints import register_blueprints
 from sigma.presentation.web.blueprints.pages import PAGES
 from sigma.presentation.web.errors import register_error_handlers
-from sigma.presentation.web import help_content
 from sigma.presentation.web.migration import MigrationRunner, init_maintenance
 from sigma.presentation.web.security import init_security
 from sigma.presentation.web.switching import ContainerSwitcher
@@ -104,6 +104,9 @@ def create_app(config: Config | None = None) -> Flask:
         nav_groups=nav,
         menu=menu,
         sigma_version=__version__,
+        license_name=__license__,
+        copyright_holder=__copyright__,
+        source_url=config.source_url,
         catalog_modules=[(m.key, m.label, m.description) for m in CATALOG_MODULES],
         help_guide=help_content.GUIDE,
         help_reference=help_content.REFERENCE,

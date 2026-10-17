@@ -8,9 +8,15 @@ from sigma.application.dto import SaveResultCommand
 from sigma.presentation.web.schemas.base import NonEmpty, RequestModel
 
 
+class ManualCategory(RequestModel):
+    code: str = ""
+    label: str = ""
+
+
 class ManualColumn(RequestModel):
     name: NonEmpty
     kind: Literal["numeric", "categorical", "boolean", "datetime", "text"]
+    categories: list[ManualCategory] = []
 
 
 class ManualDatasetRequest(RequestModel):

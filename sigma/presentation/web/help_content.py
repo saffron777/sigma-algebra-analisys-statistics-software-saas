@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from sigma.presentation.web import help_figures
 
+
 # --------------------------------------------------------------------------- helpers
 def _fig(key: str, caption: str) -> str:
     svg = help_figures.FIGURES[key]()

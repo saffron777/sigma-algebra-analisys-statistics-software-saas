@@ -79,7 +79,7 @@ def _step(times: np.ndarray, surv: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """The step-function coordinates of a survival curve (the drop happens right after the event time)."""
     x, y = [0.0], [1.0]
     prev = 1.0
-    for tj, sj in zip(times, surv):
+    for tj, sj in zip(times, surv, strict=True):
         x.extend([float(tj), float(tj)])
         y.extend([prev, float(sj)])
         prev = float(sj)
