@@ -11,7 +11,7 @@ COPY sigma/presentation/web/static/src sigma/presentation/web/static/src
 COPY sigma/presentation/web/static/img sigma/presentation/web/static/img
 RUN mkdir -p sigma/presentation/web/static/css && npm run build
 
-FROM python:3.13-slim-bookworm AS runtime
+FROM python:3.14-slim-bookworm AS runtime
 LABEL org.opencontainers.image.title="Sigma Algebra Analisys Statistics Software (SAAS)" \
       org.opencontainers.image.description="Self-hosted statistics and reporting web app" \
       org.opencontainers.image.licenses="AGPL-3.0-or-later" \
