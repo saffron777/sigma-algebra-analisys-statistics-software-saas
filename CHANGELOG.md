@@ -22,6 +22,11 @@ Primera versión pública de Sigma Algebra como software libre.
 ### Cambiado
 
 - Metadatos del proyecto y versión 1.0.0.
+- Renombrado a **Sigma Algebra Analisys Statistics Software (SAAS)** antes de la primera
+  release pública; forma corta **Sigma Algebra**, repositorio e imagen con el slug
+  `sigma-algebra-analisys-statistics-software-saas`.
+- Nuevo modo demo (`/demo`), stack Docker + Caddy, capturas/GIF, landing bilingüe y textos de
+  lanzamiento.
 - Instalación reproducible con `npm ci` y bloqueo de dependencias de Python.
 - Documentación de instalación, despliegue, privacidad y marcas.
 - La frase sobre privacidad aclara que la interpretación con IA es opcional y puede enviar

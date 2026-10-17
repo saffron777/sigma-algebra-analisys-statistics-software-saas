@@ -25,7 +25,7 @@
 4. **LinkedIn y Mastodon/Bluesky:** el mismo día o el siguiente, en español, con GIF.
 5. **Reddit:** r/selfhosted primero; r/Python al día siguiente; r/statistics solo si las reglas lo
    permiten. No publiques el mismo texto en todos a la vez.
-6. **Después:** blog «qué aprendí lanzando Sigma», propuesta a JOSS/Zenodo y búsqueda de 2–3 casos
+6. **Después:** blog «qué aprendí lanzando Sigma Algebra», propuesta a JOSS/Zenodo y búsqueda de 2–3 casos
    de uso reales.
 
 ## Qué responder

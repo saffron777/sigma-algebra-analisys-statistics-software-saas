@@ -1,7 +1,4 @@
 {$DEMO_DOMAIN:demo.example.org} {
 	encode gzip
-	request_body {
-		max_size 10MB
-	}
 	reverse_proxy sigma:5000
 }

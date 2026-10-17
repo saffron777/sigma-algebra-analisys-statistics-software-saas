@@ -57,7 +57,7 @@ docker compose up --build -d
 
 Open <http://127.0.0.1:5000>. The first visit asks you to create the administrator account. Data is
 stored in the `sigma_instance` volume (SQLite by default; SQL Server, MySQL/MariaDB, PostgreSQL,
-Oracle and MongoDB are also supported). For production, put Sigma behind an HTTPS reverse proxy and
+Oracle and MongoDB are also supported). For production, put Sigma Algebra behind an HTTPS reverse proxy and
 read [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). To publish the container image, see
 [docs/PUBLISH_DOCKER.md](docs/PUBLISH_DOCKER.md).
 
