@@ -7,7 +7,7 @@ Formulario: <https://selfh.st/apps/> (usa el enlace «Submit» de la página).
 - **Nombre:** Sigma Algebra Analisys Statistics Software (SAAS)
 - **Nombre corto:** Sigma Algebra
 - **Sitio:** https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas
-- **Demo:** https://demo.tudominio.org
+- **Demo:** https://demo.polluxnetsystem.com
 - **Licencia:** AGPL-3.0-or-later
 - **Código:** https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas
 - **Imagen:** `ghcr.io/saffron777/sigma-algebra-analisys-statistics-software-saas:latest`

@@ -1,6 +1,6 @@
 # Show HN
 
-> Sustituye `https://demo.tudominio.org` por la URL real antes de publicar. Publica un martes,
+> Sustituye `https://demo.polluxnetsystem.com` por la URL real antes de publicar. Publica un martes,
 > miércoles o jueves por la mañana (hora de la costa este de EE. UU.) y quédate a responder.
 
 ## Título
@@ -20,7 +20,7 @@ notebooks. Optional AI interpretation is per user and per click; there is no tel
 It is AGPL-3.0-or-later and self-hosted ("SAAS" is part of the product name, not a hosted service).
 Docker one-liner and demo:
 
-- Demo: https://demo.tudominio.org
+- Demo: https://demo.polluxnetsystem.com
 - Source: https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas
 - Quick start: `docker compose up --build -d` in the repo
 

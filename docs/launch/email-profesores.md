@@ -15,7 +15,7 @@ Me gustaría enseñártela en una demostración de 20 minutos y recibir feedback
 curso real: tipos de análisis, flujo de trabajo, datos de ejemplo y evaluación. No hay compromiso ni
 coste; el software es libre y se puede autoalojar.
 
-Demo: https://demo.tudominio.org
+Demo: https://demo.polluxnetsystem.com
 Código: https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas
 Documentación: https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas#readme
 

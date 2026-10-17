@@ -22,7 +22,7 @@ Es software libre: el código está disponible y no hay licencias por asiento. L
 español; el README y la landing están en inglés para la comunidad internacional.
 
 Me gustaría que profesores, analistas y equipos de calidad la probaran y me dijeran qué falta.
-Demo: https://demo.tudominio.org
+Demo: https://demo.polluxnetsystem.com
 Código: https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas
 
 Si conoces a alguien que dé estadística o trabaje con encuestas/calidad, comparte el enlace.
@@ -32,7 +32,7 @@ Gracias.
 
 Sigma Algebra es una app web de estadística autoalojada y AGPL: importa datos, ejecuta pruebas y
 modelos, genera gráficos e informes y permite cuentas por usuario. Docker, sin telemetría y con
-variables categóricas de código + etiqueta. Demo: https://demo.tudominio.org
+variables categóricas de código + etiqueta. Demo: https://demo.polluxnetsystem.com
 Código: https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas
 
 ## Hashtags

@@ -18,7 +18,7 @@ El stack completo está en [demo/](../demo/README.md). Resumen:
 
 ```bash
 cd demo
-export DEMO_DOMAIN=demo.tudominio.org
+export DEMO_DOMAIN=demo.polluxnetsystem.com
 bash seed.sh
 docker compose up -d
 ```
@@ -32,8 +32,8 @@ Caddy obtiene el certificado TLS y hace de proxy inverso; la aplicación queda e
 |---|---|
 | `SIGMA_DEMO_MODE` | `1` |
 | `SIGMA_DEMO_USER` | `demo` |
-| `SIGMA_DEMO_URL` | `https://demo.tudominio.org` |
-| `SIGMA_ALLOWED_HOSTS` | `demo.tudominio.org` |
+| `SIGMA_DEMO_URL` | `https://demo.polluxnetsystem.com` |
+| `SIGMA_ALLOWED_HOSTS` | `demo.polluxnetsystem.com` |
 | `SIGMA_SECURE_COOKIES` | `1` |
 | `SIGMA_EXTERNAL_DB_HOSTS` | `disabled.invalid` |
 | `SIGMA_ANALYSIS_MAX_PARALLEL` | `1` |

@@ -35,6 +35,11 @@ dist/
 *.db
 *.sqlite
 *.sqlite3
+# credenciales de despliegue (nunca se versionan)
+.cf-token
+.ssh/
+deploy_key*
+
 # datos personales que nunca deben publicarse
 .gitconfig*
 ticket-it-bantrab/

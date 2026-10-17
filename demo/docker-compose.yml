@@ -14,9 +14,9 @@ services:
       SIGMA_INSTANCE_DIR: /app/instance
       SIGMA_DEMO_MODE: "1"
       SIGMA_DEMO_USER: demo
-      SIGMA_DEMO_URL: https://${DEMO_DOMAIN:-demo.example.org}
+      SIGMA_DEMO_URL: https://${DEMO_DOMAIN:-demo.polluxnetsystem.com}
       SIGMA_SOURCE_URL: https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas
-      SIGMA_ALLOWED_HOSTS: ${DEMO_DOMAIN:-demo.example.org}
+      SIGMA_ALLOWED_HOSTS: ${DEMO_DOMAIN:-demo.polluxnetsystem.com}
       SIGMA_SECURE_COOKIES: "1"
       SIGMA_MAX_UPLOAD_MB: "10"
       SIGMA_EXTERNAL_DB_HOSTS: disabled.invalid
@@ -71,7 +71,7 @@ services:
       - "443:443"
       - "443:443/udp"
     environment:
-      DEMO_DOMAIN: ${DEMO_DOMAIN:-demo.example.org}
+      DEMO_DOMAIN: ${DEMO_DOMAIN:-demo.polluxnetsystem.com}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

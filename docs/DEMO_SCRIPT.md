@@ -21,7 +21,7 @@ autoalojada y libre, y llevar a la demo o al repositorio.
 | 0:48–1:00 | Pestaña **Datos** del editor; escribe dos filas; guarda. Luego **Estadística descriptiva**. | «Trabaja como en una hoja de cálculo y analiza sin salir del navegador.» |
 | 1:00–1:15 | Resultados descriptivos, gráfico y botón **Exportar informe**. | «Pruebas, modelos, encuestas, calidad y gráficos; exporta PDF, Word o Excel y guarda los resultados.» |
 | 1:15–1:28 | Página **Ayuda → Acerca de**; muestra AGPL, copyright y enlace al código fuente. | «Es software libre AGPL: sin licencias por asiento y con el código disponible. Los datos no salen de tu servidor.» |
-| 1:28–1:30 | Logo + «Pruébala en demo.tudominio.org» + botón GitHub. | «Pruébala en la demo o instálala con Docker. El enlace está en el repositorio.» |
+| 1:28–1:30 | Logo + «Pruébala en demo.polluxnetsystem.com» + botón GitHub. | «Pruébala en la demo o instálala con Docker. El enlace está en el repositorio.» |
 
 ## Versión de 30 s para LinkedIn/Mastodon
 
@@ -37,7 +37,7 @@ autoalojada y libre, y llevar a la demo o al repositorio.
 **Descripción:**
 > Sigma Algebra Analisys Statistics Software (SAAS) es una plataforma web de estadística autoalojada:
 > importa datos, ejecuta pruebas y modelos, genera gráficos e informes, con cuentas por usuario.
-> AGPL-3.0-or-later. Demo: https://demo.tudominio.org — Código: https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas
+> AGPL-3.0-or-later. Demo: https://demo.polluxnetsystem.com — Código: https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas
 > 0:00 Qué es · 0:08 Datos · 0:32 Variables categóricas · 1:00 Resultados · 1:15 Licencia
 
 ## Checklist de grabación

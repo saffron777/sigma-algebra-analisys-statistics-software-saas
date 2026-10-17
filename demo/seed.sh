@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Crea la instantánea semilla (usuario demo + datos de ejemplo) y la copia al volumen de la demo.
-#   DEMO_DOMAIN=demo.tudominio.org bash demo/seed.sh
+#   DEMO_DOMAIN=demo.polluxnetsystem.com bash demo/seed.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 

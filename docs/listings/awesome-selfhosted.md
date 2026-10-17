@@ -7,7 +7,7 @@ Repositorio: <https://github.com/awesome-selfhosted/awesome-selfhosted>
 Categoría: **Analytics** (confirma la sección vigente en el README del repositorio).
 
 ```markdown
-- [Sigma Algebra](https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas) - Self-hosted statistics and reporting web app: import CSV/Excel/SQL/MongoDB/JSON, run tests and models, export PDF/Word/Excel. ([Demo](https://demo.tudominio.org), [Source Code](https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas)) `AGPL-3.0`
+- [Sigma Algebra](https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas) - Self-hosted statistics and reporting web app: import CSV/Excel/SQL/MongoDB/JSON, run tests and models, export PDF/Word/Excel. ([Demo](https://demo.polluxnetsystem.com), [Source Code](https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas)) `AGPL-3.0`
 ```
 
 ## Requisitos que conviene comprobar antes del PR

@@ -30,6 +30,7 @@ STAGING = DIST / ".staging"
 EXCLUDED_DIRS = {
     ".git",
     ".github",  # included separately in the tree copy? no: releases do not need workflow files
+    ".ssh",
     ".venv",
     ".uv-cache",
     "node_modules",
@@ -49,7 +50,14 @@ EXCLUDED_DIRS = {
     ".chrome-check-profile",
     ".ai-tmp",
 }
-EXCLUDED_FILES = {".env", ".env.local", ".gitconfig.backup", ".DS_Store", ".tailwind-check.css"}
+EXCLUDED_FILES = {
+    ".env",
+    ".env.local",
+    ".gitconfig.backup",
+    ".DS_Store",
+    ".tailwind-check.css",
+    ".cf-token",
+}
 EXCLUDED_SUFFIXES = (".db", ".sqlite", ".sqlite3", ".log", ".pyc")
 FORBIDDEN = ("/instance/", "/.git/", "/.venv/", "/node_modules/", ".db", ".sqlite")
 
@@ -70,7 +78,7 @@ def _ignore(directory: str, names: list[str]) -> set[str]:
         if (
             name in EXCLUDED_DIRS
             or name in EXCLUDED_FILES
-            or name.startswith((".gitconfig", ".uv-cache", ".acl-", ".pytest-tmp", ".chrome-", ".pip-"))
+            or name.startswith((".gitconfig", ".uv-cache", ".acl-", ".pytest-tmp", ".chrome-", ".pip-", "deploy_key"))
             or relative.endswith("sigma/presentation/web/static/vendor")
             or relative.endswith("sigma/presentation/web/static/css/app.css")
             or (path.is_file() and name.endswith(EXCLUDED_SUFFIXES))

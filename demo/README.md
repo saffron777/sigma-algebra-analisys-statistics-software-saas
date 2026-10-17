@@ -6,7 +6,7 @@ sin subir datos reales.
 ## Requisitos
 
 - Un VPS Linux con Docker y Docker Compose.
-- Un dominio/subdominio (por ejemplo `demo.tudominio.org`) con un registro DNS `A` apuntando al VPS.
+- Un dominio/subdominio (por ejemplo `demo.polluxnetsystem.com`) con un registro DNS `A` apuntando al VPS.
 - Puertos **80** y **443** abiertos; no expongas el 5001.
 
 ## Puesta en marcha
@@ -17,7 +17,7 @@ sin subir datos reales.
    ```
 2. Exporta el dominio y crea la semilla:
    ```bash
-   export DEMO_DOMAIN=demo.tudominio.org
+   export DEMO_DOMAIN=demo.polluxnetsystem.com
    bash seed.sh
    ```
    `seed.sh` crea el usuario regular `demo` (sin consola ni IA) con los datos de ejemplo y copia la
@@ -31,7 +31,7 @@ sin subir datos reales.
    curl -fsS https://$DEMO_DOMAIN/health
    curl -fsSI https://$DEMO_DOMAIN/demo
    ```
-4. Abre `https://demo.tudominio.org` y pulsa «Probar la demo pública». La ruta `/demo` inicia sesión
+4. Abre `https://demo.polluxnetsystem.com` y pulsa «Probar la demo pública». La ruta `/demo` inicia sesión
    como el usuario demo; no hay contraseña pública.
 
 ## Reinicio periódico

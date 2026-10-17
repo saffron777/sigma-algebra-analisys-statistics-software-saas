@@ -17,7 +17,7 @@ Directorio: <https://directory.fsf.org/>
 - **Dependencias principales:** Python 3.11+, Flask, pandas, NumPy, SciPy, statsmodels,
   scikit-learn, SQLAlchemy, Plotly; Node.js solo para compilar los assets del frontend.
 - **Documentación:** README.md, docs/DEPLOYMENT.md, docs/DEMO.md.
-- **Demo:** https://demo.tudominio.org
+- **Demo:** https://demo.polluxnetsystem.com
 - **Mantenedor:** Frank Miranda <frank.alexis@gmail.com>
 - **Requisitos del sistema:** Linux con Docker (recomendado) o Python 3.11+; SQLite por defecto.
 

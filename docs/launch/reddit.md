@@ -22,7 +22,7 @@ What it does:
 
 Stack: Flask, SQLAlchemy, pandas/NumPy/SciPy/statsmodels, Plotly, Alpine.js, Tailwind. AGPL-3.0-or-later.
 
-Demo: https://demo.tudominio.org (sample data, resets periodically; no real data)
+Demo: https://demo.polluxnetsystem.com (sample data, resets periodically; no real data)
 Source: https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas
 
 I am the author. Feedback on deployment and missing features is welcome.
@@ -41,7 +41,7 @@ It covers descriptive statistics, tests, regression/ANOVA, surveys, SPC/DOE, cha
 optional Jupyter console. The frontend is Jinja + Alpine.js + JSpreadsheet; charts are Plotly.
 
 Source (AGPL): https://github.com/saffron777/sigma-algebra-analisys-statistics-software-saas
-Demo: https://demo.tudominio.org
+Demo: https://demo.polluxnetsystem.com
 
 Happy to discuss the architecture, testing strategy or the stats catalogue. I am the author.
 
