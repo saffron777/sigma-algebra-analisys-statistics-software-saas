@@ -31,16 +31,16 @@ paquete en **Public**.
 
 ```bash
 echo "$GHCR_TOKEN" | docker login ghcr.io -u saffron777 --password-stdin
-bash scripts/publish_docker.sh 1.0.0
+bash scripts/publish_docker.sh v1.0.0
 ```
 
 Comprueba:
 
 ```bash
-docker pull ghcr.io/saffron777/sigma-algebra-analisys-statistics-software-saas:1.0.0
+docker pull ghcr.io/saffron777/sigma-algebra-analisys-statistics-software-saas:v1.0.0
 docker run --rm -d -p 127.0.0.1:5000:5000 \
   -v sigma_data:/app/instance \
-  ghcr.io/saffron777/sigma-algebra-analisys-statistics-software-saas:1.0.0
+  ghcr.io/saffron777/sigma-algebra-analisys-statistics-software-saas:v1.0.0
 curl -fsS http://127.0.0.1:5000/health
 curl -fsS http://127.0.0.1:5000/licencia | head
 ```

@@ -12,7 +12,7 @@ run descriptive statistics, hypothesis tests, regression/ANOVA, survey sampling,
 explore charts and export PDF/Word/Excel reports. Multi-user, private per account, and installable
 with Docker in minutes.
 
-[Español](README.es.md) · [Website](site/index.html) · [Deployment](docs/DEPLOYMENT.md) · [Releasing](docs/RELEASING.md) · [Demo setup](docs/DEMO.md)
+[Español](README.es.md) · [Website](https://saffron777.github.io/sigma-algebra-analisys-statistics-software-saas/) · [Deployment](docs/DEPLOYMENT.md) · [Releasing](docs/RELEASING.md) · [Demo setup](docs/DEMO.md)
 
 > **"SAAS" is part of the product name.** Sigma Algebra is self-hosted free software, not a hosted
 > service. The code is licensed under **AGPL-3.0-or-later**; if you run a modified version as a

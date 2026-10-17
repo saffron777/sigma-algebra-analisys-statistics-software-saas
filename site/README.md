@@ -4,7 +4,7 @@ Landing page de Sigma Algebra, sin build ni CDN. Se publica con GitHub Pages.
 
 ## Antes de publicar
 
-1. Sustituye `https://demo.tudominio.org` por la URL real de la demo en `index.html`.
+1. Cuando la demo esté desplegada, cambia los botones `#deploy` de `index.html` por la URL real de la demo.
 2. Comprueba que `assets/` tiene el logotipo, el GIF y las tres capturas.
 3. Revisa los enlaces a GitHub, licencia, terceros y marcas.
 4. Activa GitHub Pages con **Source: GitHub Actions** en la configuración del repositorio.

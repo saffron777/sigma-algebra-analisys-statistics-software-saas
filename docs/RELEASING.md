@@ -57,7 +57,7 @@ gpg --detach-sign --armor dist/sigma-algebra-analisys-statistics-software-saas-1
 4. Opcional: publica la imagen en GHCR:
 
    ```bash
-   bash scripts/publish_docker.sh 1.0.0
+   bash scripts/publish_docker.sh v1.0.0
    ```
 
 5. Opcional: archiva la release en Zenodo para obtener un DOI y añade el badge al README.
